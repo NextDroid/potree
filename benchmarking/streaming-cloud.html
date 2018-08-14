@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Potree Viewer</title>
+
+	<link rel="stylesheet" type="text/css" href="../build/potree/potree.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jquery-ui/jquery-ui.min.css">
+	<link rel="stylesheet" type="text/css" href="../libs/perfect-scrollbar/css/perfect-scrollbar.css">
+	<link rel="stylesheet" type="text/css" href="../libs/openlayers3/ol.css">
+	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
+</head>
+
+<body>
+	<script src="../libs/jquery/jquery-3.1.1.min.js"></script>
+	<script src="../libs/spectrum/spectrum.js"></script>
+	<script src="../libs/perfect-scrollbar/js/perfect-scrollbar.jquery.js"></script>
+	<script src="../libs/jquery-ui/jquery-ui.min.js"></script>
+	<script src="../libs/three.js/build/three.js"></script>
+	<script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script>
+	<script src="../libs/other/BinaryHeap.js"></script>
+	<script src="../libs/tween/tween.min.js"></script>
+	<script src="../libs/d3/d3.js"></script>
+	<script src="../libs/proj4/proj4.js"></script>
+	<script src="../libs/openlayers3/ol.js"></script>
+	<script src="../libs/i18next/i18next.js"></script>
+	<script src="../libs/jstree/jstree.js"></script>
+	<script src="../build/potree/potree.js"></script>
+	<script src="../libs/plasio/js/laslaz.js"></script>
+	<script src="../node_modules/papaparse/papaparse.min.js"></script>
+
+	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
+	<!-- INCLUDE SETTINGS HERE -->
+
+	<div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
+		<div id="potree_render_area"></div>
+		<div id="potree_sidebar_container"> </div>
+	</div>
+
+<!-- <script type="x-shader/x-vertex" id="vertexshader">
+
+			attribute float intensity;
+			varying vec3 vColor;
+
+
+			void main() {
+
+					vColor.r = 1.0;
+					vColor.g = 1.0;
+					vColor.b = 1.0;
+
+			}
+
+	</script>
+
+	<script type="x-shader/x-fragment" id="fragmentshader">
+
+			varying vec3 vColor;
+
+			void main() {
+
+					gl_FragColor = vec4( vColor, 1.0 );
+
+			}
+
+	</script> -->
+
+	<script>
+		// Initialize Viewer:
+		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+
+		viewer.setEDLEnabled(true);
+		viewer.setFOV(60);
+		viewer.setPointBudget(1*1000*1000);
+		viewer.loadSettingsFromURL();
+
+		viewer.setDescription("Example page to test out streaming point clouds into Potree/Three.js");
+
+		viewer.loadGUI(() => {
+			viewer.setLanguage('en');
+			$("#menu_tools").next().show();
+			$("#menu_scene").next().show();
+			viewer.toggleSidebar();
+		});
+
+		var offset = 10;
+		viewer.scene.view.position.set(50100, 50100, 50100);	// NOTE hardcoded
+		viewer.scene.view.lookAt(new THREE.Vector3(49999.501953125, 49953.123046875, 49999.482421875)); // NOTE hardcoded
+
+
+	</script>
+
+
+	<script>
+
+
+
+
+			var t0 = performance.now();
+			var t1 = 0;
+			var count = 0;
+			let positions = [];
+			let colors = [];
+			let sizes = [];
+			var geometry = new THREE.BufferGeometry();
+
+		// 	var results = Papa.parse("mini.csv", {
+		// 		delimiter: " ",
+		// 		download: true,
+		// 		step: function(row) {
+		// 			// console.log(row.data);
+		// 			count += 1;
+		// 			rowdata = row.data;
+		// 			positions.push(parseFloat(rowdata[0][0]));
+		// 			positions.push(parseFloat(rowdata[0][1]));
+		// 			positions.push(parseFloat(rowdata[0][2]));
+		// 			colors.push(255);
+		// 			colors.push(0);
+		// 			colors.push(0);
+		// 			sizes.push(1);
+		//
+		// 		},
+		// 		complete: function() {
+		// 			console.log("Complete");
+		// 			var t1 = performance.now();
+		// 			console.log("Read [" + count + "] rows in [" + (t1-t0) + "] milliseconds");
+		// 			console.log("Performance: " + count/(t1-t0)*1000 + " rows/second");
+		// 			console.log(positions);
+		// 			console.log(rowdata);
+		//
+		// 			viewer.toggleNavigationCube();
+		//
+		// 			geometry.addAttribute( "position", new THREE.Float32BufferAttribute( positions, 3));
+		// 			// geometry.addAttribute( "color", new THREE.Float32BufferAttribute ( colors, 3));
+		// 			// geometry.addAttribute( "size", new THREE.Float32BufferAttribute (sizes, 1).setDynamic(true));
+		// 			var material = new THREE.MeshBasicMaterial({color: 0xFF0000});
+		// 			var pointcloud = new THREE.Points(geometry, material);
+		// 			viewer.scene.scene.add(pointcloud);
+		// 		}
+		// });
+
+		var loader = new THREE.PCDLoader();
+		loader.load("clouds/cloud-1M.pcd",
+
+		onLoad = function(geometry) {
+
+			// var color = [];
+			// var intensities = geometry.attributes.intensity.array;
+			// var maxIntensity = 265; // NOTE hardcoded
+			// var minIntensity = 1.0; // NOTE hardcoded
+			// // var maxIntensity = intensities.reduce((a,b) => {return Math.max(a,b);});
+			// // var minIntensity = intensities.reduce((a,b) => {return Math.min(a,b);});
+			// var intensityRange = maxIntensity - minIntensity;
+			//
+			// for (let intensity of geometry.attributes.intensity.array) { // slow
+			//
+			// 	color.push( 1* (intensity / intensityRange) );
+			// 	color.push( 1* (intensity / intensityRange) );
+			// 	color.push( 1* (intensity / intensityRange) );
+			//
+			// }
+			//
+			// geometry.addAttribute( 'color', new THREE.Float32BufferAttribute(color, 3 ) );
+			// debugger; // check intensity
+
+			// var color = [];
+			// var timestamps = geometry.attributes.timestamp.array;
+			// var Npoints = timestamps.length;
+			// var initialTime = timestamps[0];
+			// var timeRange = timestamps[Npoints-1] - initialTime;
+			//
+			// console.log(timestamps);
+			// for (let timestamp of timestamps) {
+			//
+			// 	color.push( (timestamp - initialTime)/timeRange ); // R
+			// 	color.push( 0*(timestamp - initialTime)/timeRange ); // G
+			// 	color.push( 0*(timestamp - initialTime)/timeRange ); // B
+			//
+			// }
+			//
+			// geometry.addAttribute('color', new THREE.Float32BufferAttribute(color, 3) );
+			// debugger;
+
+			// // uniforms
+		  // uniforms = {
+			//
+		 	// 	 color: { value: new THREE.Color( 0xffff00 ) },
+			//
+		  // };
+			//
+			// // point cloud material
+			// var shaderMaterial = new THREE.ShaderMaterial( {
+			//
+			// 		uniforms: uniforms,
+			// 		vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+			// 		fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+			// 		transparent:    true
+			//
+			// });
+
+			var numObjects = 10;
+			for (let i=0; i < numObjects; i++) {
+				geom = new THREE.BufferGeometry();
+				geom.addAttribute('position', geometry.attributes.position.clone());
+				geom.translate(0,0,i*20);
+				geom.computeBoundingSphere();
+
+				var material = new THREE.PointsMaterial( {size: 0.005, vertexColors: THREE.VertexColors} ); // NOTE using THREE.VertexColors allows individual points to have their own color
+				var mesh = new THREE.Points(geom, material);
+				// mesh.name="points";
+
+				console.log(mesh);
+				viewer.scene.scene.add(mesh);
+			}
+
+			// var geometry2 = new THREE.BufferGeometry();
+			// if ( positions.length > 0 ) geometry2.addAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+			// geometry2.computeBoundingBox();
+			// geometry2.computeBoundingSphere();
+			//
+			// // console.log(geometry2);
+			// var material = new THREE.PointsMaterial( {size: 0.005, vertexColors: THREE.VertexColors} ); // NOTE using THREE.VertexColors allows individual points to have their own color
+			// var mesh = new THREE.Points(geometry, material);
+			//
+			//
+			// viewer.scene.scene.add(mesh);
+
+			// var center = mesh.geometry.boundingSphere.center;
+			viewer.scene.view.lookAt(new THREE.Vector3(49979.20703125, 49983.947265625, 50002.439453125));
+			viewer.toggleNavigationCube();
+			var t1 = performance.now();
+
+			// mesh.material.color = {r: 1, g:0, b:.0};
+			// mesh.needsUpdate = false;
+
+
+
+
+			console.log(viewer.scene.scene.children);
+			console.log("Done");
+			console.log("Performance: " + (t1-t0)/1000 + " seconds");
+			console.log("Number of Points: " + 1200000*numObjects);
+			// console.log("Number of Points: " + viewer.scene.scene.getObjectByName("points").geometry.attributes.position.count);
+		},
+
+		onProgress = function(request) {
+			var loaded = request.loaded;
+			var total = request.total;
+			console.log("Loaded " + loaded + " bytes -- " + loaded + "/" + total + " (" + 100*loaded/total + "%)" );
+			// debugger;
+			t1 = performance.now();
+			console.log("Performance: " + (t1-t0)/1000 + " seconds");
+			t0 = t1;
+		},
+
+		onError = function(error) {
+			console.console.error(error);
+		});
+
+
+
+
+
+
+
+		// Create CSV Reader:
+
+		// var t0 = performance.now();
+		// var count = 0;
+		// let points = [];
+		// let rowdata = null;
+		//
+		// var results = Papa.parse("mini.csv", {
+		// 	delimiter: " ",
+		// 	download: true,
+		// 	step: function(row) {
+		// 		// console.log(row.data);
+		// 		count += 1;
+		// 		rowdata = row.data;
+		// 		points.push(parseFloat([rowdata[0]), parseFloat(rowdata[1]), parseFloat(rowdata[2])]);
+		//
+		// 	},
+		// 	complete: function() {
+		// 		console.log("Complete");
+		// 		var t1 = performance.now();
+		// 		console.log("Read [" + count + "] rows in [" + (t1-t0) + "] milliseconds");
+		// 		console.log("Performance: " + count/(t1-t0)*1000 + " rows/second");
+		// 		console.log(points);
+		// 		console.log(rowdata);
+		// 	}});
+
+
+		// console.log('here');
+		//
+		// //load file:
+		// var loader = new THREE.PCDLoader();
+		// loader.load(
+		// 	'cloud.pcd',
+		// 	function(mesh) {
+		// 		viewer.scene.scene.add(mesh);
+		// 		viewer.fitToScreen();
+		// 	},
+		// 	function (xhr) {
+		// 		console.log( (xhr.loaded/ xhr.total * 100) + "% loaded");
+		// 	},
+		// 	function (error) {
+		// 		console.log('error occurred');
+		// 	}
+		// );
+		//
+		// console.log("Complete");
+
+
+
+
+
+	</script>
+
+
+  </body>
+</html>

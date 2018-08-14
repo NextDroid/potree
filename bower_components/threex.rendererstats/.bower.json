@@ -1,0 +1,13 @@
+{
+  "name": "threex.rendererstats",
+  "_cacheHeaders": {
+    "ETag": "\"eb43b05b83f03014efa3b6d35cfff41eddae8df8\"",
+    "Content-Type": "application/zip",
+    "Content-Disposition": "attachment; filename=threex.rendererstats-master.zip"
+  },
+  "_release": "e-tag:eb43b05b8",
+  "_source": "https://github.com/jeromeetienne/threex.rendererstats/archive/master.zip",
+  "_target": "*",
+  "_originalSource": "https://github.com/jeromeetienne/threex.rendererstats/archive/master.zip",
+  "_direct": true
+}
