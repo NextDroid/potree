@@ -306,7 +306,7 @@
             sphere.position.copy(rtkPoint);
             var bunny = viewer.scene.scene.getObjectByName("bunny");
             bunny.position.copy(rtkPoint);
-						bunny.visible = false;
+						// bunny.visible = false;
             // sprite.position.copy(point.add(new THREE.Vector3(10,10,10)));
 
 
@@ -335,12 +335,12 @@
             // debugger; // check the rtkTime, slider time, radar time, lidar time
 
             let camera = viewer.scene.getActiveCamera();
-            let lag = .01; // seconds
+            let lag = 5.01; // seconds
             lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
 
             // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
             let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
-            camPoint.z += 0;
+            camPoint.z += 30;
             viewer.scene.view.position.copy(camPoint); // changed from camera
 						var targetPosition = new THREE.Vector3(sphere.position.x, sphere.position.y, sphere.position.z+2);
             viewer.scene.view.lookAt(targetPosition);
