@@ -145,7 +145,7 @@ export class VolumePanel extends MeasurePanel{
 			console.log("ENABLE DIALOG FORM HERE");
 			console.log(viewer);
 			// debugger;
-			var dialog = $( "#dialog-form" ).dialog("open");
+			// var dialog = $( "#dialog-form" ).dialog("open");	// INPUT FORM
 
 			var x;
 			var metadata=prompt("Please enter metadata", "");
@@ -170,7 +170,7 @@ export class VolumePanel extends MeasurePanel{
 				timestamp: date.getTime(),
 				position: measurement.position,
 				rotation: measurement.rotation,
-				size: measurement.scale,
+				scale: measurement.scale,
 				label: value,
 				metadata: metadata
 			};
@@ -198,6 +198,9 @@ export class VolumePanel extends MeasurePanel{
 				"rotation_y": output.rotation._y,
 				"rotation_z": output.rotation._z,
 				"rotation_order": output.rotation._order,
+				"scale_x": output.scale.x,
+				"scale_y": output.scale.y,
+				"scale_z": output.scale.z,
 				"label": output.label,
 				"metadata": output.metadata
 			}], config);

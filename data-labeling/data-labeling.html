@@ -92,8 +92,8 @@
 		});
 
 		// Point Cloud:
-		// Potree.loadPointCloud("../pointclouds/lion_takanawa/cloud.js", "pointcloud", function(e){
-		Potree.loadPointCloud("../pointclouds/veritas/full-pointcloud/cloud.js", "basemap-demo", e => {
+		Potree.loadPointCloud("../pointclouds/basemap.csv_converted/cloud.js", "basemap-demo", e => {
+		// Potree.loadPointCloud("../pointclouds/veritas/full-pointcloud/cloud.js", "basemap-demo", e => {
 
 			viewer.scene.addPointCloud(e.pointcloud);
 
@@ -101,19 +101,8 @@
 			material.size = 1;
 			material.pointColorType = Potree.PointColorType.HEIGHT;
 			material.pointSizeType = Potree.PointSizeType.FIXED;
-
-			// console.log(e.pointcloud.pcoGeometry.nodes.gpsTime);
-			// console.log(e.pointcloud.nodes.r.gpsTime);
-
 			viewer.fitToScreen();
 		});
-
-		window.addEventListener("message", (event) => {
-			// console.log(viewer.scene.pointclouds[0]);
-			// debugger;
-			// initLabeler(window.viewer);
-		});
-
 
 
 	</script>
