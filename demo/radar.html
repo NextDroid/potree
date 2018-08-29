@@ -173,6 +173,7 @@
 
     // Load RTK:
     loadRtk((pos, rot, t_init) => {
+			// debugger; //pos
       path = pos.map(v => new THREE.Vector3(...v));
       orientations = rot.map(v => new THREE.Vector3(...v));
 
@@ -200,7 +201,7 @@
         console.log( item, loaded, total );
       };
       let textureLoader = new THREE.TextureLoader( manager );
-      let texture = textureLoader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/reflection_1.png`);
+      let texture = textureLoader.load("../resources/models/Chevy_Volt_Segmented/reflection_1.png");
       // let texture = textureLoader.load(`${Potree.resourcePath}/models/bodybkgd.JPG`);
       let onProgress = function ( xhr ) {
         if ( xhr.lengthComputable ) {
@@ -224,8 +225,11 @@
       { // Load Textured bunny from obj
         let onError = function ( xhr ) {};
         let loader = new THREE.OBJLoader( manager );
-        loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`, function ( object ) {
+        loader.load("../resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj", function ( object ) {
         // loader.load(`${Potree.resourcePath}/models/1967-shelby-ford-mustang.obj`, function ( object ) {
+
+				console.log(object);
+				debugger;
           object.traverse( function ( child ) {
             if ( child instanceof THREE.Mesh ) {
               child.material.map = texture;
@@ -306,7 +310,7 @@
             sphere.position.copy(rtkPoint);
             var bunny = viewer.scene.scene.getObjectByName("bunny");
             bunny.position.copy(rtkPoint);
-						bunny.visible = false;
+						bunny.visible = true;
             // sprite.position.copy(point.add(new THREE.Vector3(10,10,10)));
 
 
@@ -335,12 +339,12 @@
             // debugger; // check the rtkTime, slider time, radar time, lidar time
 
             let camera = viewer.scene.getActiveCamera();
-            let lag = .01; // seconds
+            let lag = 2.01; // seconds
             lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
 
             // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
             let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
-            camPoint.z += 0;
+            camPoint.z += 30;
             viewer.scene.view.position.copy(camPoint); // changed from camera
 						var targetPosition = new THREE.Vector3(sphere.position.x, sphere.position.y, sphere.position.z+2);
             viewer.scene.view.lookAt(targetPosition);
@@ -409,7 +413,8 @@
 		// Potree.loadPointCloud("../pointclouds/fullpointcloud-time-mini/cloud.js", "fullpointcloud-time-mini", e => {
 		// Potree.loadPointCloud("../pointclouds/basemap-time/cloud.js", "basemap-time", e => {
 		// Potree.loadPointCloud("../pointclouds/basemap-demo/cloud.js", "basemap-demo", e => {
-		Potree.loadPointCloud("../pointclouds/veritas/full-pointcloud/cloud.js", "fullcloud", e => {
+		// Potree.loadPointCloud("../pointclouds/veritas/full-pointcloud/cloud.js", "fullcloud", e => {
+		Potree.loadPointCloud("http://10.69.218.104:1234/pointclouds/veritas/full-pointcloud/cloud.js", "fullcloud", e => {
 
 			let pointcloud = e.pointcloud;
 			let material = pointcloud.material;
