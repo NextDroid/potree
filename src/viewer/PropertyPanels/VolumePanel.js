@@ -29,6 +29,9 @@ export class VolumePanel extends MeasurePanel{
 		this.elContent = $(`
 
 			<div class="dropdown">
+				<p>
+					Use the Label button to download csv of the current bounding box.
+				</p>
 			 <button class="dropbtn" name="label_data">Label and Download</button>
 			 <div id="myDropdown" class="dropdown-content">
 				 <a href="#" class="dropvalue" data-value="road">Road</a>
@@ -38,6 +41,14 @@ export class VolumePanel extends MeasurePanel{
 				 <a href="#" class="dropvalue" data-value="vehicle">Vehicle</a>
 				 <a href="#" class="dropvalue" data-value="obstacle">Obstacle</a>
 			 </div>
+			</div>
+			<div class="upload">
+			<p>
+				Use the button below to select and upload previously downloaded bounding box annotations.
+				<br>
+			</p>
+			 <label for="upload-files" class="dropbtn">Upload Annotations</label>
+			 <input class="upload" type="file" id="upload-files" multiple style="visibility:hidden;">
 			</div>
 			<div class="measurement_content selectable">
 				<span class="coordinates_table_container"></span>
@@ -141,7 +152,6 @@ export class VolumePanel extends MeasurePanel{
 		}
 
 		function label(value, viewer) {
-
 			console.log("ENABLE DIALOG FORM HERE");
 			console.log(viewer);
 			// debugger;
@@ -208,52 +218,69 @@ export class VolumePanel extends MeasurePanel{
 			var filename = value+"_"+timestamp+".csv";
 			console.log(filename);
 			download(outputCsvString, filename, "text/plain");
+		}
 
+
+
+		function upload(viewer, files) {
+			var volumes = [];
+			for (let v of viewer.scene.volumes) {
+				volumes.push(v.name);
+			}
+			console.log(volumes);
+
+
+			for (let file of files) {
+				if (volumes.includes(file.name)) {
+					continue;	// Skip if volume already exists
+				}
+
+				console.log(file);
+
+				Papa.parse(file, {
+					header: true,
+					dynamicTyping: true,
+					complete: function(results) {
+						var r = results.data[0];
+						console.log(viewer);
+						console.log("Papa parse: ", r);
+
+						// Add Clip Volume:
+						let clipVolume = new Potree.BoxVolume();
+						clipVolume.name = file.name
+						clipVolume.position.set(r.position_x, r.position_y, r.position_z);
+						clipVolume.rotation.set(r.rotation_x, r.rotation_y, r.rotation_z);
+						clipVolume.scale.set(r.scale_x, r.scale_y, r.scale_z);
+						clipVolume.clip = true;
+						clipVolume.visible = true;
+
+						viewer.setClipTask(Potree.ClipTask.HIGHLIGHT);
+						viewer.scene.addVolume(clipVolume);
+					}
+				});
+				console.log("parsed");
+			}
 		}
 
 		{ // label and download
 
 			// Assign Onclick Functions to drop down items:
-			// debugger;
 			var viewer = this.viewer;
 			this.elContent.find("a.dropvalue").click(function() {
-				// console.log($(this).data("value"));
 				var val = $(this).data("value");
 				label(val, viewer);
 			});
-
-			// var dropdownvalues = this.elContent.find("a.dropvalue");
-			// for (let a of dropdownvalues) {
-			// 	debugger;
-			// 	console.log(a);
-			// 	// var a = dropdownvalues[k];
-			//
-			// 	a.onclick = function() {
-			// 		label(a.value);
-			// 	};
-			// }
 
 			var dropbtn = this.elContent.find("button[name=label_data]");
 			console.log(dropbtn);
 			dropbtn.click(() => {
 				document.getElementById("myDropdown").classList.toggle("show");
-
-				//
-				// var output = {
-				// 	position: measurement.position,
-				// 	rotation: measurement.rotation,
-				// 	size: measurement.scale
-				// };
-				//
-				// console.log(output);
-				// console.log(JSON.stringify(output));
-
-
 			});
-			//
-			// debugger;
-			// console.log(this.elContent);
 
+			// Assign Onclick Function to upload button:
+			this.elContent.find("input.upload").change(function() {
+				upload(viewer, this.files);
+			});
 
 		}
 
