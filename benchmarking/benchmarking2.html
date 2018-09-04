@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+
+	<html>
+	<head>
+		<title>Getting Started with Three.js</title>
+		<!-- <script src="../three.min.js"></script> -->
+
+		<script src="http://threejs.org/build/three.js"></script>
+		<script src="../libs/three.js/examples/js/controls/OrbitControls.js"></script>
+		<script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script>
+		<script src="../bower_components/threex.rendererstats/threex.rendererstats.js"></script>
+
+		<div id="info">PointCloud with Custom, Dynamic Attribute</div>
+
+		<script type="x-shader/x-vertex" id="vertexshader">
+
+		    attribute float alpha;
+
+		    varying float vAlpha;
+
+		    void main() {
+
+		        vAlpha = alpha;
+
+		        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+		        gl_PointSize = 8.0;
+
+		        gl_Position = projectionMatrix * mvPosition;
+
+		    }
+
+		</script>
+
+		<script type="x-shader/x-fragment" id="fragmentshader">
+
+		    uniform vec3 color;
+
+		    varying float vAlpha;
+
+		    void main() {
+
+		        gl_FragColor = vec4( color, vAlpha );
+
+		    }
+
+		</script>
+
+
+		<script>
+		// PointCloud with Custom, Dynamic Attribute
+
+		var renderer, rendererStats, scene, camera, sphere, uniforms;
+
+		init();
+
+		function init() {
+
+			// rendererstats
+			rendererStats	= new THREEx.RendererStats();
+			rendererStats.domElement.style.position	= 'absolute';
+			rendererStats.domElement.style.left	= '0px';
+			rendererStats.domElement.style.bottom	= '0px';
+			document.body.appendChild( rendererStats.domElement );
+
+
+			// renderer
+			renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			// renderer.setClearColor(new THREE.Color(0x000000, 1.0));
+			document.body.appendChild( renderer.domElement );
+
+			// scene
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color( 0x777777);
+
+			//camera
+			camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1000*1000 );
+			camera.position = new THREE.Vector3(49979.20703125, 49983.947265625, 50002.439453125);
+
+			// Light:
+			var light = new THREE.PointLight( 0xff0000, 1, 0 );
+			light.position.set(49979.20703125, 49983.947265625, 50002.439453125);
+			scene.add( light );
+
+			// controls
+			controls = new THREE.OrbitControls( camera, renderer.domElement );
+			controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
+			controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+			controls.dampingFactor = 0.25;
+			controls.screenSpacePanning = false;
+			controls.minDistance = 100;
+			controls.maxDistance = 500;
+			controls.maxPolarAngle = Math.PI / 2;
+
+
+			////////////////
+			// Load Point cloud:
+
+			var t0 = performance.now();
+			var t1 = 0;
+			var count = 0;
+			let positions = [];
+			let colors = [];
+			let sizes = [];
+
+			var loader = new THREE.PCDLoader();
+			loader.load("clouds/cloud-5M.pcd",
+
+			onLoad = function(geometry) {
+				// debugger;
+				var numObjects = 1;
+				for (let i=0; i < numObjects; i++) {
+					// debugger; // geometry
+					geom = new THREE.BufferGeometry();
+					geom.addAttribute('position', geometry.attributes.position.clone());
+					geom.translate(0,0,i*20);
+					geom.computeBoundingSphere();
+
+					var material = new THREE.PointsMaterial( { size: 15, vertexColors: THREE.VertexColors } ); // NOTE using THREE.VertexColors allows individual points to have their own color
+					var mesh = new THREE.Points(geom, material);
+					mesh.name="points";
+
+					console.log(mesh);
+					scene.add(mesh);
+					console.log(scene);
+				}
+
+				// var geometry2 = new THREE.BufferGeometry();
+				// if ( positions.length > 0 ) geometry2.addAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+				// geometry2.computeBoundingBox();
+				// geometry2.computeBoundingSphere();
+				//
+				// // console.log(geometry2);
+				// var material = new THREE.PointsMaterial( {size: 0.005, vertexColors: THREE.VertexColors} ); // NOTE using THREE.VertexColors allows individual points to have their own color
+				// var mesh = new THREE.Points(geometry, material);
+				//
+				//
+				// viewer.scene.scene.add(mesh);
+
+				// var center = mesh.geometry.boundingSphere.center;
+				// viewer.scene.view.lookAt(new THREE.Vector3(49979.20703125, 49983.947265625, 50002.439453125));
+				// viewer.toggleNavigationCube();
+				var t1 = performance.now();
+
+				// mesh.material.color = {r: 1, g:0, b:.0};
+				// mesh.needsUpdate = false;
+
+				// viewer.rendercallback = function() {
+				// 	rendererStats.update(viewer.renderer);
+				// }
+
+				///////////////////////////////////////////////////////////////////////
+				var geom = new THREE.BoxBufferGeometry(5, 5, 5);
+				geom.position = new THREE.Vector3(50060.27, 49936.121, 49999.23);
+				var mat = new THREE.MeshNormalMaterial();
+				sphere = new THREE.Mesh(geom, mat);
+				scene.add(sphere);
+
+				// console.log(viewer.scene.scene.children);
+				console.log("Done");
+				console.log("Performance: " + (t1-t0)/1000 + " seconds");
+				// console.log("Number of Points: " + 1200000*numObjects);
+				console.log("Number of Points: " + scene.getObjectByName("points").geometry.attributes.position.count);
+
+				animate();
+
+			},
+
+			onProgress = function(request) {
+				var loaded = request.loaded;
+				var total = request.total;
+				console.log("Loaded " + loaded + " bytes -- " + loaded + "/" + total + " (" + 100*loaded/total + "%)" );
+				// debugger;
+				t1 = performance.now();
+				console.log("Performance: " + (t1-t0)/1000 + " seconds");
+				t0 = t1;
+			},
+
+			onError = function(error) {
+				console.console.error(error);
+			});
+
+		}
+
+		function animate() {
+
+		    requestAnimationFrame( animate );
+
+		    render();
+
+		}
+
+		function render() {
+
+		    // var alphas = cloud.geometry.attributes.alpha;
+		    // var count = alphas.count;
+				//
+		    // for( var i = 0; i < count; i ++ ) {
+				//
+		    //     // dynamically change alphas
+		    //     alphas.array[ i ] *= 0.95;
+				//
+		    //     if ( alphas.array[ i ] < 0.01 ) {
+		    //         alphas.array[ i ] = 1.0;
+		    //     }
+				//
+		    // }
+				//
+		    // alphas.needsUpdate = true; // important!
+
+				console.log(scene.getObjectByName("points"));
+
+		    sphere.rotation.x += 0.005;
+		    sphere.rotation.y += 0.005;
+
+		    renderer.render( scene, camera );
+				rendererStats.update(renderer);
+
+
+		}
+		</script>
+
+
+
+	</head>
+	<body></body>
+	</html>

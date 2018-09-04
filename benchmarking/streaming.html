@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Potree Viewer</title>
+
+	<link rel="stylesheet" type="text/css" href="../build/potree/potree.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jquery-ui/jquery-ui.min.css">
+	<link rel="stylesheet" type="text/css" href="../libs/perfect-scrollbar/css/perfect-scrollbar.css">
+	<link rel="stylesheet" type="text/css" href="../libs/openlayers3/ol.css">
+	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
+	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
+</head>
+
+<body>
+	<script src="../libs/jquery/jquery-3.1.1.min.js"></script>
+	<script src="../libs/spectrum/spectrum.js"></script>
+	<script src="../libs/perfect-scrollbar/js/perfect-scrollbar.jquery.js"></script>
+	<script src="../libs/jquery-ui/jquery-ui.min.js"></script>
+	<script src="../libs/three.js/build/three.js"></script>
+	<script src="../libs/other/BinaryHeap.js"></script>
+	<script src="../libs/tween/tween.min.js"></script>
+	<script src="../libs/d3/d3.js"></script>
+	<script src="../libs/proj4/proj4.js"></script>
+	<script src="../libs/openlayers3/ol.js"></script>
+	<script src="../libs/i18next/i18next.js"></script>
+	<script src="../libs/jstree/jstree.js"></script>
+	<script src="../build/potree/potree.js"></script>
+	<script src="../libs/plasio/js/laslaz.js"></script>
+	<script src="../node_modules/papaparse/papaparse.min.js"></script>
+  <script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script>
+	<script src="../bower_components/cbuffer/cbuffer.js"></script>
+	<script src="executionLoop.js"></script>
+
+	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
+	<!-- INCLUDE SETTINGS HERE -->
+
+	<div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
+		<div id="potree_render_area"></div>
+		<div id="potree_sidebar_container"> </div>
+	</div>
+
+
+  <script>
+    // Initialize Viewer:
+    window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+
+    viewer.setEDLEnabled(true);
+    viewer.setFOV(60);
+    viewer.setPointBudget(1*1000*1000);
+    viewer.loadSettingsFromURL();
+
+    viewer.setDescription("Example page to test out streaming point clouds into Potree using Three.js");
+
+    viewer.loadGUI(() => {
+      viewer.setLanguage('en');
+			viewer.setBackground('white');
+      $("#menu_tools").next().show();
+      $("#menu_scene").next().show();
+      viewer.toggleSidebar();
+    });
+
+		// Initializations:
+		var viewerOffset = 100;
+		var bboxMax;
+		var geoms = [];
+		var mesh5M, mesh18M;
+		var waitOnCapacity = -1;
+		var waitOn = waitOnCapacity;
+		var loader = new THREE.PCDLoader();
+
+		// Performance Timing:
+		var t0 = performance.now();
+		var t1 = 0;
+
+  </script>
+
+
+	<script>
+	function createPointMesh(geom) {
+		var material = new THREE.PointsMaterial( {size: 0.005, vertexColors: THREE.VertexColors} ); // NOTE using THREE.VertexColors allows individual points to have their own color
+		var mesh = new THREE.Points(geom, material);
+		mesh.name = "cloud";
+		return mesh;
+	}
+
+	function addPointMesh(mesh) {
+		// Add to scene:
+		console.log(mesh);
+		viewer.scene.scene.add(mesh);
+
+		// Set Viewer Position:
+		mesh.geometry.computeBoundingBox();
+		bboxMax = mesh.geometry.boundingBox.max;
+		viewer.scene.view.position.set(bboxMax.x+viewerOffset, bboxMax.y+viewerOffset, bboxMax.z+viewerOffset);
+		viewer.scene.view.lookAt(mesh.geometry.boundingSphere.center);
+		viewer.toggleNavigationCube();
+	}
+
+	function loadPCD(loader, filepath, tag) {
+		loader.load(filepath,
+		onLoad = function(geom) {
+
+			console.log('onLoad-18M');
+			console.log(geom);
+			geoms.push(geom.clone());
+
+			var mesh = createPointMesh(geom);
+			var e = new Event('loaded-'+tag);
+			e.detail = mesh;
+			window.dispatchEvent(e);
+
+			// Log Performance Timing:
+			var t1 = performance.now();
+			console.log("Done");
+			console.log("Performance: " + (t1-t0)/1000 + " seconds");
+		},
+		onProgress = function(results) {
+			console.log('onProgress-'+tag);
+
+			// Log Performance Timing:
+			console.log("Loaded " + results.loaded + " bytes -- " + results.loaded + "/" + results.total + " (" + 100*results.loaded/results.total + "%)" );
+			t1 = performance.now();
+			console.log("Performance: " + (t1-t0)/1000 + " seconds");
+		},
+		onError = function(e) {
+			console.log('onError'+tag);
+			console.log(e);
+		}
+	);
+	}
+
+	function executeAfterLoaded(mesh) {
+		mainLoopCircular(mesh);
+		return;
+		// waitOn--;
+		//  if ((waitOnCapacity-waitOn) == 1) {
+		// 	 console.log('First point cloud loaded');
+		// 	 addPointMesh(mesh);
+		//  } else if (waitOn == 0) {
+		// 	console.log("All clouds loaded!");
+		// 	// debugger; // remove attribute --> how to remove attribute without losing it
+		// 	// mainLoopSwap();
+		// 	mainLoopCircular(mesh);
+		// }
+	}
+	</script>
+
+
+  <script>
+
+	// Load Point Clouds:
+	window.addEventListener('loaded-cloud18M', (e) =>{
+		console.log("loaded cloud18M");
+		mesh18M = e.detail;
+		console.log(mesh18M);
+		executeAfterLoaded(mesh18M);
+	});
+
+	window.addEventListener('loaded-cloud5M', (e) => {
+		console.log("loaded cloud5M");
+		mesh5M = e.detail;
+		console.log(mesh5M);
+		executeAfterLoaded(mesh5M);
+	});
+
+	loadPCD(loader, "clouds/cloud-18M.pcd", "cloud18M");
+	// loadPCD(loader, "clouds/cloud-5M.pcd", "cloud5M");
+
+  </script>
+
+
+
+</body>
+</html>

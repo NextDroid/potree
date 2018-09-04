@@ -1260,7 +1260,7 @@ export class Renderer {
 		gl.activeTexture(gl.TEXTURE0);
 	}
 
-	render(scene, camera, target = null, params = {}) {
+	render(scene, camera, target = null, params = {}, callback=null) {
 
 		const gl = this.gl;
 
@@ -1286,6 +1286,10 @@ export class Renderer {
 		gl.bindTexture(gl.TEXTURE_2D, null)
 
 		this.threeRenderer.state.reset();
+
+		if (callback) {
+			callback();
+		}
 	}
 
 

@@ -157,6 +157,9 @@ THREE.PCDLoader.prototype = {
 		var normal = [];
 		var color = [];
 
+		var t0 = performance.now();
+
+
 		// ascii
 
 		if ( PCDheader.data === 'ascii' ) {
@@ -245,6 +248,10 @@ THREE.PCDLoader.prototype = {
 
 		}
 
+		var t1 = performance.now();
+		console.log("Buffer Attribute Time: " + (t1-t0)/1000 + " seconds");
+
+
 		// build geometry
 
 		var geometry = new THREE.BufferGeometry();
@@ -254,6 +261,8 @@ THREE.PCDLoader.prototype = {
 		if ( color.length > 0 ) geometry.addAttribute( 'color', new THREE.Float32BufferAttribute( color, 3 ) );
 
 		geometry.computeBoundingSphere();
+
+		return geometry;
 
 		// build material
 

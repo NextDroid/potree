@@ -32,6 +32,7 @@
 	<script src="../build/potree/potree.js"></script>
 	<script src="../libs/plasio/js/laslaz.js"></script>
 	<script src="../node_modules/papaparse/papaparse.min.js"></script>
+	<script src="../bower_components/threex.rendererstats/threex.rendererstats.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
@@ -73,6 +74,7 @@
 		// Initialize Viewer:
 		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
 
+
 		viewer.setEDLEnabled(true);
 		viewer.setFOV(60);
 		viewer.setPointBudget(1*1000*1000);
@@ -91,6 +93,14 @@
 		viewer.scene.view.position.set(50100, 50100, 50100);	// NOTE hardcoded
 		viewer.scene.view.lookAt(new THREE.Vector3(49999.501953125, 49953.123046875, 49999.482421875)); // NOTE hardcoded
 
+		var rendererStats	= new THREEx.RendererStats();
+
+		rendererStats.domElement.style.position	= 'absolute'
+		rendererStats.domElement.style.left	= '0px'
+		rendererStats.domElement.style.bottom	= '0px'
+		document.body.appendChild( rendererStats.domElement )
+
+		viewer.rendererStats = rendererStats;
 
 	</script>
 
@@ -144,7 +154,7 @@
 		// });
 
 		var loader = new THREE.PCDLoader();
-		loader.load("clouds/cloud-1M.pcd",
+		loader.load("clouds/cloud-5M.pcd",
 
 		onLoad = function(geometry) {
 
@@ -202,10 +212,11 @@
 			//
 			// });
 
-			var numObjects = 10;
+			var numObjects = 1;
 			for (let i=0; i < numObjects; i++) {
+				// debugger; // geometry
 				geom = new THREE.BufferGeometry();
-				geom.addAttribute('position', geometry.attributes.position.clone());
+				geom.addAttribute('position', geometry.geometry.attributes.position.clone());
 				geom.translate(0,0,i*20);
 				geom.computeBoundingSphere();
 
@@ -237,13 +248,17 @@
 			// mesh.material.color = {r: 1, g:0, b:.0};
 			// mesh.needsUpdate = false;
 
+			viewer.rendercallback = function() {
+				rendererStats.update(viewer.renderer);
+			}
+
 
 
 
 			console.log(viewer.scene.scene.children);
 			console.log("Done");
 			console.log("Performance: " + (t1-t0)/1000 + " seconds");
-			console.log("Number of Points: " + 1200000*numObjects);
+			// console.log("Number of Points: " + 1200000*numObjects);
 			// console.log("Number of Points: " + viewer.scene.scene.getObjectByName("points").geometry.attributes.position.count);
 		},
 

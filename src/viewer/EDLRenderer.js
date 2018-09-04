@@ -43,7 +43,7 @@ export class EDLRenderer{
 			format: THREE.RGBAFormat,
 			depthTexture: new THREE.DepthTexture(undefined, undefined, THREE.UnsignedIntType)
 		});
-		
+
 		//{
 		//	let geometry = new THREE.PlaneBufferGeometry( 1, 1, 32, 32);
 		//	let material = new THREE.MeshBasicMaterial( {side: THREE.DoubleSide, map: this.shadowMap.target.texture} );
@@ -82,7 +82,7 @@ export class EDLRenderer{
 		let {width, height} = size;
 
 		//let maxTextureSize = viewer.renderer.capabilities.maxTextureSize;
-		//if(width * 4 < 
+		//if(width * 4 <
 		width = 2 * width;
 		height = 2 * height;
 
@@ -136,8 +136,8 @@ export class EDLRenderer{
 			let oldBudget = Potree.pointBudget;
 			Potree.pointBudget = Math.max(10 * 1000 * 1000, 2 * oldBudget);
 			let result = Potree.updatePointClouds(
-				viewer.scene.pointclouds, 
-				viewer.scene.getActiveCamera(), 
+				viewer.scene.pointclouds,
+				viewer.scene.getActiveCamera(),
 				viewer.renderer);
 			Potree.pointBudget = oldBudget;
 		}
@@ -202,7 +202,7 @@ export class EDLRenderer{
 		}
 
 		viewer.renderer.render(viewer.scene.scene, camera);
-		
+
 		//viewer.renderer.clearTarget( this.rtColor, true, true, true );
 		viewer.renderer.clearTarget(this.rtEDL, true, true, true);
 		viewer.renderer.clearTarget(this.rtRegular, true, true, false);
@@ -225,7 +225,7 @@ export class EDLRenderer{
 			material.uniforms.octreeSize.value = octreeSize;
 			material.spacing = pointcloud.pcoGeometry.spacing * Math.max(pointcloud.scale.x, pointcloud.scale.y, pointcloud.scale.z);
 		}
-		
+
 		// TODO adapt to multiple lights
 		if(lights.length > 0){
 			viewer.pRenderer.render(viewer.scene.scenePointCloud, camera, this.rtEDL, {
@@ -241,6 +241,13 @@ export class EDLRenderer{
 		}
 
 		viewer.renderer.render(viewer.scene.scene, camera, this.rtRegular);
+		// debugger;
+
+				// try {
+				// 	viewer.rendererStats.update(viewer.renderer);
+				// } catch(e) {
+				// 	console.log("error in EDLRendere.js");
+				// }
 
 		//viewer.renderer.setRenderTarget(this.rtColor);
 		viewer.dispatchEvent({type: "render.pass.scene", viewer: viewer, renderTarget: this.rtRegular});
@@ -259,7 +266,7 @@ export class EDLRenderer{
 			this.edlMaterial.uniforms.edlStrength.value = viewer.edlStrength;
 			this.edlMaterial.uniforms.radius.value = viewer.edlRadius;
 			this.edlMaterial.uniforms.opacity.value = 1;
-			
+
 			Utils.screenPass.render(viewer.renderer, this.edlMaterial);
 
 			if(this.screenshot){
@@ -277,15 +284,14 @@ export class EDLRenderer{
 		viewer.renderer.render(viewer.controls.sceneControls, camera);
 		viewer.renderer.render(viewer.clippingTool.sceneVolume, camera);
 		viewer.renderer.render(viewer.transformationTool.scene, camera);
-		
-		viewer.renderer.setViewport(width - viewer.navigationCube.width, 
-									height - viewer.navigationCube.width, 
+
+		viewer.renderer.setViewport(width - viewer.navigationCube.width,
+									height - viewer.navigationCube.width,
 									viewer.navigationCube.width, viewer.navigationCube.width);
-		viewer.renderer.render(viewer.navigationCube, viewer.navigationCube.camera);		
+		viewer.renderer.render(viewer.navigationCube, viewer.navigationCube.camera);
 		viewer.renderer.setViewport(0, 0, width, height);
 
 		viewer.dispatchEvent({type: "render.pass.end",viewer: viewer});
 
 	}
 }
-

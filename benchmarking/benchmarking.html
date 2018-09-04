@@ -7,6 +7,8 @@
 		<!-- <script src="../three.min.js"></script> -->
 
 		<script src="http://threejs.org/build/three.js"></script>
+		<script src="../bower_components/threex.rendererstats/threex.rendererstats.js"></script>
+		
 
 		<div id="info">PointCloud with Custom, Dynamic Attribute</div>
 
@@ -54,6 +56,13 @@
 		animate();
 
 		function init() {
+
+				// rendererstats
+				var rendererStats	= new THREEx.RendererStats();
+				rendererStats.domElement.style.position	= 'absolute';
+				rendererStats.domElement.style.left	= '0px';
+				rendererStats.domElement.style.bottom	= '0px';
+				document.body.appendChild( rendererStats.domElement );
 
 		    // renderer
 		    renderer = new THREE.WebGLRenderer();
@@ -139,6 +148,7 @@
 		    cloud.rotation.y += 0.005;
 
 		    renderer.render( scene, camera );
+				rendererStats.update(render);
 
 		}
 		</script>

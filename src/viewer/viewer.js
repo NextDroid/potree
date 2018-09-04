@@ -231,7 +231,7 @@ export class Viewer extends EventDispatcher{
 			this.setPointBudget(1*1000*1000);
 			this.setShowBoundingBox(false);
 			this.setFreeze(false);
-			this.setNavigationMode(EarthControls);
+			this.setNavigationMode(OrbitControls);
 			this.setBackground('gradient');
 
 			this.scaleFactor = 1;
@@ -1581,6 +1581,8 @@ export class Viewer extends EventDispatcher{
 			this.renderer.setSize(width, height);
 		}
 
+
+
 		try{
 
 
@@ -1642,6 +1644,12 @@ export class Viewer extends EventDispatcher{
 			performance.mark("render-end");
 			performance.measure("render", "render-start", "render-end");
 		}
+
+		// try {
+		// 	this.rendercallback();
+		// } catch (e) {
+		// 	console.log("no render callback");
+		// }
 	}
 
 	resolveTimings(timestamp){
