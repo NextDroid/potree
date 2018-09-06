@@ -51,6 +51,8 @@ function mainLoopCircular(mesh) {
       w.terminate();
       w = undefined;
       console.log("terminated worker");
+      var dt = performance.now() - t0;
+      console.log("Total Runtime: " + (dt/1000) + " seconds");
     }
   }
 

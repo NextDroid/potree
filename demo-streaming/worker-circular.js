@@ -19,7 +19,7 @@ self.onmessage = function(message) {
   // Create Circular buffer of points:
   numPoints = 3000000;
   updateBatchSize = 1000000;
-  updatePeriodMillis = 1000; // ms
+  updatePeriodMillis = 1; // ms
   attrDim = 3;
 
   var startIdx=0, endIdx=0;

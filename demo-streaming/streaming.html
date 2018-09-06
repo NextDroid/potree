@@ -13,6 +13,9 @@
 	<link rel="stylesheet" type="text/css" href="../libs/openlayers3/ol.css">
 	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
 	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
+	<link rel="stylesheet" type="text/css" href="../common/playbar.css">
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
 </head>
 
 <body>
@@ -30,12 +33,14 @@
 	<script src="../libs/jstree/jstree.js"></script>
 	<script src="../build/potree/potree.js"></script>
 	<script src="../libs/plasio/js/laslaz.js"></script>
-	<script src="../node_modules/papaparse/papaparse.min.js"></script>
-  <script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script>
+	<!-- <script src="../node_modules/papaparse/papaparse.min.js"></script> -->
 	<!-- <script src="../bower_components/cbuffer/cbuffer.js"></script> -->
 	<script src="executionLoop.js"></script>
 	<script src="rtkloader.js"></script>
 	<script src="radarloader.js"></script>
+	<script src="../common/playbar.js"></script>
+	<script src="../libs/other/OBJLoader.js"></script>
+	<script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
@@ -62,7 +67,7 @@
 			viewer.setBackground('white');
       $("#menu_tools").next().show();
       $("#menu_scene").next().show();
-      viewer.toggleSidebar();
+      // viewer.toggleSidebar();
     });
 
 		// Initializations:
@@ -157,15 +162,69 @@
 	var t0 = performance.now();
 
 	// Time RTK Loader:
-	loadRtk("rtkdata.csv", false, () => {
+	loadRtk("rtkdata.csv", false, (pos, rot, t_init) => {
+
+		// path = pos.map(v => new THREE.Vector3(...v));
+		// orientations = rot.map(v => new THREE.Vector3(...v));
+		//
+		// let animationPath = new Potree.AnimationPath(path);
+		// animationPath.closed = false;
+		//
+		// // CREATE VEHICLE OBJECT:
+		// // NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
+		// // NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
+		// let manager = new THREE.LoadingManager();
+		// manager.onProgress = function ( item, loaded, total ) {
+		// 	console.log( item, loaded, total );
+		// };
+		// let textureLoader = new THREE.TextureLoader( manager );
+		// let texture = textureLoader.load(`${Potree.resourcePath}/models/bodybkgd.JPG`);
+		// let onProgress = function ( xhr ) {
+		// 	if ( xhr.lengthComputable ) {
+		// 		let percentComplete = xhr.loaded / xhr.total * 100;
+		// 		console.log( Math.round(percentComplete, 2) + '% downloaded' );
+		// 	}
+		// };
+		// texture.wrapS = THREE.RepeatWrapping;
+		// texture.wrapT = THREE.RepeatWrapping;
+		//
+		//
+		// { // Load Textured bunny from obj
+		// 	let onError = function ( xhr ) {};
+		// 	let loader = new THREE.OBJLoader( manager );
+		// 	loader.load(`${Potree.resourcePath}/models/1967-shelby-ford-mustang.obj`, function ( object ) {
+		// 		object.traverse( function ( child ) {
+		// 			if ( child instanceof THREE.Mesh ) {
+		// 				child.material.map = texture;
+		// 			}
+		// 		} );
+		//
+		// 		object.name = "bunny";
+		// 		object.position.set(...pos[0]);
+		// 		object.scale.multiplyScalar(.5);
+		// 		object.orientations = orientations;
+		// 		object.rotation.set(Math.PI / 2, 0*Math.PI/2., 0*Math.PI/2.0)
+		//
+		// 		viewer.scene.scene.add( object );
+		//
+		// 	}, onProgress, onError );
+		// }
+
 		console.log("Rtk data loaded");
 		var dtMillis = performance.now() - t0;
 		console.log("loaded 10 minutes of rtk data in " + (dtMillis/1000.) + " seconds");
 	});
 
+
 	// Time Radar Loader:
-	  let filename = "csv/radar_tracks_demo.csv";
-	loadRadar("../demo/csv/radar_tracks_demo.csv", false, () => {
+	loadRadar("../demo/csv/radar_tracks_demo.csv", false, (geometry, t_init) => {
+
+		// var material = new THREE.PointsMaterial( {size:1.0} );
+		// var mesh = new THREE.Points(geometry, material);
+		// mesh.name = "radar";
+		// // debugger; //radar tracks added?
+		// viewer.scene.scene.add(mesh);
+
 		console.log("Radar data loaded");
 		var dtMillis = performance.now() - t0;
 		console.log("loaded 10 minutes of radar data in " + (dtMillis/1000.) + " seconds");
@@ -187,6 +246,8 @@
 		executeAfterLoaded(mesh5M);
 	});
 
+	loadPCD(loader, "../clouds/cloud-18M.pcd", "cloud18M");
+	loadPCD(loader, "../clouds/cloud-18M.pcd", "cloud18M");
 	loadPCD(loader, "../clouds/cloud-18M.pcd", "cloud18M");
 	// loadPCD(loader, "../clouds/cloud-5M.pcd", "cloud5M");
 
