@@ -9,6 +9,7 @@ self.maxNumPoints;
 self.prevBuffer = new Uint8Array(0);
 self.totalBytesRead = 0;
 self.streamReader;
+self.playbarTimeVal;
 
 console.log("Data Loader Created!");
 
@@ -22,6 +23,7 @@ function handleInputMessage(e) {
     self.task = e.data;
     var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
     var seekPosBytes = e.data.seekPosBytes;
+    self.playbarTimeVal = seekPosBytes;
 
     // Create fetch headers:
     var fetchHeaders = new Headers();
@@ -47,6 +49,7 @@ function handleInputMessage(e) {
   } else if (e.data.msg == "heartbeat") {
 
     // Send Heartbeat update:
+    e.data.timeVal = self.playbarTimeVal
     sendHeartbeat();
 
   } else if (e.data.msg == "terminate") {
@@ -64,7 +67,6 @@ function handleFetchResponse(response, readUntil=-1) {
       i: new CBuffer(1*self.maxNumPoints),
       t: new CBuffer(1*self.maxNumPoints)
     }
-    debugger; // check maxNumPoints and Bbuffers
 
     var stream = response.body;
     var reader = stream.getReader();
@@ -80,11 +82,12 @@ function pump() {
 
     // Check if reached end of file:
     if (e.done) {
-      terminate();
+      // terminate();
     } else {
 
       // Append stream data into Bbuffers:
-      var buffer = concatTypedArrays(prevBuffer, e.value); // TODO assumption is that e.value is Uint8Array
+      // var buffer = concatTypedArrays(prevBuffer, e.value); // TODO assumption is that e.value is Uint8Array
+      var buffer = e.value;
       var view = new DataView(buffer.buffer);
       var bytesRead = 0;
       for (let ii=0; ii < (buffer.length-task.bytesPerPoint); ii+=task.bytesPerPoint) {
@@ -96,6 +99,11 @@ function pump() {
         self.Bbuffers.i.push(view.getFloat64(ii+task.offsets.i, true));
 
         self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true)); // TODO use offset??
+
+        if (self.Bbuffers.t.data[self.Bbuffers.t.start] > self.playbarTimeVal) {
+          slice(self.Bbuffers.t.data[self.Bbuffers.t.start], self.Bbuffers.t.data[self.Bbuffers.t.end]);
+          return;
+        }
 
         bytesRead += task.bytesPerPoint;
       }
@@ -118,6 +126,8 @@ function slice(tmin, tmax) {
   var minIdx = self.Bbuffers.t.toArray().findIndex((x) => (x >= tmin));
   if (minIdx == -1) {
     console.log("ERROR!! INVALID TMIN: ", tmin);
+    debugger;
+    minIdx = 0;
   } else {
     // TODO try picking closest of either mindIdx or minIdx-1
   }
@@ -127,6 +137,7 @@ function slice(tmin, tmax) {
   maxIdx = (self.Bbuffers.t.length-1) - maxIdx; // correct for reversed array
   if (maxIdx == self.Bbuffers.t.length) {
     console.log("ERROR!! INVALID TMAX: ", tmax);
+    maxIdx = self.Bbuffers.t.length-1;
   } else {
     // TODO try picking closest of either maxIdx or maxIdx+1
   }

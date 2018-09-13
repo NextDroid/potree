@@ -1,10 +1,17 @@
-isNan = function(n) {
-  return n !== n;
+
+function minAngle(theta) {
+  if (theta < - Math.PI) {
+    theta += 2*Math.PI;
+  }
+  if (theta > Math.PI) {
+    theta -= 2*Math.PI;
+  }
+  return theta;
 }
 
-function loadRtk(filename, debug=true, callback) {
+function loadRtk(callback) {
 
-
+  let filename = "../demo/csv/rtkdata.csv";
   let tcol = 1;       // GPS_TIME
   // let tcol = 3;       // SYSTEM_TIME
   let xcol = 12;      // RTK_EASTING_M
@@ -23,9 +30,7 @@ function loadRtk(filename, debug=true, callback) {
 
   xhr.onprogress = function(event) {
     t1 = performance.now();
-    if (debug) {
-      console.log("Loaded ["+event.loaded+"] bytes in ["+(t1-t0)+"] ms")
-    }
+    console.log("Loaded ["+event.loaded+"] bytes in ["+(t1-t0)+"] ms")
     t0 = t1;
   }
 
@@ -43,6 +48,7 @@ function loadRtk(filename, debug=true, callback) {
     let row, cols;
     let t_init = 0;
     let firstTimestamp = true;
+    let lastRoll, lastPitch, lastYaw;
     for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
       row = rows[ii];
       cols = row.split(' ');
@@ -51,9 +57,9 @@ function loadRtk(filename, debug=true, callback) {
         x = parseFloat(cols[xcol]);
         y = parseFloat(cols[ycol]);
         z = parseFloat(cols[zcol]);
-        roll = parseFloat(rollcol);
-        pitch = parseFloat(pitchcol);
-        yaw = parseFloat(yawcol);
+        roll = parseFloat(cols[rollcol]);
+        pitch = parseFloat(cols[pitchcol]);
+        yaw = parseFloat(cols[yawcol]);
 
 
         if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) {
@@ -64,6 +70,14 @@ function loadRtk(filename, debug=true, callback) {
         if (firstTimestamp) {
           t_init = t;
           firstTimestamp = false;
+          lastRoll = 0;
+          lastPitch = 0;
+          lastYaw = 0;
+        } else {
+          lastOrientation = orientations[orientations.length - 1];
+          lastRoll = lastOrientation[0];
+          lastPitch = lastOrientation[1];
+          lastYaw = lastOrientation[2];
         }
 
         // timestamps.push(t);
@@ -75,9 +89,12 @@ function loadRtk(filename, debug=true, callback) {
         colors.push( Math.random() * 0xffffff );
         colors.push( Math.random() * 0xffffff );
         mpos.push([x,y,z]);
+
+        roll = lastRoll + minAngle(roll-lastRoll);
+        pitch = lastPitch + minAngle(pitch-lastPitch);
+        yaw = lastYaw + minAngle(yaw-lastYaw);
+
         orientations.push([roll, pitch, yaw]);
-        // orientations.push(pitch);
-        // orientations.push(yaw);
 
       }
     }
@@ -90,17 +107,23 @@ function loadRtk(filename, debug=true, callback) {
 
     console.log(timestamps);
     console.log(positions);
-    if (debug) {
-      console.log("Loop Runtime: "+(performance.now()-t0_loop)+"ms");
-      console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
-    }
+    console.log("Loop Runtime: "+(performance.now()-t0_loop)+"ms");
+    console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
 
     callback(mpos, orientations, t_init);
   };
 
   t0 = performance.now();
   xhr.send();
+}
 
 
+function applyRotation(obj, roll, pitch, yaw) {
+  if ( typeof(obj.initialRotation) != "undefined") {
+    roll += obj.initialRotation.x;
+    pitch += obj.initialRotation.y;
+    yaw += obj.initialRotation.z;
+  }
 
+  obj.rotation.set(roll, pitch, yaw);
 }

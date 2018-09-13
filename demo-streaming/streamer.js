@@ -3,12 +3,16 @@ var activeDataLoaderTask;
 var workerID = 0;
 startHeartbeat();
 
+
 function startHeartbeat() {
   // Start Heartbeat:
   var timer = new Worker('timer.js');
   timer.onmessage = function(e) {
     try {
-      activeDataLoaderTask.worker.postMessage({msg: "heartbeat"});
+      activeDataLoaderTask.worker.postMessage({
+        msg: "heartbeat",
+        // timeVal: ($("#myRange").val()/rtkRange/100.0 + rtkOffset - header.tmin)/(header.tmax - header.tmin)*header.filesize
+      });
     } catch (e) {
       // console.log(e);
     }
@@ -87,21 +91,27 @@ function streamFromTime(timeVal, header, settings) { // NOTE: 0.0 <= timeVal < 1
 
   // Compute Seek Position:
   var seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
-  // NOTE removed numBytesToRead
+
+  // Stop Previous Data Loader Task (if exists):
+  try {
+    activeDataLoaderTask.worker.postMessage({msg: "terminate"});
+  } catch (e) {
+    console.log("no previous task: ", e);
+  }
 
   // Create Data Loader Task:
   activeDataLoaderTask = {
     worker: new Worker('data-loader.js'),		// Create a new worker thread
     workerID: workerID,
     msg: "fetch",
-    serverUrl: settings.serverUrl,  // TODO moved to settings
-    port: settings.port,            // TODO moved to settings
-    filename: settings.filename,    // TODO moved to settings
+    serverUrl: settings.serverUrl,
+    port: settings.port,
+    filename: settings.filename,
     filesize: header.filesize,
     seekPosBytes: seekPosBytes,
     bytesPerPoint: bytesPerPoint,
     header: header,
-    maxMemMB: settings.maxMemMB,     // TODO moved to settings
+    maxMemMB: settings.maxMemMB,
     offsets: {                       // NOTE Hardcoded
       x: 0,
       y: 8,
@@ -109,7 +119,6 @@ function streamFromTime(timeVal, header, settings) { // NOTE: 0.0 <= timeVal < 1
       i: 24,
       t: 32
     }
-    // NOTE removed numBytesToRead
   }
 
   // Launch Data Loader Worker Thread:
@@ -129,20 +138,34 @@ function handleDataLoaderMessage(response) {
 
     case "slice":
       console.log("Slice: ", response.data);
-      // TODO do something with Slice
-      // create new Float32BufferAttributes
-      // cloudMesh.geometry.addAttributes(...) --> for each attribute
+      slice = response.data;
+
+      if (typeof(cloudMesh) != "undefined") {
+        var positionAttributes = new THREE.BufferAttribute(slice.pos, 3);
+        var intensityAttributes = new THREE.BufferAttribute(slice.i, 1);
+        var timeAttributes = new THREE.BufferAttribute(slice.t, 1);
+        // debugger; // check attributes above
+
+        cloudMesh.geometry.addAttribute("position", positionAttributes);
+        cloudMesh.geometry.addAttribute("intensity", intensityAttributes);
+        cloudMesh.geometry.addAttribute("gpsTime", timeAttributes);
+        cloudMesh.geometry.computeBoundingSphere();
+
+        // viewer.scene.view.lookAt(cloudMesh.geometry.boundingSphere.center);
+
+      }
       break;
 
     case "heartbeat":
       console.log("heartbeat: ", response.data);
+      heartbeat = response.data;
 
-      // TODO REMOVE
-      activeDataLoaderTask.worker.postMessage({
-        msg: "slice",
-        tmin: response.data.tmin,
-        tmax: response.data.tmin+10
-      });
+      // //TODO remove
+      // activeDataLoaderTask.worker.postMessage({
+      //   msg: "slice",
+      //   tmin: heartbeat.tmin,
+      //   tmax: heartbeat.tmin+10
+      // });
 
       // TODO do something with heartbeat
       // Save TBmin, TBmax, numPoints, memSize
@@ -151,6 +174,4 @@ function handleDataLoaderMessage(response) {
     default:
       console.log("Unknown message type received: ", response.data.msg);
   }
-
-
 }
