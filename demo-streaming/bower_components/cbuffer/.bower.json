@@ -1,0 +1,29 @@
+{
+  "name": "cbuffer",
+  "version": "2.0.0",
+  "author": "trevnorris",
+  "main": "cbuffer.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/trevnorris/cbuffer.git"
+  },
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "homepage": "https://github.com/trevnorris/cbuffer",
+  "_release": "2.0.0",
+  "_resolution": {
+    "type": "version",
+    "tag": "2.0.0",
+    "commit": "d965f97f08b3fb80185d6ca0d42f1d5e08687ffb"
+  },
+  "_source": "git@github.com:trevnorris/cbuffer.git",
+  "_target": "^2.0.0",
+  "_originalSource": "git@github.com:trevnorris/cbuffer.git",
+  "_direct": true
+}

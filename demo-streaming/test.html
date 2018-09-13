@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Test Streamer Javascript Functions</title>
+</head>
+
+<body>
+  <script src="streamer.js"></script>
+  <script>
+
+  // Create Settings:
+  var settings = {
+    serverUrl: "http://localhost",
+    port: "4321",
+    headerFilename: "basemap-demo.xyz.bin.header",
+    filename: "basemap-demo.xyz.bin",
+    maxMemMB: 100,
+    TA: 10
+  }
+
+  // Send Header Request:
+  sendHeaderRequest(settings.serverUrl + ":" + settings.port + "/args/header/" + settings.headerFilename, (e) => {
+    console.log(e);
+
+    var header = e.data;
+    streamFromTime(0, header, settings);
+  });
+
+
+
+
+
+  </script>
+</body>
+</html>
