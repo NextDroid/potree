@@ -47,6 +47,7 @@ function loadRtk(callback) {
 
     let row, cols;
     let t_init = 0;
+    let t_range = 0;
     let firstTimestamp = true;
     let lastRoll, lastPitch, lastYaw;
     for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
@@ -81,6 +82,7 @@ function loadRtk(callback) {
         }
 
         // timestamps.push(t);
+        t_range = t-t_init;
         timestamps.push(t-t_init);
         positions.push(x);
         positions.push(y);
@@ -95,10 +97,10 @@ function loadRtk(callback) {
         yaw = lastYaw + minAngle(yaw-lastYaw);
 
         orientations.push([roll, pitch, yaw]);
-
       }
     }
 
+    numPoints = timestamps.length;
     if ( positions.length > 0 ) geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
     if (timestamps.length > 0) geometry.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps, 1));
     if (colors.length > 0) geometry.addAttribute('color', new THREE.Uint8BufferAttribute(colors, 3));
@@ -110,7 +112,8 @@ function loadRtk(callback) {
     console.log("Loop Runtime: "+(performance.now()-t0_loop)+"ms");
     console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
 
-    callback(mpos, orientations, t_init);
+
+    callback(mpos, orientations, t_init, t_range, numPoints);
   };
 
   t0 = performance.now();

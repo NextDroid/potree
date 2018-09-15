@@ -3,41 +3,91 @@ self.importScripts("bower_components/cbuffer/cbuffer.js", "bufferFunctions.js");
 // Data Loader Member Variables:
 self.tLifeStart = performance.now();
 self.tReadStart;
+self.settings;
 self.task;
 self.Bbuffers;
-self.maxNumPoints;
+self.maxNumPoints = 0;
 self.prevBuffer = new Uint8Array(0);
+self.numBytesRead = 0;
 self.totalBytesRead = 0;
 self.streamReader;
-self.playbarTimeVal;
+self.lidarTime;
+
+var LoaderStates = Object.freeze({UNINITIALIZED: 0, PAUSED: 1, LOADING: 2, STOPPED: 3});
+self.LoaderState = LoaderStates.STOPPED;
+// runState();  // TODO is this needed
+
+var pumpCount = 0; // TODO REMOVE
+var maxPumpCount = 400; // TODO REMOVE
 
 console.log("Data Loader Created!");
+
+function runState() {  // Run State
+  if (self.LoaderState == LoaderStates.LOADING) { // must have a streamReader
+    pump();
+  } else if (self.LoaderState == LoaderStates.UNINITIALIZED) {
+    console.log("data loader uninitialized");
+    // continue;
+  } else if (self.LoaderState == LoaderStates.PAUSED){
+    console.log("data loader paused");
+    closeStream(); // See note for resume state in handleInputMessage function
+
+    // continue;
+  } else if (self.LoaderState == LoaderStates.STOPPED) {
+    console.log("data loader is stopped");
+    closeStream();
+    resetBuffers();
+  }
+}
 
 
 self.onmessage = handleInputMessage;
 function handleInputMessage(e) {
 
-  if (e.data.msg == "fetch") {
+  if (e.data.msg == "pause") {
 
-    // Parse task:
-    self.task = e.data;
-    var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
-    var seekPosBytes = e.data.seekPosBytes;
-    self.playbarTimeVal = seekPosBytes;
+    // debugger; // pause
+    if (self.LoaderState == LoaderStates.LOADING) {
+      self.LoaderState = LoaderStates.PAUSED; // Set state to paused
+      runState();
+    }
 
-    // Create fetch headers:
-    var fetchHeaders = new Headers();
-    fetchHeaders.append("X-Seek-Position", seekPosBytes);
-    var myInit = {headers: fetchHeaders};
-    console.log("worker received: ", myInit.headers.get("x-seek-position"));
+  } else if (e.data.msg == "resume") {
 
-    // Compute max number of points:
-    self.maxNumPoints = task.maxMemMB/task.bytesPerPoint*1e6;
+    if (self.LoaderState == LoaderStates.PAUSED) {
+      // NOTE: Since we cannot pause the readable stream while piped into it,
+      // we need to cancel the old stream and create a new stream at the previous location
 
-    // Send fetch request:
-    fetch(url, myInit)
-    .then((res) => handleFetchResponse(res))
-    .catch((err) => console.log("Worker Fetch Error: ", err));
+      // Cancel old stream:
+      closeStream(); // Maybe move this into runState(PAUSED) to stop streaming at point of pausing?
+
+      // Modify loader task with current seekPosBytes:
+      var resumeTask = self.task;
+      resumeTask.seekPosBytes += self.numBytesRead;
+      var shouldResetBuffers = false; // Don't reset buffers
+      sendFetchRequest(resumeTask, shouldResetBuffers);
+
+    } else {
+      console.log("Unable to resume");
+    }
+
+  } else if (e.data.msg == "stop") { // TODO initialize
+
+    self.LoaderState = LoaderStates.STOPPED;
+    runState();
+
+  } else if (e.data.msg == "restart") { // TODO initialize
+
+    // Close Stream and Reset Buffers:
+    self.LoaderState = LoaderStates.STOPPED; // Set state to STOPPED until data fetch response is received
+    runState();
+
+    // Try to restart the previous task if exists:
+    try {
+      sendFetchRequest(e.data); // e.data is task
+    } catch (e) {
+      console.log("Could not restart stream -- ", e);
+    }
 
   } else if (e.data.msg == "slice") {
 
@@ -49,72 +99,140 @@ function handleInputMessage(e) {
   } else if (e.data.msg == "heartbeat") {
 
     // Send Heartbeat update:
-    e.data.timeVal = self.playbarTimeVal
     sendHeartbeat();
 
-  } else if (e.data.msg == "terminate") {
+  } else if (e.data.msg == "lidarTime") {
 
-    // Close Data Loader:
-    terminate();
+    // Save lidarTime:
+    self.lidarTime = e.data.time;
+    console.log("lidarTime heartbeat: ", self.lidarTime);
+
   }
+}
+
+function sendFetchRequest(task, shouldResetBuffers=true) {
+
+  // Parse task:
+  self.task = task;
+  var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
+  var seekPosBytes = task.seekPosBytes;
+
+  // Create fetch headers:
+  var fetchHeaders = new Headers();
+  fetchHeaders.append("X-Seek-Position", seekPosBytes);
+  var myInit = {headers: fetchHeaders};
+  console.log("worker received: ", myInit.headers.get("x-seek-position"));
+
+  // Compute max number of points:
+  self.maxNumPoints = task.maxMemMB/task.bytesPerPoint*1e6; // TODO move to initialize function and initialize Bbuffers there (see resetBuffers())
+
+  if (shouldResetBuffers) {
+    resetBuffers(); // reset buffers with new maxNumPoints
+  }
+
+  // Send fetch request:
+  fetch(url, myInit)
+  .then((res) => handleFetchResponse(res))
+  .catch((err) => console.log("Worker Fetch Error: ", err));
 }
 
 function handleFetchResponse(response, readUntil=-1) {
 
-    // Create SecondaryBuffers:
-    self.Bbuffers = {
-      pos: new CBuffer(3*self.maxNumPoints),
-      i: new CBuffer(1*self.maxNumPoints),
-      t: new CBuffer(1*self.maxNumPoints)
-    }
-
     var stream = response.body;
     var reader = stream.getReader();
     if ( typeof(reader) != "undefined") {
-      tReadStart = performance.now();
+      self.tReadStart = performance.now();
       self.streamReader = reader;
-      pump();
+      self.LoaderState = LoaderStates.LOADING;
+      runState();
     }
 }
 
-function pump() {
+function pump() { // TODO add streamReader function parameter, remove pump at end
   self.streamReader.read().then((e) => {
+
+    // pumpCount++; // TODO REMOVE
+    // if (pumpCount > maxPumpCount) {
+    //   console.log("Terminated with pump count: ", pumpCount, "(greater than max pump count)");
+    //   return;
+    // }
 
     // Check if reached end of file:
     if (e.done) {
       // terminate();
+      console.log("Reached end of file");
+      self.LoaderState = LoaderStates.PAUSED;
+      runState();
     } else {
 
       // Append stream data into Bbuffers:
-      // var buffer = concatTypedArrays(prevBuffer, e.value); // TODO assumption is that e.value is Uint8Array
-      var buffer = e.value;
+      // var buffer = e.value;
+      var buffer = concatTypedArrays(self.prevBuffer, e.value); // TODO assumption is that e.value is Uint8Array
       var view = new DataView(buffer.buffer);
-      var bytesRead = 0;
-      for (let ii=0; ii < (buffer.length-task.bytesPerPoint); ii+=task.bytesPerPoint) {
+      self.numBytesRead = 0;
 
+      for (let ii=0, len = (buffer.length-task.bytesPerPoint); ii < len; ii+=task.bytesPerPoint) {
+
+        // TODO Optimize this use of the cbuffers:
         self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.x, true) + task.header.x0);
         self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.y, true) + task.header.y0);
         self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.z, true) + task.header.z0);
 
         self.Bbuffers.i.push(view.getFloat64(ii+task.offsets.i, true));
 
-        self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true)); // TODO use offset??
+        self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true));
 
-        if (self.Bbuffers.t.data[self.Bbuffers.t.start] > self.playbarTimeVal) {
-          slice(self.Bbuffers.t.data[self.Bbuffers.t.start], self.Bbuffers.t.data[self.Bbuffers.t.end]);
-          return;
+        self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers
+
+        // Check if should stop:
+        if (self.LoaderState != LoaderStates.LOADING) {
+
+          // Do not save remaining buffer and run next state:
+          self.totalBytesRead += self.numBytesRead;
+          self.prevBuffer = new Uint8Array(0);
+          runState();
         }
-
-        bytesRead += task.bytesPerPoint;
       }
 
-      self.totalBytesRead += bytesRead;
-      prevBuffer = buffer.slice(bytesRead, buffer.length);
+      // Record remaining buffer and run next state:
+      self.totalBytesRead += self.numBytesRead;
+      self.prevBuffer = buffer.slice(self.numBytesRead, buffer.length);  // TODO revert this
 
-      // Pump again:
-      pump();
+      // Run again:
+      runState();
     }
   });
+}
+
+function resetBuffers() {
+
+  // Create SecondaryBuffers:
+  self.Bbuffers = {
+    pos: new CBuffer(3*self.maxNumPoints),
+    i: new CBuffer(1*self.maxNumPoints),
+    t: new CBuffer(1*self.maxNumPoints)
+  }
+
+  self.prevBuffer = new Uint8Array(0);
+}
+
+function closeStream() {
+
+  // Close Stream Reader if exists:
+  try {
+    self.streamReader.cancel().catch((e) => console.log("warning -- ", e));
+    self.streamReader.releaseLock();
+  } catch (e) {
+    console.log("warning: ", e);
+  }
+
+  // Compute Performance Statistics:
+  var tfinal = performance.now()
+  var dtLifetimeMillis = tfinal - self.tLifeStart;
+  var dtReadtimeMillis = tfinal - self.tReadStart;
+  console.log("closing current stream -- readtime: ", (dtReadtimeMillis/1000), "seconds");
+
+  // TODO Transfer ownership of Bbuffers??
 }
 
 
@@ -148,7 +266,7 @@ function slice(tmin, tmax) {
   var iSlice = Float32Array.from(self.Bbuffers.i.slice(minIdx, maxIdx));
   var tSlice = Float32Array.from(self.Bbuffers.t.slice(minIdx, maxIdx));
 
-  // Transfer Slices to main:
+  // Transfer Slices to runState:
   var transferObj = {
     msg: "slice",
     pos: posSlice,
@@ -164,7 +282,8 @@ function slice(tmin, tmax) {
 }
 
 function sendHeartbeat() {
-
+  console.log("sending heartbeat from dataloader");
+  // debugger;
   try {
     // Send status update:
     self.postMessage({
@@ -172,29 +291,12 @@ function sendHeartbeat() {
       tmin: self.Bbuffers.t.data[self.Bbuffers.t.start],
       tmax: self.Bbuffers.t.data[self.Bbuffers.t.end],
       numPoints: self.Bbuffers.t.length,
-      bytesRead: self.totalBytesRead
+      numBytesRead: self.numBytesRead,
+      totalBytesRead: self.totalBytesRead,
+      state: self.LoaderState
     });
   } catch (e) {
+    // debugger;
     console.log("Failed to send heartbeat: ", e);
   }
-}
-
-function terminate() {
-
-  // Close Stream Reader if exists:
-  if (typeof(self.streamReader) != "undefined") {
-    self.streamReader.cancel();
-    self.streamReader.releaseLock();
-  }
-
-  // TODO Transfer ownership of Bbuffers??
-
-  // Compute Performance Statistics:
-  var tfinal = performance.now()
-  var dtLifetimeMillis = tfinal - tLifeStart;
-  var dtReadtimeMillis = tfinal - tReadStart;
-  console.log("terminating worker \n -- readtime: ", (dtReadtimeMillis/1000), "seconds \n -- lifetime: ", (dtLifetimeMillis/1000), " seconds");
-
-  // Close Data Loader:
-  self.close();
 }

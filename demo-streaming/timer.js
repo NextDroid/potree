@@ -6,5 +6,5 @@ function sendAlert() {
   });
 }
 
-var dtMillis = 1000;  // 20 Hz tick rate
+var dtMillis = 100;  // 10 Hz tick rate
 setInterval(sendAlert, dtMillis);

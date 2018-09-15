@@ -1,22 +1,40 @@
 
 var activeDataLoaderTask;
+var DataLoader;
 var workerID = 0;
 startHeartbeat();
-
+startDataLoader();
 
 function startHeartbeat() {
   // Start Heartbeat:
   var timer = new Worker('timer.js');
   timer.onmessage = function(e) {
+
+    DataLoader.postMessage({
+      msg: "heartbeat"
+    });
+
     try {
-      activeDataLoaderTask.worker.postMessage({
-        msg: "heartbeat",
-        // timeVal: ($("#myRange").val()/rtkRange/100.0 + rtkOffset - header.tmin)/(header.tmax - header.tmin)*header.filesize
+      var time = 0;
+      if (rtkRange != null || rtkOffset != null) {
+        time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+      }
+      DataLoader.postMessage({
+        msg: "lidarTime",
+        time: time
       });
     } catch (e) {
-      // console.log(e);
+      console.log(e);
     }
   }
+}
+
+function startDataLoader() {
+
+  // Start DataLoader:
+  DataLoader = new Worker("data-loader.js");
+  DataLoader.onmessage = handleDataLoaderMessage; // Assign callback function
+
 }
 
 function sendHeaderRequest(url, headerReceivedCallback) {
@@ -63,68 +81,129 @@ function handleHeaderResponse(response) {
 
     // Post Message -- send out parsed header properties
     // using dispatchEvent
-    // console.log("header var: ", header);
     var event = new Event("header-received");
     event.data = header;
     window.dispatchEvent(event);
   });
 }
 
+function computeSeekPosBytes(playbarVal, rtkTime, header, settings) {
 
-function streamFromTime(timeVal, header, settings) { // NOTE: 0.0 <= timeVal < 1.0
+  var seekPosBytes = -1;
 
-  console.log("Streaming from time: ", timeVal);
+  // Compute lidarTime from playbarVal and rtkTime:
+  lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
 
-  // Compute Number of Bytes per Point:
-  var bytesPerPoint = 0;
   try {
-    console.assert(header.counts.length == header.sizes.length);
-    for (let ii=0; ii<header.counts.length; ii++) {
-      bytesPerPoint += header.counts[ii] * header.sizes[ii];
+
+    // Compute Number of Bytes per Point:
+    var bytesPerPoint = 0;
+    try {
+      console.assert(header.counts.length == header.sizes.length);
+      for (let ii=0; ii<header.counts.length; ii++) {
+        bytesPerPoint += header.counts[ii] * header.sizes[ii];
+      }
+    } catch (exception) {
+      console.log(exception);
+      bytesPerPoint = header.sizes.reduce((a,b) => a+b, 0);
     }
-  } catch (exception) {
-    console.log(exception);
-    console.log(header);
-    bytesPerPoint = header.sizes.reduce((a,b) => a+b, 0);
-  }
-  console.log("Points Total Size: ", bytesPerPoint, " bytes");
+    console.log("Points Total Size: ", bytesPerPoint, " bytes");
 
-  // Compute Seek Position:
-  var seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
+    // Compute Seek Position:
+    var timeVal = lidarTime/(header.tmax-header.tmin);
+    seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
 
-  // Stop Previous Data Loader Task (if exists):
-  try {
-    activeDataLoaderTask.worker.postMessage({msg: "terminate"});
   } catch (e) {
-    console.log("no previous task: ", e);
+    console.log(e);
   }
 
-  // Create Data Loader Task:
-  activeDataLoaderTask = {
-    worker: new Worker('data-loader.js'),		// Create a new worker thread
-    workerID: workerID,
-    msg: "fetch",
-    serverUrl: settings.serverUrl,
-    port: settings.port,
-    filename: settings.filename,
-    filesize: header.filesize,
-    seekPosBytes: seekPosBytes,
-    bytesPerPoint: bytesPerPoint,
-    header: header,
-    maxMemMB: settings.maxMemMB,
-    offsets: {                       // NOTE Hardcoded
-      x: 0,
-      y: 8,
-      z: 16,
-      i: 24,
-      t: 32
+  return seekPosBytes;
+}
+
+function streamFromFileStart(header, settings) {
+  streamFromTimeNew(0, {offset:header.tmin, range:(header.tmax-header.tmin)}, header, settings);
+}
+
+function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0 <= playbarVal < 1.0
+
+  console.log("Streaming from playbar value: ", playbarVal);
+
+  // Compute lidarTime from playbarVal and rtkTime:
+  lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
+  // debugger;
+
+  // Bounds check lidarTime:
+  if ((lidarTime < 0.0) || (lidarTime > (header.tmax - header.tmin))) {
+    debugger;
+    console.log("No points exist within point cloud at specified time");
+
+  } else {
+    // Stop Previous Stream:
+    DataLoader.postMessage({msg: "stop"});
+
+    // Compute Number of Bytes per Point:
+    var bytesPerPoint = 0;
+    try {
+      console.assert(header.counts.length == header.sizes.length);
+      for (let ii=0; ii<header.counts.length; ii++) {
+        bytesPerPoint += header.counts[ii] * header.sizes[ii];
+      }
+    } catch (exception) {
+      console.log(exception);
+      bytesPerPoint = header.sizes.reduce((a,b) => a+b, 0);
     }
-  }
+    console.log("Points Total Size: ", bytesPerPoint, " bytes");
 
-  // Launch Data Loader Worker Thread:
-  var flattenedTask = JSON.parse(JSON.stringify(activeDataLoaderTask));
-  activeDataLoaderTask.worker.postMessage(flattenedTask);
-  activeDataLoaderTask.worker.onmessage = handleDataLoaderMessage;
+    // Compute Seek Position:
+    var timeVal = lidarTime/(header.tmax-header.tmin);
+    var seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
+    // debugger;
+
+    // Create Data Loader Task:
+    activeDataLoaderTask = {
+      msg: "restart",
+      serverUrl: settings.serverUrl,
+      port: settings.port,
+      filename: settings.filename,
+      filesize: header.filesize,
+      seekPosBytes: seekPosBytes,
+      bytesPerPoint: bytesPerPoint,
+      header: header,
+      maxMemMB: settings.maxMemMB,
+      offsets: {                       // NOTE Hardcoded
+        x: 0,
+        y: 8,
+        z: 16,
+        i: 24,
+        t: 32
+      }
+    }
+
+    // Launch Data Loader Worker Thread:
+    DataLoader.postMessage(activeDataLoaderTask);
+    DataLoader.onmessage = handleDataLoaderMessage;
+  }
+}
+
+function requestSlice(tmin=-1, tmax=-1) {
+
+  try {
+
+    if (tmin == -1) {
+      tmin = heartbeat.tmin;
+    }
+    if (tmax == -1) {
+      tmax = heartbeat.tmax;
+    }
+
+    DataLoader.postMessage({
+      msg: "slice",
+      tmin: tmin,
+      tmax: tmax
+    })
+  } catch (e) {
+    console.log(e);
+  }
 }
 
 
@@ -157,15 +236,8 @@ function handleDataLoaderMessage(response) {
       break;
 
     case "heartbeat":
-      console.log("heartbeat: ", response.data);
+      console.log("heartbeat: ", response.data, "\nstate: ", response.data.state);
       heartbeat = response.data;
-
-      // //TODO remove
-      // activeDataLoaderTask.worker.postMessage({
-      //   msg: "slice",
-      //   tmin: heartbeat.tmin,
-      //   tmax: heartbeat.tmin+10
-      // });
 
       // TODO do something with heartbeat
       // Save TBmin, TBmax, numPoints, memSize

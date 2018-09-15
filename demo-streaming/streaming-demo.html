@@ -56,6 +56,9 @@
 
       uniform float minGpsTime;
       uniform float maxGpsTime;
+			uniform float size;
+			uniform vec3 camPosHi;
+			uniform vec3 camPosLo;
 
       varying float vAlpha;
 
@@ -65,9 +68,22 @@
         } else {
           vAlpha = 0.0;
         }
-        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-        gl_PointSize = 8.0;
-        gl_Position = projectionMatrix * mvPosition;
+
+				gl_PointSize = size;
+
+				// gl_Position = vec4(position, 1.0);
+				// vec3 p = position - camPosHi;
+				// p -= camPosLo;
+        // vec4 mvPosition = modelViewMatrix * vec4( p, 1.0 );
+				// vec4 posTmp = projectionMatrix * mvPosition;
+				// posTmp += vec4(camPosHi, 0.0);
+				// posTmp += vec4(camPosLo, 0.0);
+				// gl_Position = posTmp;
+
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+
+				// vAlpha = 1.0;
       }
   </script>
 
@@ -112,6 +128,10 @@
 		var t0 = performance.now();
 		var t1 = 0;
 
+		var rtkOffset, rtkRange, radarOffset, radarRange, lidarOffset, lidarRange;
+
+
+
   </script>
 
   <script>
@@ -132,8 +152,8 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud.csv.bin.header",
 	 	filename: "full_pointcloud.csv.bin",
-	 	maxMemMB: 100,
-	 	TA: 10
+	 	maxMemMB: 200,
+	 	TA: 10	// Seconds
 	 }
 
 	 var heartbeat;
@@ -149,9 +169,12 @@
 		fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
 		transparent:    true,
 		uniforms: {
+			size: {value: 0.05},
 			color: { value: new THREE.Color( 0x003DFF ) },
 			minGpsTime: {value: 0.0 },
 			maxGpsTime: {value: 0.0 },
+			camPosHi: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			camPosLo: {type: "v3", value: new THREE.Vector3(0,0,0)}
 			// initialTime: {value: t_init}
 		}
 	});
@@ -159,6 +182,25 @@
 	cloudMesh.timeRange = {tmin: 0, tmax: 0};
 	cloudMesh.name = "cloud";
 	viewer.scene.scene.add(cloudMesh);
+	cloudMesh.onBeforeRender = function(renderer, scene, camera, geometry, material, group) {
+
+		// Store camera position as high and low in material:
+		var pos = Float64Array.from(camera.position.toArray());
+		var posHi = new Float32Array(3);
+		var posLo = new Float32Array(3);
+
+		for (let ii=0; ii<3; ii++) {
+
+			// Split Float64 into upper and lower Float32 values:
+			// For concept see here: https://www.thasler.com/blog/blog/glsl-part2-emu
+			posHi[ii] = Math.fround(pos[ii]);
+			posLo[ii] = pos[ii] - posHi[ii];
+		}
+
+		// Update material uniforms:
+		material.uniforms.camPosHi.value = new THREE.Vector3(...posHi);
+		material.uniforms.camPosLo.value = new THREE.Vector3(...posLo);
+	};
 
 	// Send Header Request:
 	sendHeaderRequest(settings.serverUrl + ":" + settings.port + "/args/header/" + settings.headerFilename, (e) => {
@@ -166,7 +208,12 @@
 
 		// Launch Data Loader to Start Streaming:
 		header = e.data;
-		streamFromTime(0, header, settings);
+		// streamFromFileStart(header, settings);
+
+		// TODO REMOVE FOR TESTING ONLY:
+		rtkOffset = 1495189484.5352845;
+		rtkRange = 600.5599999427795;
+		streamFromTimeNew(0.05, {offset: rtkOffset, range:rtkRange}, header, settings);
 	});
 
 
@@ -225,7 +272,7 @@
 	 });
 
 	 // Load RTK:
-	 loadRtk((pos, rot, t_init) => {
+	 loadRtk((pos, rot, t_init, t_range, numPoints) => {
 		 path = pos.map(v => new THREE.Vector3(...v));
 		 orientations = rot.map(v => new THREE.Vector3(...v));
 		 let animationPath = new Potree.AnimationPath(path);
@@ -235,7 +282,11 @@
 		 { // render the path
 			 let geometry = animationPath.getGeometry();
 			 let material = new THREE.LineBasicMaterial();
-			 material.uniforms = {initialTime:{value:t_init}};
+			 material.uniforms = {
+				 initialTime:{value:t_init},
+				 timeRange: {value:t_range},
+				 numPoints: {value: numPoints}
+			 };
 			 let line = new THREE.Line(geometry, material, {closed: animationPath.closed});
 			 line.name = "rtk";
 			 line.visible = false;
@@ -306,15 +357,24 @@
 
 				 function animate(t, updateCamera=true) {
 					 animation.repeat = true;
+
 					 // TODO cache this to improve speed?
 					 // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
-					 rtkOffset = viewer.scene.scene.getObjectByName("rtk").material.uniforms.initialTime.value;
-					 radarOffset = viewer.scene.scene.getObjectByName("radar").material.uniforms.initialTime.value;
+					 rtkMesh = viewer.scene.scene.getObjectByName("rtk");
+					 radarMesh = viewer.scene.scene.getObjectByName("radar");
+					 rtkOffset = rtkMesh.material.uniforms.initialTime.value;
+					 radarOffset = radarMesh.material.uniforms.initialTime.value;
+					 numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
+					 numRadarPoints = radarMesh.geometry.attributes.gpsTime.count;
+
 					 // timeMin = Math.min(lidarOffset, rtkOffset, radarOffset);
 					 timeMin = Math.min(rtkOffset, radarOffset);
 					 // lidarRange = viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
-					 radarRange = 583.649169921875;  // TODO Hardcoded
-					 rtkRange = 600.5599999427795;   // TODO Hardcoded
+					 // radarRange = 583.649169921875;  // TODO Hardcoded
+					 radarRange = radarMesh.geometry.attributes.gpsTime.array[numRadarPoints-1];
+					 // rtkRange = 600.5599999427795;   // TODO Hardcoded
+					 rtkRange = rtkMesh.material.uniforms.timeRange.value;
+
 					 // timeMax = Math.max((lidarRange+lidarOffset), (radarRange+radarOffset), (rtkRange+rtkOffset));
 					 timeMax = Math.max((radarRange+radarOffset), (rtkRange+rtkOffset));
 					 timeOffset = timeMin;
@@ -324,10 +384,15 @@
 					 // debugger;
 					 // t is a value between 0 and 1 in rtkTime frame
 					 var gpsTime = (rtkRange*t) + rtkOffset;  // Convert from rtkTime to gpsTime
+
+
 					 // TODO define slider time frame
 					 slider.value = 100*t; // NOTE this is currently only using the rtkTime as the time frame
 					 output.innerHTML = (gpsTime-rtkOffset).toFixed(4); // Centered to zero
+					 window.dispatchEvent(new Event("time-updated"));
 					 // use getPoint(t) to map from t to the position on the animation path
+
+
 					 var bunny = viewer.scene.scene.getObjectByName("bunny");
 					 let rtkPoint = animation.getPoint(t); // NOTE t is in rtkTime
 					 let vehicleOrientation = bunny.orientationPath.getPoint(t);
@@ -401,38 +466,52 @@
 					 	var val = slider.value/100.0;
 					 	animation.t = val;
 					 	animate(val);
+					 });
+
+					 window.addEventListener("time-updated", () => {
+						 console.log("time updated");
+						 if (typeof(window.numTimeUpdated) == "undefined") {
+							 window.numTimeUpdated = 0;
+						 } else {
+							 window.numTimeUpdated++;
+						 }
+
+						 var updateRestriction = 100000; // only update once every updates
+						 if ((window.numTimeUpdated % updateRestriction) == 0) {
+
+							 if (typeof(viewer.scene.scene.getObjectByName("rtk")) != "undefined") {
+
+							  sliderVal = slider.value/100.0;
+							  var time = sliderVal * rtkRange + rtkOffset - header.tmin;
+
+							  var swap = {
+							 	 tmin: Math.max(0, time),	// start of file check
+							 	 tmax: Math.min(time+settings.TA, header.tmax-header.tmin) // end of file check
+							  }
+							  swap.t = swap.tmin/(header.tmax-header.tmin);
 
 
-						if (typeof(viewer.scene.scene.getObjectByName("rtk")) != "undefined") {
+							  if (swap.tmax > heartbeat.tmax) {
+							 	 if (swap.tmin > heartbeat.tmax) {
+							 		 // DataLoader.postMessage({msg: "terminate"});	// TODO no longer terminate
+							 		 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
+							 	 } else {
+							 		 // wait -- aka do nothing?
+							 	 }
+							  } else if (swap.tmin < heartbeat.tmin) {
+							 	 // DataLoader.postMessage({msg: "terminate"}); 	// TODO no longer terminate
+							 	 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
+							  } else {
+							 	 // Send Slice Request:
+							 	 DataLoader.postMessage({
+							 		 msg: "slice",
+							 		 tmin: swap.tmin,
+							 		 tmax: swap.tmax
+							 	 });
+							  }
+							 }
 
-							sliderVal = slider.value/100.0;
-							var time = sliderVal * rtkRange + rtkOffset - header.tmin;
-
-							var swap = {
-								tmin: Math.max(0, time),	// start of file check
-								tmax: Math.min(time+settings.TA, header.tmax-header.tmin) // end of file check
-							}
-							swap.t = swap.tmin/(header.tmax-header.tmin);
-
-
-							if (swap.tmax > heartbeat.tmax) {
-								if (swap.tmin > heartbeat.tmax) {
-									streamFromTime(swap.t, header, settings);
-								} else {
-									// wait -- aka do nothing?
-								}
-							} else if (swap.tmin < heartbeat.tmin) {
-								streamFromTime(swap.t, header, settings);
-							} else {
-								// Send Slice Request:
-								activeDataLoaderTask.worker.postMessage({
-									msg: "slice",
-									tmin: swap.tmin,
-									tmax: swap.tmax
-								});
-							}
-						}
-
+						 }
 
 
 					 });
