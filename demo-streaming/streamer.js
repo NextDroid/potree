@@ -209,8 +209,7 @@ function requestSlice(tmin=-1, tmax=-1) {
 
 function handleDataLoaderMessage(response) {
 
-  console.log("received message from data loader: ", response.data);
-
+  // console.log("received message from data loader: ", response.data
   // debugger; // check response structure
 
   switch (response.data.msg) {
@@ -241,6 +240,11 @@ function handleDataLoaderMessage(response) {
 
       // TODO do something with heartbeat
       // Save TBmin, TBmax, numPoints, memSize
+      break;
+
+    case "runState":
+      // Send the message back:
+      DataLoader.postMessage({msg:"runState"});
       break;
 
     default:

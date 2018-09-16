@@ -152,7 +152,7 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud.csv.bin.header",
 	 	filename: "full_pointcloud.csv.bin",
-	 	maxMemMB: 200,
+	 	maxMemMB: 500,	// TODO try 40 bytes
 	 	TA: 10	// Seconds
 	 }
 
@@ -208,12 +208,12 @@
 
 		// Launch Data Loader to Start Streaming:
 		header = e.data;
-		// streamFromFileStart(header, settings);
+		streamFromFileStart(header, settings);
 
-		// TODO REMOVE FOR TESTING ONLY:
-		rtkOffset = 1495189484.5352845;
-		rtkRange = 600.5599999427795;
-		streamFromTimeNew(0.05, {offset: rtkOffset, range:rtkRange}, header, settings);
+		// // TODO REMOVE FOR TESTING ONLY:
+		// rtkOffset = 1495189484.5352845;
+		// rtkRange = 600.5599999427795;
+		// streamFromTimeNew(0.05, {offset: rtkOffset, range:rtkRange}, header, settings);
 	});
 
 

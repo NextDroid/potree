@@ -57,14 +57,15 @@ function handleInputMessage(e) {
     if (self.LoaderState == LoaderStates.PAUSED) {
       // NOTE: Since we cannot pause the readable stream while piped into it,
       // we need to cancel the old stream and create a new stream at the previous location
-
       // Cancel old stream:
       closeStream(); // Maybe move this into runState(PAUSED) to stop streaming at point of pausing?
 
       // Modify loader task with current seekPosBytes:
       var resumeTask = self.task;
-      resumeTask.seekPosBytes += self.numBytesRead;
+      // resumeTask.seekPosBytes += self.numBytesRead; // NOTE removed, seekPosBytes now tracked in main for loop b/c numBytesRead was limited to max size of single buffer
       var shouldResetBuffers = false; // Don't reset buffers
+      self.prevBuffer = new Uint8Array(0); // NOTE resetting prevBuffer however -- because we start a new stream at the last point read, we don't need the previous buffer
+                                           // TODO remove resetting of previous buffer from resetBuffers() function?
       sendFetchRequest(resumeTask, shouldResetBuffers);
 
     } else {
@@ -107,6 +108,8 @@ function handleInputMessage(e) {
     self.lidarTime = e.data.time;
     console.log("lidarTime heartbeat: ", self.lidarTime);
 
+  } else if (e.data.msg == "runState") {
+    runState();
   }
 }
 
@@ -182,15 +185,37 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
 
         self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true));
 
-        self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers
+        self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers TODO make var variable
+        self.task.seekPosBytes += task.bytesPerPoint; // track current seek position in file
 
-        // Check if should stop:
+        if (self.task.seekPosBytes > self.task.filesize) { // NOTE We should never hit this (i.e. assertion)
+          debugger;
+        }
+
+        if (self.Bbuffers.t.length == self.Bbuffers.t.size) { // TODO check if we are going to overwrite data we want still
+                                                              // NOTE can do this check before the loop even starts like so:
+                                                              // t0 = self.lidarTime;
+                                                              // TB0 = self.Bbuffers.t.data[0];
+                                                              // if (t0 - TB0 >= 0) { // execute for loop } else { // save read buffer and pause DataLoader }
+                                                              // NOTE in order for this to work, need pause/resume functionality to be working
+
+        }
+
+        // NOTE because Javascript is only single threaded, we should never hit the code below:
+        // Check if should stop loading:
         if (self.LoaderState != LoaderStates.LOADING) {
-
-          // Do not save remaining buffer and run next state:
-          self.totalBytesRead += self.numBytesRead;
-          self.prevBuffer = new Uint8Array(0);
-          runState();
+          debugger;
+          if (self.LoaderState == LoaderStates.STOPPED) {
+            // Do not save remaining buffer and run next state:
+            self.totalBytesRead += self.numBytesRead;
+            self.prevBuffer = new Uint8Array(0);
+            runState();
+          } else if (self.LoaderState == LoaderStates.PAUSED) {
+            // Break out of loop, store remaining buffer and run next state
+            // TODO RACE CONDITIONS POSSIBLE!! NEED runState(PAUSED) explicitly
+            debugger;
+            break;
+          }
         }
       }
 
@@ -199,7 +224,11 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       self.prevBuffer = buffer.slice(self.numBytesRead, buffer.length);  // TODO revert this
 
       // Run again:
-      runState();
+      // setTimeout(runState,0); // TODO USE SETTIMEOUT(0) -- check how much of a hit to run speed there is (pretty big -- need to speed this up)
+
+      // post a message to main thread who will send it back where we run next state (intent is that this is faster than setTimeout(0))
+      self.postMessage({msg:"runState"});
+
     }
   });
 }
