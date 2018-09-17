@@ -11,7 +11,7 @@ function minAngle(theta) {
 
 function loadRtk(callback) {
 
-  let filename = "../demo/csv/rtkdata.csv";
+  let filename = "rtkdata.csv";
   let tcol = 1;       // GPS_TIME
   // let tcol = 3;       // SYSTEM_TIME
   let xcol = 12;      // RTK_EASTING_M
