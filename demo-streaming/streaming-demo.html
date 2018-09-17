@@ -152,9 +152,13 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud.csv.bin.header",
 	 	filename: "full_pointcloud.csv.bin",
-	 	maxMemMB: 500,	// TODO try 40 bytes
-	 	TA: 10	// Seconds
+	 	maxMemMB: 100,	// TODO try 40 bytes
+		bufferEpsilonSec: 6,
+	 	TA: 6	// Seconds
 	 }
+
+	 // TODO define this in a better way:
+	 var speed = 5;
 
 	 var heartbeat;
 	 var slice;
@@ -352,7 +356,7 @@
 				 // Animate from beginning to end
 				 let start = 0;
 				 let end = Infinity;
-				 let speed = 33;	// empirically set as "close to realtime"
+				 // let speed = 33;	// empirically set as "close to realtime"
 				 let animation = animationPath.animate(start, end, speed, animate);
 
 				 function animate(t, updateCamera=true) {
@@ -476,42 +480,41 @@
 							 window.numTimeUpdated++;
 						 }
 
-						 var updateRestriction = 100000; // only update once every updates
-						 if ((window.numTimeUpdated % updateRestriction) == 0) {
-
-							 if (typeof(viewer.scene.scene.getObjectByName("rtk")) != "undefined") {
-
-							  sliderVal = slider.value/100.0;
-							  var time = sliderVal * rtkRange + rtkOffset - header.tmin;
-
-							  var swap = {
-							 	 tmin: Math.max(0, time),	// start of file check
-							 	 tmax: Math.min(time+settings.TA, header.tmax-header.tmin) // end of file check
-							  }
-							  swap.t = swap.tmin/(header.tmax-header.tmin);
-
-
-							  if (swap.tmax > heartbeat.tmax) {
-							 	 if (swap.tmin > heartbeat.tmax) {
-							 		 // DataLoader.postMessage({msg: "terminate"});	// TODO no longer terminate
-							 		 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
-							 	 } else {
-							 		 // wait -- aka do nothing?
-							 	 }
-							  } else if (swap.tmin < heartbeat.tmin) {
-							 	 // DataLoader.postMessage({msg: "terminate"}); 	// TODO no longer terminate
-							 	 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
-							  } else {
-							 	 // Send Slice Request:
-							 	 DataLoader.postMessage({
-							 		 msg: "slice",
-							 		 tmin: swap.tmin,
-							 		 tmax: swap.tmax
-							 	 });
-							  }
-							 }
-
-						 }
+						 // var updateRestriction = 100000; // only update once every updates
+						 // if ((window.numTimeUpdated % updateRestriction) == 0) {
+						 //
+							//  if (typeof(viewer.scene.scene.getObjectByName("rtk")) != "undefined") {
+						 //
+							//   sliderVal = slider.value/100.0;
+							//   var time = sliderVal * rtkRange + rtkOffset - header.tmin;
+						 //
+							//   var swap = {
+							//  	 tmin: Math.max(0, time),	// start of file check
+							//  	 tmax: Math.min(time+settings.TA, header.tmax-header.tmin) // end of file check
+							//   }
+							//   swap.t = swap.tmin/(header.tmax-header.tmin);
+						 //
+						 //
+							//   if (swap.tmax > heartbeat.tmax) {
+							//  	 if (swap.tmin > heartbeat.tmax) {
+							//  		 // DataLoader.postMessage({msg: "terminate"});	// TODO no longer terminate
+							//  		 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
+							//  	 } else {
+							//  		 // wait -- aka do nothing?
+							//  	 }
+							//   } else if (swap.tmin < heartbeat.tmin) {
+							//  	 // DataLoader.postMessage({msg: "terminate"}); 	// TODO no longer terminate
+							//  	 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
+							//   } else {
+							//  	 // Send Slice Request:
+							//  	 DataLoader.postMessage({
+							//  		 msg: "slice",
+							//  		 tmin: swap.tmin,
+							//  		 tmax: swap.tmax
+							//  	 });
+							//   }
+							//  }
+						 // }
 
 
 					 });

@@ -1,0 +1,106 @@
+Notes:
+
+
+JS Event Loop:
+ - looks like for loop doesn't ever get interrupted by message events in DataLoader Thread
+ - Question: how do events get executed seemingly instantaneously when one event should be executing indefinitely (almost)? --> they are not, you cannot send a message to a worker mid-execution
+
+ solution: make runState an event
+
+
+
+While Loading:
+
+  receive streamReader
+
+  send pump event: --> cannot be sent from worker to self, likely needs to be sent to parent then rerouted back to worker OR does setTimeout({}, 0) work?
+    pump Reader
+      append into buffer
+      save state
+      send next pump event
+
+
+
+Pause/Resume functionality working because of:
+ - streamFromTimeNew() and clearing prevBuffer on resume
+ - setTimeout(runState, 0) at the end of each pump
+ - NOTE: Runs pretty slow
+    - Full network transfer is fast: 12s for 2.4GB (streaming from localhost)
+    - Stream parsing loop is very slow: 20:46:56:851 to 20:51:44:956 --> ~4m 49s to load 62 seconds of data (almost 5x slower than realtime)
+ - Replaced setTimeout(runState, 0) with postMessage --> send message to parent then parent sends message back, then execute runState()
+    - Allows for proper event handling and is faster than setTimeout
+
+Note: Slicing takes about 50% magnitude of TA (e.g. takes .5sec to load 1sec of data)
+
+
+Next: Add in auto pause, resume, jump to based on heartbeat playerTime
+create pause(), resume(), stop() and restart() functions
+
+// NOTE: the logic below should be computed on each update to lidarTime
+// NOTE: assert that lidarTime, self.Bbuffers.t.data[0], task all exist and are valid
+loadableSecs = self.lidarTime - self.Bbuffers.t.data[0];
+loadableBytes = Math.floor(loadableSecs / (task.header.tmax - task.header.tmin)) * task.header.numpoints * task.bytesPerPoint;
+
+if (loadableBytes > 0) {
+  if (loadableBytes/task.bytesPerPoint > (task.maxNumPoints-epsilon)) {
+    // handle the case where lidarTime is approaching end of buffer
+    // TODO
+
+  } else {
+    // continue normal loading (resume if paused)
+  }
+} else if (loadableBytes < 0) {
+
+  if (Math.abs(loadableSecs) < epsilon)) {
+    // pause loader
+  } else {
+    // compute new seekPosBytes at current lidarTime and restart()
+    // TODO handle caching of buffer eventually -- for now throw it all away
+  }
+
+  // pause loader until lidarTime provides valid loadableBytes e.g. when
+}
+
+
+Updates: Buffer can regulate if going too fast (pause/resume)
+Next:
+  - Slice
+  - Regulate when buffer too slow (send animation pause request)
+  - Handle when playbar jumps to new point
+
+
+  slice as small as possible and as fast as possible -- based on heartbeat message and TA settings
+    - Looks like slicing 5-6 seconds gives the best loading rate
+    - would like 1 second of overlap on slices -->
+    - simple test: when DataLoader pauses, ask to get sliced. When near end of current slice (sliceTime + .5 ~= 2sec), request new slice
+      - bug: multiple streams remain open, something wonky --> latency, multiple slice requests
+
+  Slicing Speeds:
+    01:45:47:134 requestSlice()
+    01:45:47.140 undefined
+    01:45:52.660 data-loader.js:280 Slice Time:  5.524999999994179  seconds
+    01:45:52.677 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(37499994), i: Float32Array(12499998), t: Float32Array(12499998), numPoints: 12499998}
+    01:47:58.719 requestSlice(35,40)
+    01:47:58.721 undefined
+    01:48:00.513 data-loader.js:280 Slice Time:  1.7937999999994645  seconds
+    01:48:00.519 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(13741782), i: Float32Array(4580594), t: Float32Array(4580594), numPoints: 4580594}
+    01:48:20.865 requestSlice(35, 36)
+    01:48:20.866 undefined
+    01:48:21.864 data-loader.js:280 Slice Time:  0.9988999999914085  seconds
+    01:48:21.864 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(2721852), i: Float32Array(907284), t: Float32Array(907284), numPoints: 907284}
+    01:48:27.172 requestSlice(35, 36)
+    01:48:27.173 undefined
+    01:48:28.251 data-loader.js:280 Slice Time:  1.0798999999969965  seconds
+    01:48:28.251 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(2721852), i: Float32Array(907284), t: Float32Array(907284), numPoints: 907284}
+    01:48:32.561 requestSlice(35, 36)
+    01:48:32.566 undefined
+    01:48:33.463 data-loader.js:280 Slice Time:  0.9008999999932712  seconds
+    01:48:33.463 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(2721852), i: Float32Array(907284), t: Float32Array(907284), numPoints: 907284}
+    01:48:40.040 requestSlice(35,40)
+    01:48:40.041 undefined
+    01:48:41.299 data-loader.js:280 Slice Time:  1.259200000000419  seconds
+    01:48:41.304 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(13741782), i: Float32Array(4580594), t: Float32Array(4580594), numPoints: 4580594}
+    01:48:56.014 requestSlice(35,40)
+    01:48:56.015 undefined
+    01:48:57.276 data-loader.js:280 Slice Time:  1.261899999997695  seconds
+    01:48:57.283 streamer.js:218 Slice:  {msg: "slice", pos: Float32Array(13741782), i: Float32Array(4580594), t: Float32Array(4580594), numPoints: 4580594}

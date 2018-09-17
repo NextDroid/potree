@@ -45,50 +45,17 @@ self.onmessage = handleInputMessage;
 function handleInputMessage(e) {
 
   if (e.data.msg == "pause") {
-
-    // debugger; // pause
-    if (self.LoaderState == LoaderStates.LOADING) {
-      self.LoaderState = LoaderStates.PAUSED; // Set state to paused
-      runState();
-    }
+    pause();
 
   } else if (e.data.msg == "resume") {
+    resume();
 
-    if (self.LoaderState == LoaderStates.PAUSED) {
-      // NOTE: Since we cannot pause the readable stream while piped into it,
-      // we need to cancel the old stream and create a new stream at the previous location
-      // Cancel old stream:
-      closeStream(); // Maybe move this into runState(PAUSED) to stop streaming at point of pausing?
-
-      // Modify loader task with current seekPosBytes:
-      var resumeTask = self.task;
-      // resumeTask.seekPosBytes += self.numBytesRead; // NOTE removed, seekPosBytes now tracked in main for loop b/c numBytesRead was limited to max size of single buffer
-      var shouldResetBuffers = false; // Don't reset buffers
-      self.prevBuffer = new Uint8Array(0); // NOTE resetting prevBuffer however -- because we start a new stream at the last point read, we don't need the previous buffer
-                                           // TODO remove resetting of previous buffer from resetBuffers() function?
-      sendFetchRequest(resumeTask, shouldResetBuffers);
-
-    } else {
-      console.log("Unable to resume");
-    }
 
   } else if (e.data.msg == "stop") { // TODO initialize
-
-    self.LoaderState = LoaderStates.STOPPED;
-    runState();
+    stop();
 
   } else if (e.data.msg == "restart") { // TODO initialize
-
-    // Close Stream and Reset Buffers:
-    self.LoaderState = LoaderStates.STOPPED; // Set state to STOPPED until data fetch response is received
-    runState();
-
-    // Try to restart the previous task if exists:
-    try {
-      sendFetchRequest(e.data); // e.data is task
-    } catch (e) {
-      console.log("Could not restart stream -- ", e);
-    }
+    restart(e.data.task);
 
   } else if (e.data.msg == "slice") {
 
@@ -105,7 +72,7 @@ function handleInputMessage(e) {
   } else if (e.data.msg == "lidarTime") {
 
     // Save lidarTime:
-    self.lidarTime = e.data.time;
+    updateLidarTime(e.data.time);
     console.log("lidarTime heartbeat: ", self.lidarTime);
 
   } else if (e.data.msg == "runState") {
@@ -119,6 +86,9 @@ function sendFetchRequest(task, shouldResetBuffers=true) {
   self.task = task;
   var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
   var seekPosBytes = task.seekPosBytes;
+  if (seekPosBytes < 0 || seekPosBytes > task.filesize) {
+    console.error("Failed invalid seekPositionBytes value: ", seekPosBytes);
+  }
 
   // Create fetch headers:
   var fetchHeaders = new Headers();
@@ -186,8 +156,8 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
         self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true));
 
         self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers TODO make var variable
-        self.task.seekPosBytes += task.bytesPerPoint; // track current seek position in file
 
+        self.task.seekPosBytes += task.bytesPerPoint; // track current seek position in file -- NOTE this forces restart command to start from this point...is this ok?
         if (self.task.seekPosBytes > self.task.filesize) { // NOTE We should never hit this (i.e. assertion)
           debugger;
         }
@@ -311,7 +281,7 @@ function slice(tmin, tmax) {
 }
 
 function sendHeartbeat() {
-  console.log("sending heartbeat from dataloader");
+  // console.log("sending heartbeat from dataloader");
   // debugger;
   try {
     // Send status update:
@@ -327,5 +297,101 @@ function sendHeartbeat() {
   } catch (e) {
     // debugger;
     console.log("Failed to send heartbeat: ", e);
+  }
+}
+
+function pause() {
+  // Pause DataLoader if loading:
+  if (self.LoaderState == LoaderStates.LOADING) {
+    self.LoaderState = LoaderStates.PAUSED; // Set state to paused
+    // TODO experimental
+    self.postMessage({msg: "request-slice"}); // Going to be paused so ask for slice request
+    runState();
+  }
+}
+
+function resume() {
+  // Resume DataLoader if paused:
+  if (self.LoaderState == LoaderStates.PAUSED) {
+    // NOTE: Since we cannot pause the readable stream while piped into it,
+    // we need to cancel the old stream and create a new stream at the previous location
+    closeStream(); // Maybe move this into runState(PAUSED) to stop streaming at point of pausing?
+
+    // Modify loader task with current seekPosBytes:
+    var resumeTask = self.task;
+    // resumeTask.seekPosBytes += self.numBytesRead; // NOTE removed, seekPosBytes now tracked in main for loop b/c numBytesRead was limited to max size of single buffer
+    var shouldResetBuffers = false; // Don't reset buffers
+    self.prevBuffer = new Uint8Array(0); // NOTE resetting prevBuffer however -- because we start a new stream at the last point read, we don't need the previous buffer
+                                         // TODO remove resetting of previous buffer from resetBuffers() function?
+    sendFetchRequest(resumeTask, shouldResetBuffers);
+  }
+}
+
+function stop() {
+  // Stop DataLoader:
+  self.LoaderState = LoaderStates.STOPPED;
+  runState();
+}
+
+function restart(task=null) {
+  // Start/Restart DataLoader:
+  // Close Stream and Reset Buffers:
+  self.LoaderState = LoaderStates.STOPPED; // Set state to STOPPED until data fetch response is received
+  runState();
+
+  // Try to restart the previous task if exists:
+  try {
+    if (task) {
+      sendFetchRequest(task);
+    } else if (self.task) {
+      sendFetchRequest(self.task);
+    }
+  } catch (e) {
+    console.log("Could not restart stream -- ", e);
+  }
+}
+
+function updateLidarTime(newLidarTime) {
+
+  // Store new lidarTime:
+  self.lidarTime = newLidarTime;
+  var epsilonNumPoints = 500000;
+
+  // TODO: assert that lidarTime, self.Bbuffers.t.data[0], task all exist and are valid
+  if ((self.lidarTime != null) && (self.Bbuffers.t.data[0] != null) && (task != null)) {
+
+    if (self.Bbuffers.t.length == self.Bbuffers.t.size) { // Buffer must be full
+      var loadableSecs = self.lidarTime - self.Bbuffers.t.data[self.Bbuffers.t.start];
+      var loadableBytes = Math.floor(loadableSecs / (task.header.tmax - task.header.tmin) * task.header.numpoints) * task.bytesPerPoint;
+
+      if (loadableBytes > 0) {
+        if (loadableBytes/task.bytesPerPoint > (task.maxNumPoints-epsilonNumPoints)) {
+          // handle the case where lidarTime is approaching end of buffer
+          console.log("DataLoader is falling behind");
+          // TODO
+
+        } else {
+          // continue normal loading (resume if paused)
+          console.log("DataLoader is loading as normal");
+          resume();
+        }
+      } else if (loadableBytes <= 0) {
+        if (Math.abs(loadableSecs) < self.task.bufferEpsilonSec) {
+          // pause loader until lidarTime catches up to buffer
+          console.log("DataLoader is pausing");
+          pause();
+        } else {
+          // compute new seekPosBytes at current lidarTime and restart()
+          // TODO handle caching of buffer eventually -- for now throw it all away
+          console.log("DataLoader should restart from new seek point");
+
+
+        }
+      }
+    }
+
+  } else {
+    console.log("DataLoader does not have enough information to update state");
+    // debugger;
   }
 }

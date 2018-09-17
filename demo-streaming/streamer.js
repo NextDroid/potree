@@ -161,7 +161,6 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
 
     // Create Data Loader Task:
     activeDataLoaderTask = {
-      msg: "restart",
       serverUrl: settings.serverUrl,
       port: settings.port,
       filename: settings.filename,
@@ -170,6 +169,7 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
       bytesPerPoint: bytesPerPoint,
       header: header,
       maxMemMB: settings.maxMemMB,
+      bufferEpsilonSec: settings.bufferEpsilonSec,
       offsets: {                       // NOTE Hardcoded
         x: 0,
         y: 8,
@@ -180,7 +180,7 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
     }
 
     // Launch Data Loader Worker Thread:
-    DataLoader.postMessage(activeDataLoaderTask);
+    DataLoader.postMessage({msg: "restart", task:activeDataLoaderTask});
     DataLoader.onmessage = handleDataLoaderMessage;
   }
 }
@@ -245,6 +245,15 @@ function handleDataLoaderMessage(response) {
     case "runState":
       // Send the message back:
       DataLoader.postMessage({msg:"runState"});
+      break;
+
+      case "request-slice":
+      //Request slice from DataLoader:
+      var time = 0;
+      if (rtkRange != null || rtkOffset != null) {
+        time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+      }
+      requestSlice(time, time+settings.TA);
       break;
 
     default:
