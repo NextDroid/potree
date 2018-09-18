@@ -14,8 +14,8 @@
 	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
 	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
 	<link rel="stylesheet" type="text/css" href="../common/playbar.css">
+	<link rel="stylesheet" type="text/css" href="../common/overlay.css">
 	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
 </head>
 
 <body>
@@ -40,6 +40,7 @@
 	<script src="radarloader.js"></script>
 	<script src="../common/playbar.js"></script>
 	<script src="../libs/other/OBJLoader.js"></script>
+	<script src="../common/overlay.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
@@ -150,15 +151,15 @@
 		// serverUrl: "http://172.18.44.129",	// virtual box
 		// serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
-	 	headerFilename: "full_pointcloud.csv.bin.header",
-	 	filename: "full_pointcloud.csv.bin",
-	 	maxMemMB: 100,	// TODO try 40 bytes
+	 	headerFilename: "full_pointcloud-large-zeroed.csv.bin.header",
+	 	filename: "full_pointcloud-large-zeroed.csv.bin",
+	 	maxMemMB: 500,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 6	// Seconds
 	 }
 
 	 // TODO define this in a better way:
-	 var speed = 5;
+	 var speed = 11;
 
 	 var heartbeat;
 	 var slice;
@@ -433,9 +434,17 @@
 						 // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
 						 let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
 						 camPoint.z += 10;
-						 viewer.scene.view.position.copy(camPoint); // changed from camera
-						 var targetPosition = new THREE.Vector3(bunny.position.x, bunny.position.y, bunny.position.z+2);
-						 viewer.scene.view.lookAt(targetPosition);
+
+						 // TODO messing around:
+						 camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
+						 // viewer.scene.view.position.copy(camPoint); // changed from camera
+						 var targetPosition = new THREE.Vector3(0, 0, 0);
+						 // viewer.scene.view.lookAt(targetPosition);
+						 bunny.position.copy(targetPosition);
+						 bunny.position.z -= 2;
+
+						 // viewer.scene.view.position.copy(camPoint); // changed from camera
+						 // var targetPosition = new THREE.Vector3(bunny.position.x, bunny.position.y, bunny.position.z+2);
 					 }
 				 }
 				 window.animation = animation;
@@ -473,12 +482,52 @@
 					 });
 
 					 window.addEventListener("time-updated", () => {
+
 						 console.log("time updated");
 						 if (typeof(window.numTimeUpdated) == "undefined") {
 							 window.numTimeUpdated = 0;
 						 } else {
 							 window.numTimeUpdated++;
 						 }
+
+						 var lidarTime = 0;
+						 var window_tmin = -0.05; // note the negative
+						 var window_tmax = 0.05;
+			       if (rtkRange != null && rtkOffset != null && header.tmin != null) {
+			         lidarTime = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+			       }
+
+						 // Get Time Window Boundaries:
+						 window_tmin = parseFloat($("#playbar_tmin").val());
+						 window_tmax = parseFloat($("#playbar_tmax").val());
+
+						 // Get Current Slice Time Frame (TA):
+						 try {
+							 var numPoints = cloudMesh.geometry.attributes.gpsTime.length;
+							 TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
+							 TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
+
+							 // Request Slice Logic:
+							 var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
+							 var sliceTimeSec = 2.5		// TODO measure this after first slice
+
+							 console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
+
+							 if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
+								 var slicemin = lidarTime - window_tmin - epsilon;
+								 var slicemax = slicemin + settings.TA;
+
+								 // TODO TEST SLICE LOGIC
+								 // debugger
+								 requestSlice(slicemin, slicemax);
+							 }
+
+						 } catch (e) {
+							 console.error("Error at Player Slicing Logic: ", e);
+						 }
+
+
+
 
 						 // var updateRestriction = 100000; // only update once every updates
 						 // if ((window.numTimeUpdated % updateRestriction) == 0) {

@@ -12,6 +12,7 @@ self.numBytesRead = 0;
 self.totalBytesRead = 0;
 self.streamReader;
 self.lidarTime;
+self.newFetchRequestExpiraryMillis = -1;
 
 var LoaderStates = Object.freeze({UNINITIALIZED: 0, PAUSED: 1, LOADING: 2, STOPPED: 3});
 self.LoaderState = LoaderStates.STOPPED;
@@ -82,31 +83,37 @@ function handleInputMessage(e) {
 
 function sendFetchRequest(task, shouldResetBuffers=true) {
 
-  // Parse task:
-  self.task = task;
-  var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
-  var seekPosBytes = task.seekPosBytes;
-  if (seekPosBytes < 0 || seekPosBytes > task.filesize) {
-    console.error("Failed invalid seekPositionBytes value: ", seekPosBytes);
+  if (self.newFetchRequestExpiraryMillis < performance.now()) {
+    // Parse task:
+    self.task = task;
+    var url = task.serverUrl + ":" + task.port + "/args/data/" + task.filename; // TODO fix this
+    var seekPosBytes = task.seekPosBytes;
+    if (seekPosBytes < 0 || seekPosBytes > task.filesize) {
+      console.error("Failed invalid seekPositionBytes value: ", seekPosBytes);
+    }
+
+    // Create fetch headers:
+    var fetchHeaders = new Headers();
+    fetchHeaders.append("X-Seek-Position", seekPosBytes);
+    var myInit = {headers: fetchHeaders};
+    console.log("worker received: ", myInit.headers.get("x-seek-position"));
+
+    // Compute max number of points:
+    self.maxNumPoints = task.maxMemMB/task.bytesPerPoint*1e6; // TODO move to initialize function and initialize Bbuffers there (see resetBuffers())
+
+    if (shouldResetBuffers) {
+      resetBuffers(); // reset buffers with new maxNumPoints
+    }
+
+    // Send fetch request:
+    fetch(url, myInit)
+    .then((res) => handleFetchResponse(res))
+    .catch((err) => console.log("Worker Fetch Error: ", err));
+
+    self.newFetchRequestExpiraryMillis = performance.now() + 250.0; // Wait 250 ms before can send a new fetch request
   }
 
-  // Create fetch headers:
-  var fetchHeaders = new Headers();
-  fetchHeaders.append("X-Seek-Position", seekPosBytes);
-  var myInit = {headers: fetchHeaders};
-  console.log("worker received: ", myInit.headers.get("x-seek-position"));
 
-  // Compute max number of points:
-  self.maxNumPoints = task.maxMemMB/task.bytesPerPoint*1e6; // TODO move to initialize function and initialize Bbuffers there (see resetBuffers())
-
-  if (shouldResetBuffers) {
-    resetBuffers(); // reset buffers with new maxNumPoints
-  }
-
-  // Send fetch request:
-  fetch(url, myInit)
-  .then((res) => handleFetchResponse(res))
-  .catch((err) => console.log("Worker Fetch Error: ", err));
 }
 
 function handleFetchResponse(response, readUntil=-1) {
@@ -200,7 +207,7 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       self.postMessage({msg:"runState"});
 
     }
-  });
+  }).catch((e) => console.error("caught error reading from stream: ", e));
 }
 
 function resetBuffers() {
@@ -239,6 +246,34 @@ function slice(tmin, tmax) {
 
   tslicestart = performance.now();
 
+  // // Create output arrays:
+  // var numPoints = self.Bbuffers.t.length;
+  // var posSlice = new Float32Array(3*numPoints);
+  // var iSlice = Float32Array.from(numPoints);
+  // var tSlice = Float32Array.from(numPoints);
+  //
+  // let x,y,z,t;
+  // for (let ii=0; ii < numPoints; ii++) {
+  //   t = self.Bbuffers.t.get(ii);
+  //   if (tmin <= t && t <= tmax) {
+  //     // Store positions:
+  //     posSlice[3*ii + 0] = self.Bbuffers.pos.get(3*ii + 0);
+  //     posSlice[3*ii + 1] = self.Bbuffers.pos.get(3*ii + 1);
+  //     posSlice[3*ii + 2] = self.Bbuffers.pos.get(3*ii + 2);
+  //
+  //     // Store Intensity:
+  //     iSlice[ii] = self.Bbuffers.i.get(ii);
+  //
+  //     // Store Timestamp:
+  //     tSlice[ii] = t;
+  //
+  //   } else if (t > tmax) {
+  //     break;
+  //   }
+  // }
+
+  tSingleLoop = performance.now();
+
   // Find minIdx:
   var minIdx = self.Bbuffers.t.toArray().findIndex((x) => (x >= tmin));
   if (minIdx == -1) {
@@ -249,21 +284,27 @@ function slice(tmin, tmax) {
     // TODO try picking closest of either mindIdx or minIdx-1
   }
 
+  tfoundMin = performance.now();
+
   // Find maxIdx:
   var maxIdx = self.Bbuffers.t.slice(minIdx, self.Bbuffers.t.length).reverse().findIndex((x) => (x < tmax));
   maxIdx = (self.Bbuffers.t.length-1) - maxIdx; // correct for reversed array
   if (maxIdx == self.Bbuffers.t.length) {
     console.log("ERROR!! INVALID TMAX: ", tmax);
+    debugger;
     maxIdx = self.Bbuffers.t.length-1;
   } else {
     // TODO try picking closest of either maxIdx or maxIdx+1
   }
   // debugger; // check minIdx and maxIdx
+  tfoundMax = performance.now();
 
   // Execute Slices:
   var posSlice = Float32Array.from(self.Bbuffers.pos.slice(3*minIdx, 3*maxIdx));
   var iSlice = Float32Array.from(self.Bbuffers.i.slice(minIdx, maxIdx));
   var tSlice = Float32Array.from(self.Bbuffers.t.slice(minIdx, maxIdx));
+
+  tcreateSlices = performance.now();
 
   // Transfer Slices to runState:
   var transferObj = {
@@ -276,8 +317,22 @@ function slice(tmin, tmax) {
 
   self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer]);
 
+  tsendSlices = performance.now();
+
+  dtSingleLoop = tSingleLoop - tslicestart;
+  dtFindMinMillis = tfoundMin - tSingleLoop;
+  dtFindMaxMillis = tfoundMax - tfoundMin;
+  dtCreateSliceMillis = tcreateSlices - tfoundMax;
+  dtSendSliceMillis = tsendSlices - tcreateSlices;
   dtSliceMillis = performance.now() - tslicestart;
-  console.log("Slice Time: ", (dtSliceMillis/1000), " seconds");
+
+  console.log("Time for new approach: ", (dtSingleLoop/1000), " seconds",
+  "\nTime to find Min Idx: ", (dtFindMinMillis/1000), " seconds",
+  "\nTime to find Max Idx: ", (dtFindMaxMillis/1000), " seconds",
+  "\nTime to create Slices: ", (dtCreateSliceMillis/1000), " seconds",
+  "\nTime to send Slices: ", (dtSendSliceMillis/1000), " seconds",
+  "\nTotal Slice Time: ", (dtSliceMillis/1000), " seconds");
+  // debugger; // check if bbuffers were mutated in anyway
 }
 
 function sendHeartbeat() {
@@ -305,7 +360,9 @@ function pause() {
   if (self.LoaderState == LoaderStates.LOADING) {
     self.LoaderState = LoaderStates.PAUSED; // Set state to paused
     // TODO experimental
-    self.postMessage({msg: "request-slice"}); // Going to be paused so ask for slice request
+    if (self.lidarTime <= 0) { // Only auto slice at the beginning
+      self.postMessage({msg: "request-first-slice"}); // Going to be paused so ask for slice request
+    }
     runState();
   }
 }

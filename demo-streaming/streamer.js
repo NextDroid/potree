@@ -121,88 +121,93 @@ function computeSeekPosBytes(playbarVal, rtkTime, header, settings) {
 }
 
 function streamFromFileStart(header, settings) {
+  window.openStreamRequest = {expiraryMillis: -1};
   streamFromTimeNew(0, {offset:header.tmin, range:(header.tmax-header.tmin)}, header, settings);
 }
 
 function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0 <= playbarVal < 1.0
 
-  console.log("Streaming from playbar value: ", playbarVal);
+  if (window.openStreamRequest.expiraryMillis < performance.now()) {  // Must wait until previous open request expires
+    console.log("Streaming from playbar value: ", playbarVal);
 
-  // Compute lidarTime from playbarVal and rtkTime:
-  lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
-  // debugger;
-
-  // Bounds check lidarTime:
-  if ((lidarTime < 0.0) || (lidarTime > (header.tmax - header.tmin))) {
-    debugger;
-    console.log("No points exist within point cloud at specified time");
-
-  } else {
-    // Stop Previous Stream:
-    DataLoader.postMessage({msg: "stop"});
-
-    // Compute Number of Bytes per Point:
-    var bytesPerPoint = 0;
-    try {
-      console.assert(header.counts.length == header.sizes.length);
-      for (let ii=0; ii<header.counts.length; ii++) {
-        bytesPerPoint += header.counts[ii] * header.sizes[ii];
-      }
-    } catch (exception) {
-      console.log(exception);
-      bytesPerPoint = header.sizes.reduce((a,b) => a+b, 0);
-    }
-    console.log("Points Total Size: ", bytesPerPoint, " bytes");
-
-    // Compute Seek Position:
-    var timeVal = lidarTime/(header.tmax-header.tmin);
-    var seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
+    // Compute lidarTime from playbarVal and rtkTime:
+    lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
     // debugger;
 
-    // Create Data Loader Task:
-    activeDataLoaderTask = {
-      serverUrl: settings.serverUrl,
-      port: settings.port,
-      filename: settings.filename,
-      filesize: header.filesize,
-      seekPosBytes: seekPosBytes,
-      bytesPerPoint: bytesPerPoint,
-      header: header,
-      maxMemMB: settings.maxMemMB,
-      bufferEpsilonSec: settings.bufferEpsilonSec,
-      offsets: {                       // NOTE Hardcoded
-        x: 0,
-        y: 8,
-        z: 16,
-        i: 24,
-        t: 32
+    // Bounds check lidarTime:
+    if ((lidarTime < 0.0) || (lidarTime > (header.tmax - header.tmin))) {
+      debugger;
+      console.log("No points exist within point cloud at specified time");
+
+    } else {
+      // Stop Previous Stream:
+      DataLoader.postMessage({msg: "stop"});
+
+      // Compute Number of Bytes per Point:
+      var bytesPerPoint = 0;
+      try {
+        console.assert(header.counts.length == header.sizes.length);
+        for (let ii=0; ii<header.counts.length; ii++) {
+          bytesPerPoint += header.counts[ii] * header.sizes[ii];
+        }
+      } catch (exception) {
+        console.log(exception);
+        bytesPerPoint = header.sizes.reduce((a,b) => a+b, 0);
+      }
+      console.log("Points Total Size: ", bytesPerPoint, " bytes");
+
+      // Compute Seek Position:
+      var timeVal = lidarTime/(header.tmax-header.tmin);
+      var seekPosBytes = Math.floor(timeVal * header.numpoints)*bytesPerPoint;
+      // debugger;
+
+      // Create Data Loader Task:
+      activeDataLoaderTask = {
+        serverUrl: settings.serverUrl,
+        port: settings.port,
+        filename: settings.filename,
+        filesize: header.filesize,
+        seekPosBytes: seekPosBytes,
+        bytesPerPoint: bytesPerPoint,
+        header: header,
+        maxMemMB: settings.maxMemMB,
+        bufferEpsilonSec: settings.bufferEpsilonSec,
+        offsets: {                       // NOTE Hardcoded
+          x: 0,
+          y: 8,
+          z: 16,
+          i: 24,
+          t: 32
+        }
+      }
+
+      // Launch Data Loader Worker Thread:
+      DataLoader.postMessage({msg: "restart", task:activeDataLoaderTask});
+      DataLoader.onmessage = handleDataLoaderMessage;
+      window.openStreamRequest = {
+        expiraryMillis: performance.now() + 1000.0 // open request will expire at least 1 second into the future
       }
     }
-
-    // Launch Data Loader Worker Thread:
-    DataLoader.postMessage({msg: "restart", task:activeDataLoaderTask});
-    DataLoader.onmessage = handleDataLoaderMessage;
   }
 }
 
 function requestSlice(tmin=-1, tmax=-1) {
 
-  try {
+  if (!window.openSliceRequest) {
+    try {
 
-    if (tmin == -1) {
-      tmin = heartbeat.tmin;
-    }
-    if (tmax == -1) {
-      tmax = heartbeat.tmax;
-    }
+      if (tmin == -1) { tmin = heartbeat.tmin; }
+      if (tmax == -1) { tmax = heartbeat.tmax; }
 
-    DataLoader.postMessage({
-      msg: "slice",
-      tmin: tmin,
-      tmax: tmax
-    })
-  } catch (e) {
-    console.log(e);
+      DataLoader.postMessage({
+        msg: "slice",
+        tmin: tmin,
+        tmax: tmax
+      });
+      window.openSliceRequest = true;
+    } catch (e) {
+      console.log(e);
+    }
   }
 }
 
@@ -229,9 +234,18 @@ function handleDataLoaderMessage(response) {
         cloudMesh.geometry.addAttribute("gpsTime", timeAttributes);
         cloudMesh.geometry.computeBoundingSphere();
 
+        // TODO Remove
+        // var cloudCenter = cloudMesh.geometry.boundingSphere.center;
+        // var camPoint = cloudCenter.copy(cloudCenter.add(new THREE.Vector3(100, 100, 100)));
+        // viewer.scene.view.position.copy(camPoint); // changed from camera
         // viewer.scene.view.lookAt(cloudMesh.geometry.boundingSphere.center);
 
       }
+
+      if (typeof(window.firstSliceRequested) != "undefined" && window.firstSliceRequested) {
+        startVisualization();
+      }
+      window.openSliceRequest = false;
       break;
 
     case "heartbeat":
@@ -247,16 +261,36 @@ function handleDataLoaderMessage(response) {
       DataLoader.postMessage({msg:"runState"});
       break;
 
-      case "request-slice":
+    case "request-first-slice":
+
       //Request slice from DataLoader:
       var time = 0;
       if (rtkRange != null || rtkOffset != null) {
         time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
       }
       requestSlice(time, time+settings.TA);
+      window.firstSliceRequested = true;
+      window.sliceNowRequested = true;
       break;
 
     default:
       console.log("Unknown message type received: ", response.data.msg);
   }
+}
+
+function startVisualization() {
+
+  // Start Animation:
+  animation.resume();
+  $("#playbutton").mousedown(); // Toggle playbutton
+
+  window.firstSliceRequested = false;
+
+  camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
+  viewer.scene.view.position.copy(camPoint); // changed from camera
+  var targetPosition = new THREE.Vector3(0, 0, 0);
+  viewer.scene.view.lookAt(targetPosition);
+  removeLoadingScreen();
+
+
 }
