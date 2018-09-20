@@ -269,7 +269,7 @@ function handleDataLoaderMessage(response) {
       }
       requestSlice(time, time+settings.TA);
       window.firstSliceRequested = true;
-      window.sliceNowRequested = true;
+      window.openSliceRequest = true;
       break;
 
     case "reached-end-of-file":
@@ -313,12 +313,12 @@ function handleDataLoaderMessage(response) {
 }
 
 function startVisualization() {
+  window.firstSliceRequested = false;
 
   // Start Animation:
   animation.resume();
   $("#playbutton").mousedown(); // Toggle playbutton
 
-  window.firstSliceRequested = false;
 
   camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
   viewer.scene.view.position.copy(camPoint); // changed from camera

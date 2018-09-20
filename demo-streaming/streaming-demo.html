@@ -153,9 +153,9 @@
 		// serverUrl: "http://172.18.44.129",	// virtual box
 		// serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
-	 	headerFilename: "full_pointcloud-test.csv.bin.header",
-	 	filename: "full_pointcloud-test.csv.bin",
-	 	maxMemMB: 50,	// TODO try 40 bytes
+	 	headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
+	 	filename: "full_pointcloud-large-zeroed-int16.csv.bin",
+	 	maxMemMB: 150,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 6	// Seconds
 	 }
@@ -458,6 +458,7 @@
 				 let playbutton = document.getElementById("playbutton");
 				 let pausebutton = document.getElementById("pausebutton");
 				 pausebutton.addEventListener("mousedown", () => {
+					 debugger;
 					 animation.pause();
 				 });
 				 playbutton.addEventListener("mousedown", () => {
@@ -488,6 +489,7 @@
 
 					 playbackSpeed.addEventListener("input", (e) => {
 						 let speed = playbackSpeed.value*0.25 * speedFactor;
+						 playbackSpeed.setAttribute("title", speed);
 						 animation.speed = speed;
 						 animation.pause();
 						 animation.resume();
@@ -543,8 +545,10 @@
 							 // TODO potentially need to remove this after testing:
 							 // Pause animation if window_tmax + lidarTime > TA:
 							 if ((lidarTime + window_tmax + epsilon) > TAmax) {
-								 animation.pause();
-								 $("#pausebutton").mousedown();
+								 // debugger; // check why breaking here
+								 console.log("VINAY",window.animation);
+								 window.animation.pause(); 	// This isn't pausing
+								 // $("#pausebutton").mousedown();
 								 setLoadingScreen();
 								 window.animationPaused = true;
 

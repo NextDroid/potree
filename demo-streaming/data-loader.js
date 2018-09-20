@@ -12,6 +12,7 @@ self.numBytesRead = 0;
 self.totalBytesRead = 0;
 self.streamReader;
 self.lidarTime;
+self.sentFirstSlice = false;
 self.newFetchRequestExpiraryMillis = -1;
 
 var LoaderStates = Object.freeze({UNINITIALIZED: 0, PAUSED: 1, LOADING: 2, STOPPED: 3});
@@ -418,8 +419,9 @@ function updateLidarTime(newLidarTime) {
           console.log("DataLoader is pausing");
           pause();
           // TODO experimental
-          if (self.lidarTime <= 0) { // Only auto slice at the beginning
+          if (!self.sentFirstSlice) { // Only auto slice at the beginning
             self.postMessage({msg: "request-first-slice"}); // Going to be paused so ask for slice request
+            self.sentFirstSlice = true;
           } else {
             self.postMessage({msg: "dataloader-full"});
           }
