@@ -20,6 +20,7 @@ $(document).ready(function () {
               <input type="checkbox" id="playbar_toggle">
               <span class="toggleslider"></span>
             </label>
+            <input type="range" name="playback_speed", id="playback_speed" min="1" max="8" value="4" step="any">
           </div>
         </div>
       </div>

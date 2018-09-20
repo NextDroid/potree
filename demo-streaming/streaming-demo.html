@@ -130,7 +130,9 @@
 		var t1 = 0;
 
 		var rtkOffset, rtkRange, radarOffset, radarRange, lidarOffset, lidarRange;
-
+		window.animationPaused = true; // move this somewhere better
+	  var camPoint = new THREE.Vector3(7.011, -5.318, 8.326);
+	  viewer.scene.view.position.copy(camPoint); // changed from camera
 
 
   </script>
@@ -147,13 +149,13 @@
 
 	 // Create Settings:
 	 var settings = {
-	 	// serverUrl: "http://localhost",
+	 	serverUrl: "http://localhost",
 		// serverUrl: "http://172.18.44.129",	// virtual box
-		serverUrl: "http://18.208.171.218",	// ec2 Server
+		// serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
-	 	headerFilename: "full_pointcloud-large-zeroed-float.csv.bin.header",
-	 	filename: "full_pointcloud-large-zeroed-float.csv.bin",
-	 	maxMemMB: 150,	// TODO try 40 bytes
+	 	headerFilename: "full_pointcloud-test.csv.bin.header",
+	 	filename: "full_pointcloud-test.csv.bin",
+	 	maxMemMB: 50,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 6	// Seconds
 	 }

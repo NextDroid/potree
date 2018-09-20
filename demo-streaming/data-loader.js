@@ -102,7 +102,7 @@ function sendFetchRequest(task, shouldResetBuffers=true) {
     console.log("worker received: ", myInit.headers.get("x-seek-position"));
 
     // Compute max number of points:
-    self.maxNumPoints = task.maxMemMB/task.bytesPerPoint*1e6; // TODO move to initialize function and initialize Bbuffers there (see resetBuffers())
+    self.maxNumPoints = Math.floor(task.maxMemMB/task.bytesPerPoint*1e6); // TODO move to initialize function and initialize Bbuffers there (see resetBuffers())
 
     if (shouldResetBuffers) {
       resetBuffers(); // reset buffers with new maxNumPoints
@@ -153,7 +153,7 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
 
       // Append stream data into Bbuffers:
       // var buffer = e.value;
-      var buffer = concatTypedArrays(self.prevBuffer, e.value); // TODO assumption is that e.value is Uint8Array
+      var buffer = concatTypedArrays(self.prevBuffer, e.value); // TODO see if this can by optimized, avoid copy (if there)
       var view = new DataView(buffer.buffer);
       self.numBytesRead = 0;
 
@@ -161,11 +161,11 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       for (let ii=0, len = (buffer.length-task.bytesPerPoint); ii < len; ii+=task.bytesPerPoint) {
 
         // TODO Optimize this use of the cbuffers:
-        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.x, true) + task.header.x0);
-        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.y, true) + task.header.y0);
-        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.z, true) + task.header.z0);
+        self.Bbuffers.pos.push((view.getInt16(ii+task.offsets.x, true) + task.header.x0)/100.);
+        self.Bbuffers.pos.push((view.getInt16(ii+task.offsets.y, true) + task.header.y0)/100.);
+        self.Bbuffers.pos.push((view.getInt16(ii+task.offsets.z, true) + task.header.z0)/100.);
 
-        self.Bbuffers.i.push(view.getFloat32(ii+task.offsets.i, true));
+        self.Bbuffers.i.push(view.getUint8(ii+task.offsets.i, true));
 
         self.Bbuffers.t.push(view.getFloat32(ii+task.offsets.t, true));
 
