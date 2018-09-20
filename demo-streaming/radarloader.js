@@ -7,9 +7,12 @@ isNan = function(n) {
 function loadRadar(filename, debug, callback) {
 
   let tcol = 3;
-  let xcol = 27;
-  let ycol = 28;
-  let zcol = 29;
+  // let xcol = 24; // RTK_X_M
+  // let ycol = 25; // RTK_Y_M
+  // let zcol = 26; // RTK_Z_M
+  let xcol = 27;  // RTK_EASTING_M
+  let ycol = 28;  // RTK_NORTHING_M
+  let zcol = 29;  // RTK_ALT_M
 
 
   let t0, t1;

@@ -79,6 +79,9 @@ function handleInputMessage(e) {
   } else if (e.data.msg == "runState") {
     runState();
   }
+  else if (e.data.msg == "test-state") {
+    self.testState = true;
+  }
 }
 
 function sendFetchRequest(task, shouldResetBuffers=true) {
@@ -129,7 +132,9 @@ function handleFetchResponse(response, readUntil=-1) {
 }
 
 function pump() { // TODO add streamReader function parameter, remove pump at end
-  self.streamReader.read().then((e) => {
+  self.streamReader.read().then((e) => runPump(e)).catch((e) => console.error("caught error reading from stream: ", e));
+
+    function runPump(e) {
 
     // pumpCount++; // TODO REMOVE
     // if (pumpCount > maxPumpCount) {
@@ -143,6 +148,7 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       console.log("Reached end of file");
       self.LoaderState = LoaderStates.PAUSED;
       runState();
+      self.postMessage({msg:"reached-end-of-file"});
     } else {
 
       // Append stream data into Bbuffers:
@@ -151,16 +157,17 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       var view = new DataView(buffer.buffer);
       self.numBytesRead = 0;
 
+      console.time("time runPump loop");
       for (let ii=0, len = (buffer.length-task.bytesPerPoint); ii < len; ii+=task.bytesPerPoint) {
 
         // TODO Optimize this use of the cbuffers:
-        self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.x, true) + task.header.x0);
-        self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.y, true) + task.header.y0);
-        self.Bbuffers.pos.push(view.getFloat64(ii+task.offsets.z, true) + task.header.z0);
+        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.x, true) + task.header.x0);
+        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.y, true) + task.header.y0);
+        self.Bbuffers.pos.push(view.getFloat32(ii+task.offsets.z, true) + task.header.z0);
 
-        self.Bbuffers.i.push(view.getFloat64(ii+task.offsets.i, true));
+        self.Bbuffers.i.push(view.getFloat32(ii+task.offsets.i, true));
 
-        self.Bbuffers.t.push(view.getFloat64(ii+task.offsets.t, true));
+        self.Bbuffers.t.push(view.getFloat32(ii+task.offsets.t, true));
 
         self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers TODO make var variable
 
@@ -168,46 +175,20 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
         if (self.task.seekPosBytes > self.task.filesize) { // NOTE We should never hit this (i.e. assertion)
           debugger;
         }
-
-        if (self.Bbuffers.t.length == self.Bbuffers.t.size) { // TODO check if we are going to overwrite data we want still
-                                                              // NOTE can do this check before the loop even starts like so:
-                                                              // t0 = self.lidarTime;
-                                                              // TB0 = self.Bbuffers.t.data[0];
-                                                              // if (t0 - TB0 >= 0) { // execute for loop } else { // save read buffer and pause DataLoader }
-                                                              // NOTE in order for this to work, need pause/resume functionality to be working
-
-        }
-
-        // NOTE because Javascript is only single threaded, we should never hit the code below:
-        // Check if should stop loading:
-        if (self.LoaderState != LoaderStates.LOADING) {
-          debugger;
-          if (self.LoaderState == LoaderStates.STOPPED) {
-            // Do not save remaining buffer and run next state:
-            self.totalBytesRead += self.numBytesRead;
-            self.prevBuffer = new Uint8Array(0);
-            runState();
-          } else if (self.LoaderState == LoaderStates.PAUSED) {
-            // Break out of loop, store remaining buffer and run next state
-            // TODO RACE CONDITIONS POSSIBLE!! NEED runState(PAUSED) explicitly
-            debugger;
-            break;
-          }
-        }
       }
-
+      console.timeEnd("time runPump loop");
+      console.log("runPump buffer size: ", buffer.length);
+      // debugger; // size of buffer
       // Record remaining buffer and run next state:
       self.totalBytesRead += self.numBytesRead;
       self.prevBuffer = buffer.slice(self.numBytesRead, buffer.length);  // TODO revert this
 
       // Run again:
-      // setTimeout(runState,0); // TODO USE SETTIMEOUT(0) -- check how much of a hit to run speed there is (pretty big -- need to speed this up)
-
-      // post a message to main thread who will send it back where we run next state (intent is that this is faster than setTimeout(0))
+      // Post a message to main thread who will send it back where we run next state
+      // This is faster than using setTimeout(0)
       self.postMessage({msg:"runState"});
-
     }
-  }).catch((e) => console.error("caught error reading from stream: ", e));
+  }
 }
 
 function resetBuffers() {
@@ -278,7 +259,7 @@ function slice(tmin, tmax) {
   var minIdx = self.Bbuffers.t.toArray().findIndex((x) => (x >= tmin));
   if (minIdx == -1) {
     console.log("ERROR!! INVALID TMIN: ", tmin);
-    debugger;
+    // debugger;
     minIdx = 0;
   } else {
     // TODO try picking closest of either mindIdx or minIdx-1
@@ -291,7 +272,7 @@ function slice(tmin, tmax) {
   maxIdx = (self.Bbuffers.t.length-1) - maxIdx; // correct for reversed array
   if (maxIdx == self.Bbuffers.t.length) {
     console.log("ERROR!! INVALID TMAX: ", tmax);
-    debugger;
+    // debugger;
     maxIdx = self.Bbuffers.t.length-1;
   } else {
     // TODO try picking closest of either maxIdx or maxIdx+1
@@ -309,10 +290,13 @@ function slice(tmin, tmax) {
   // Transfer Slices to runState:
   var transferObj = {
     msg: "slice",
+    tmin: tmin,
+    tmax: tmax,
     pos: posSlice,
     i: iSlice,
     t: tSlice,
-    numPoints: tSlice.length  // TODO check this value
+    numPoints: tSlice.length,  // TODO check this value
+    sliceTimeMillis: (performance.now() - tslicestart)
   }
 
   self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer]);
@@ -359,10 +343,6 @@ function pause() {
   // Pause DataLoader if loading:
   if (self.LoaderState == LoaderStates.LOADING) {
     self.LoaderState = LoaderStates.PAUSED; // Set state to paused
-    // TODO experimental
-    if (self.lidarTime <= 0) { // Only auto slice at the beginning
-      self.postMessage({msg: "request-first-slice"}); // Going to be paused so ask for slice request
-    }
     runState();
   }
 }
@@ -437,6 +417,12 @@ function updateLidarTime(newLidarTime) {
           // pause loader until lidarTime catches up to buffer
           console.log("DataLoader is pausing");
           pause();
+          // TODO experimental
+          if (self.lidarTime <= 0) { // Only auto slice at the beginning
+            self.postMessage({msg: "request-first-slice"}); // Going to be paused so ask for slice request
+          } else {
+            self.postMessage({msg: "dataloader-full"});
+          }
         } else {
           // compute new seekPosBytes at current lidarTime and restart()
           // TODO handle caching of buffer eventually -- for now throw it all away

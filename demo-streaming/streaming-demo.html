@@ -147,19 +147,19 @@
 
 	 // Create Settings:
 	 var settings = {
-	 	serverUrl: "http://localhost",
+	 	// serverUrl: "http://localhost",
 		// serverUrl: "http://172.18.44.129",	// virtual box
-		// serverUrl: "http://18.208.171.218",	// ec2 Server
+		serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
-	 	headerFilename: "full_pointcloud-large-zeroed.csv.bin.header",
-	 	filename: "full_pointcloud-large-zeroed.csv.bin",
-	 	maxMemMB: 500,	// TODO try 40 bytes
+	 	headerFilename: "full_pointcloud-large-zeroed-float.csv.bin.header",
+	 	filename: "full_pointcloud-large-zeroed-float.csv.bin",
+	 	maxMemMB: 150,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 6	// Seconds
 	 }
 
 	 // TODO define this in a better way:
-	 var speed = 11;
+	 var speedFactor = 33;
 
 	 var heartbeat;
 	 var slice;
@@ -255,9 +255,10 @@
  	 ////////////////////////////////////////////////////////////////////////////
 
 	// Load Radar:
-	 loadRadar("radar_tracks_demo.csv", true, (geometry, t_init) => {
+	 loadRadar("radarData.csv", true, (geometry, t_init) => {
 		 // uniforms
 		 uniforms = {
+			   size: {value: 1.0},
 				 color: { value: new THREE.Color( 0xffff00 ) },
 				 minGpsTime: {value: 0.0 },
 				 maxGpsTime: {value: 0.0 },
@@ -277,7 +278,8 @@
 	 });
 
 	 // Load RTK:
-	 loadRtk((pos, rot, t_init, t_range, numPoints) => {
+	 loadRtk((pos, rot, t_init, t_range, numPoints, distance) => {
+		 console.log("RTK Trajectory Length: ", distance, "meters");
 		 path = pos.map(v => new THREE.Vector3(...v));
 		 orientations = rot.map(v => new THREE.Vector3(...v));
 		 let animationPath = new Potree.AnimationPath(path);
@@ -352,12 +354,13 @@
 				 let tmin = document.getElementById("playbar_tmin");
 				 let tmax = document.getElementById("playbar_tmax");
 				 let toggleplay = document.getElementById("toggleplay");
+				 let playbackSpeed = document.getElementById("playback_speed");
 				 output.innerHTML = slider.value;
 
 				 // Animate from beginning to end
 				 let start = 0;
 				 let end = Infinity;
-				 // let speed = 33;	// empirically set as "close to realtime"
+				 let speed = playbackSpeed.value*0.25*speedFactor;	// empirically set as "close to realtime"
 				 let animation = animationPath.animate(start, end, speed, animate);
 
 				 function animate(t, updateCamera=true) {
@@ -481,6 +484,14 @@
 					 	animate(val);
 					 });
 
+					 playbackSpeed.addEventListener("input", (e) => {
+						 let speed = playbackSpeed.value*0.25 * speedFactor;
+						 animation.speed = speed;
+						 animation.pause();
+						 animation.resume();
+						 console.log("set speed to: ", speed);
+					 })
+
 					 window.addEventListener("time-updated", () => {
 
 						 console.log("time updated");
@@ -507,20 +518,39 @@
 							 TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
 							 TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
 
+
 							 // Request Slice Logic:
 							 var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
-							 var sliceTimeSec = 2.5		// TODO measure this after first slice
+							 var sliceTimeSec = 1.2		// TODO measure this after first slice
+
+							 // Slice Boundaries:
+							 var slicemin = lidarTime - window_tmin - epsilon;
+							 var slicemax = slicemin + settings.TA;
+
+							 // DataLoader Buffers:
+							 TBmin = heartbeat.tmin;
+							 TBmax = heartbeat.tmax;
 
 							 console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
 
+							 // Request Slice:
 							 if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
-								 var slicemin = lidarTime - window_tmin - epsilon;
-								 var slicemax = slicemin + settings.TA;
-
-								 // TODO TEST SLICE LOGIC
-								 // debugger
 								 requestSlice(slicemin, slicemax);
 							 }
+
+							 // TODO potentially need to remove this after testing:
+							 // Pause animation if window_tmax + lidarTime > TA:
+							 if ((lidarTime + window_tmax + epsilon) > TAmax) {
+								 animation.pause();
+								 $("#pausebutton").mousedown();
+								 setLoadingScreen();
+								 window.animationPaused = true;
+
+								 // Slow down animation speed:
+							 }
+
+
+
 
 						 } catch (e) {
 							 console.error("Error at Player Slicing Logic: ", e);

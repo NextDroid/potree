@@ -21,9 +21,9 @@ function loadRtk(callback) {
   let pitchcol = 16;  // PITCH_RAD
   let rollcol = 17;   // ROLL_RAD
 
-
   let t0, t1;
   let tstart = performance.now();
+  let distance = 0; // total distance of path
 
   const xhr = new XMLHttpRequest();
   xhr.open("GET", filename);
@@ -49,7 +49,9 @@ function loadRtk(callback) {
     let t_init = 0;
     let t_range = 0;
     let firstTimestamp = true;
+    let lastx, lasty, lastz;
     let lastRoll, lastPitch, lastYaw;
+
     for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
       row = rows[ii];
       cols = row.split(' ');
@@ -71,6 +73,9 @@ function loadRtk(callback) {
         if (firstTimestamp) {
           t_init = t;
           firstTimestamp = false;
+          lastx = x;
+          lasty = y;
+          lastz = z;
           lastRoll = 0;
           lastPitch = 0;
           lastYaw = 0;
@@ -97,6 +102,11 @@ function loadRtk(callback) {
         yaw = lastYaw + minAngle(yaw-lastYaw);
 
         orientations.push([roll, pitch, yaw]);
+
+        distance += Math.sqrt( (x-lastx)*(x-lastx) + (y-lasty)*(y-lasty) + (z-lastz)*(z-lastz) );
+        lastx = x;
+        lasty = y;
+        lastz = z;
       }
     }
 
@@ -113,7 +123,7 @@ function loadRtk(callback) {
     console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
 
 
-    callback(mpos, orientations, t_init, t_range, numPoints);
+    callback(mpos, orientations, t_init, t_range, numPoints, distance);
   };
 
   t0 = performance.now();

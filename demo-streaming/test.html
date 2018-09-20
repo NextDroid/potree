@@ -24,7 +24,7 @@
   <script src="../libs/jstree/jstree.js"></script>
   <script src="../build/potree/potree.js"></script>
   <script src="../libs/plasio/js/laslaz.js"></script>
-  <script src="streamer.js"></script>
+  <!-- <script src="streamer.js"></script> -->
 
   <div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
     <div id="potree_render_area"></div>
@@ -95,7 +95,7 @@
       }
   </script>
 
-  <script>
+  <!-- <script>
 
   // Create Settings:
   var settings = {
@@ -155,6 +155,19 @@
 
 
 
-  </script>
+  </script> -->
+	<script src="bower_components/cbuffer/cbuffer.js"></script>
+	<script src="bufferFunctions.js"></script>
+	<!-- <script src="test.js"></script> -->
+	<script>
+
+		var worker = new Worker('test.js');
+		console.log("Running Pump Tests");
+		for (let ii=0; ii<20; ii++) {
+			worker.postMessage("start");
+		}
+	</script>
+
+
 </body>
 </html>

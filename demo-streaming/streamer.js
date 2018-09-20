@@ -136,7 +136,6 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
 
     // Bounds check lidarTime:
     if ((lidarTime < 0.0) || (lidarTime > (header.tmax - header.tmin))) {
-      debugger;
       console.log("No points exist within point cloud at specified time");
 
     } else {
@@ -174,10 +173,10 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
         bufferEpsilonSec: settings.bufferEpsilonSec,
         offsets: {                       // NOTE Hardcoded
           x: 0,
-          y: 8,
-          z: 16,
-          i: 24,
-          t: 32
+          y: header.sizes[0],
+          z: header.sizes[0]+header.sizes[1],
+          i: header.sizes[0]+header.sizes[1]+header.sizes[2],
+          t: header.sizes[0]+header.sizes[1]+header.sizes[2]+header.sizes[3]
         }
       }
 
@@ -273,6 +272,41 @@ function handleDataLoaderMessage(response) {
       window.sliceNowRequested = true;
       break;
 
+    case "reached-end-of-file":
+      // TODO think about what to do when entire stream is finished playing too
+      try {
+        var time = 0;
+        if (rtkRange != null || rtkOffset != null) {
+          time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+        }
+        let maxGpsTime = cloudMesh.geometry.attributes.gpsTime.array[cloud.geometry.attributes.gpsTime.length-1];
+        if (time > maxGpsTime) {
+          // TODO stop streaming
+          animation.pause();
+          $("#pausebutton").click();
+          window.animationPaused = true;
+          DataLoader.postMessage({msg:"stop"});
+          // debugger;
+        }
+      } catch (e) {
+        console.error("Reached end of file, but error: ", e);
+      }
+      // TODO using fall through -- refactor this
+
+    case "dataloader-full":
+
+      // if animation is waiting on dataloader --> restart now
+      // TODO might break...what happens if call resume when already playing
+
+      if (typeof(window.animationPaused) != "undefined" && window.animationPaused) {
+        animation.resume();
+        $("#playbutton").mousedown();
+        window.animationPaused = false;
+        removeLoadingScreen();
+        // debugger; // click playbutton
+      }
+    break;
+
     default:
       console.log("Unknown message type received: ", response.data.msg);
   }
@@ -291,6 +325,4 @@ function startVisualization() {
   var targetPosition = new THREE.Vector3(0, 0, 0);
   viewer.scene.view.lookAt(targetPosition);
   removeLoadingScreen();
-
-
 }
