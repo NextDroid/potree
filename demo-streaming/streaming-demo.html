@@ -15,6 +15,7 @@
 	<link rel="stylesheet" type="text/css" href="../libs/jstree/themes/mixed/style.css">
 	<link rel="stylesheet" type="text/css" href="../common/playbar.css">
 	<link rel="stylesheet" type="text/css" href="../common/overlay.css">
+	<link rel="stylesheet" type="text/css" href="../common/loading-bar.css"/>
 	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 
@@ -40,6 +41,7 @@
 	<script src="radarloader.js"></script>
 	<script src="../common/playbar.js"></script>
 	<script src="../libs/other/OBJLoader.js"></script>
+	<script type="text/javascript" src="../common/loading-bar.js"></script>
 	<script src="../common/overlay.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
@@ -134,6 +136,8 @@
 	  var camPoint = new THREE.Vector3(7.011, -5.318, 8.326);
 	  viewer.scene.view.position.copy(camPoint); // changed from camera
 
+		setLoadingScreen();
+		window.lastPauseTime = 0;
 
   </script>
 
@@ -155,9 +159,9 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
 	 	filename: "full_pointcloud-large-zeroed-int16.csv.bin",
-	 	maxMemMB: 150,	// TODO try 40 bytes
+	 	maxMemMB: 100,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
-	 	TA: 6	// Seconds
+	 	TA: 10	// Seconds
 	 }
 
 	 // TODO define this in a better way:
@@ -175,6 +179,7 @@
 		vertexShader:   document.getElementById( 'vertexshader' ).textContent,
 		fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
 		transparent:    true,
+		depthWrite: 		 false,		// Otherwise, points behind transparent points will be hidden
 		uniforms: {
 			size: {value: 0.05},
 			color: { value: new THREE.Color( 0x003DFF ) },
@@ -271,7 +276,8 @@
 				 uniforms:       uniforms,
 				 vertexShader:   document.getElementById( 'vertexshader' ).textContent,
 				 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-				 transparent:    true
+				 transparent:    true,
+				 depthTest: 		 false		// Will not be hidden behind anything
 		 });
 		 var material = new THREE.PointsMaterial( {size:1.0} );
 		 var mesh = new THREE.Points(geometry, shaderMaterial);
@@ -458,7 +464,6 @@
 				 let playbutton = document.getElementById("playbutton");
 				 let pausebutton = document.getElementById("pausebutton");
 				 pausebutton.addEventListener("mousedown", () => {
-					 debugger;
 					 animation.pause();
 				 });
 				 playbutton.addEventListener("mousedown", () => {
@@ -487,7 +492,16 @@
 					 	animate(val);
 					 });
 
-					 playbackSpeed.addEventListener("input", (e) => {
+					 slider.addEventListener("mouseup", (e) => {
+						 console.log("mouseup event: ", e);
+
+						 streamFromTimeNew(slider.value/100, {offset:rtkOffset, range: rtkRange}, header, settings);
+						 setLoadingScreen();
+						 window.firstSliceRequested = true;
+
+					 });
+
+					 playbackSpeed.addEventListener("mouseup", (e) => {
 						 let speed = playbackSpeed.value*0.25 * speedFactor;
 						 playbackSpeed.setAttribute("title", speed);
 						 animation.speed = speed;
@@ -498,7 +512,6 @@
 
 					 window.addEventListener("time-updated", () => {
 
-						 console.log("time updated");
 						 if (typeof(window.numTimeUpdated) == "undefined") {
 							 window.numTimeUpdated = 0;
 						 } else {
@@ -525,7 +538,7 @@
 
 							 // Request Slice Logic:
 							 var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
-							 var sliceTimeSec = 1.2		// TODO measure this after first slice
+							 var sliceTimeSec = window.sliceTimeMillis/1000;		// TODO measure this after first slice
 
 							 // Slice Boundaries:
 							 var slicemin = lidarTime - window_tmin - epsilon;

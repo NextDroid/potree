@@ -12,6 +12,8 @@ self.numBytesRead = 0;
 self.totalBytesRead = 0;
 self.streamReader;
 self.lidarTime;
+self.lidarTimePausedAt = 0;
+self.shouldSendSliceRequest = false;
 self.sentFirstSlice = false;
 self.newFetchRequestExpiraryMillis = -1;
 
@@ -75,13 +77,15 @@ function handleInputMessage(e) {
 
     // Save lidarTime:
     updateLidarTime(e.data.time);
-    console.log("lidarTime heartbeat: ", self.lidarTime);
+    // console.log("lidarTime heartbeat: ", self.lidarTime);
 
   } else if (e.data.msg == "runState") {
     runState();
   }
   else if (e.data.msg == "test-state") {
     self.testState = true;
+  } else if (e.data.msg == "send-slice-request-request") {
+    self.shouldSendSliceRequest = true;
   }
 }
 
@@ -137,12 +141,6 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
 
     function runPump(e) {
 
-    // pumpCount++; // TODO REMOVE
-    // if (pumpCount > maxPumpCount) {
-    //   console.log("Terminated with pump count: ", pumpCount, "(greater than max pump count)");
-    //   return;
-    // }
-
     // Check if reached end of file:
     if (e.done) {
       // terminate();
@@ -152,15 +150,8 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
       self.postMessage({msg:"reached-end-of-file"});
     } else {
 
-      // Append stream data into Bbuffers:
-      // var buffer = e.value;
-      var buffer = concatTypedArrays(self.prevBuffer, e.value); // TODO see if this can by optimized, avoid copy (if there)
-      var view = new DataView(buffer.buffer);
-      self.numBytesRead = 0;
-
-      console.time("time runPump loop");
-      for (let ii=0, len = (buffer.length-task.bytesPerPoint); ii < len; ii+=task.bytesPerPoint) {
-
+      function parseBuffer(view, ii=0) {
+        // debugger; // check alignment TODO HERE
         // TODO Optimize this use of the cbuffers:
         self.Bbuffers.pos.push((view.getInt16(ii+task.offsets.x, true) + task.header.x0)/100.);
         self.Bbuffers.pos.push((view.getInt16(ii+task.offsets.y, true) + task.header.y0)/100.);
@@ -177,8 +168,36 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
           debugger;
         }
       }
-      console.timeEnd("time runPump loop");
-      console.log("runPump buffer size: ", buffer.length);
+
+      // Append stream data into Bbuffers:
+      var buffer = e.value;
+      var buffer = concatTypedArrays(self.prevBuffer, e.value); // TODO see if this can by optimized, avoid copy (if there)
+      var view = new DataView(buffer.buffer);
+      self.numBytesRead = 0;
+
+      // Parse first point manually to handle alignment issues with previous buffer:
+      // var buffer = e.value;
+      // var view;
+      // var numBytesNeeded = self.task.bytesPerPoint - self.prevBuffer.length;
+      // while (numBytesNeeded < 0) { numBytesNeeded+= self.task.bytesPerPoint }
+      // if (self.prevBuffer.length != 0) {
+      //   var prevBuffer = concatTypedArrays(self.prevBuffer, buffer.slice(0, numBytesNeeded));
+      //   view = new DataView(prevBuffer.buffer);
+      //   parseBuffer(view);
+      // } else {
+      //   numBytesNeeded = 0;
+      // }
+      //
+      // // Parse Remaining Points:
+      // self.numBytesRead = 0;
+      // bufferLength = buffer.length - numBytesNeeded; // Number of bytes to read from buffer
+      // view = new DataView(buffer.buffer, numBytesNeeded); // Dataview offset by numBytesNeeded
+
+
+      for (let ii=0, len = (buffer.length-task.bytesPerPoint); ii < len; ii+=task.bytesPerPoint) { // NOTE: len stops early by one point's worth of data
+        parseBuffer(view, ii);
+      }
+
       // debugger; // size of buffer
       // Record remaining buffer and run next state:
       self.totalBytesRead += self.numBytesRead;
@@ -301,8 +320,10 @@ function slice(tmin, tmax) {
   }
 
   self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer]);
-
+  self.shouldSendSliceRequest = false;
+  
   tsendSlices = performance.now();
+
 
   dtSingleLoop = tSingleLoop - tslicestart;
   dtFindMinMillis = tfoundMin - tSingleLoop;
@@ -330,8 +351,11 @@ function sendHeartbeat() {
       tmin: self.Bbuffers.t.data[self.Bbuffers.t.start],
       tmax: self.Bbuffers.t.data[self.Bbuffers.t.end],
       numPoints: self.Bbuffers.t.length,
+      totalNumPoints: self.Bbuffers.t.size,
       numBytesRead: self.numBytesRead,
       totalBytesRead: self.totalBytesRead,
+      lidarTime: self.lidarTime,
+      pauseTime: self.lidarTimePausedAt,
       state: self.LoaderState
     });
   } catch (e) {
@@ -376,6 +400,7 @@ function restart(task=null) {
   // Close Stream and Reset Buffers:
   self.LoaderState = LoaderStates.STOPPED; // Set state to STOPPED until data fetch response is received
   runState();
+  self.seekPosBytes = 0;  // TODO maybe put this somewhere else?
 
   // Try to restart the previous task if exists:
   try {
@@ -405,21 +430,23 @@ function updateLidarTime(newLidarTime) {
       if (loadableBytes > 0) {
         if (loadableBytes/task.bytesPerPoint > (task.maxNumPoints-epsilonNumPoints)) {
           // handle the case where lidarTime is approaching end of buffer
-          console.log("DataLoader is falling behind");
+          // console.log("DataLoader is falling behind");
           // TODO
 
         } else {
           // continue normal loading (resume if paused)
-          console.log("DataLoader is loading as normal");
+          // console.log("DataLoader is loading as normal");
           resume();
         }
       } else if (loadableBytes <= 0) {
         if (Math.abs(loadableSecs) < self.task.bufferEpsilonSec) {
           // pause loader until lidarTime catches up to buffer
-          console.log("DataLoader is pausing");
+          // console.log("DataLoader is pausing");
           pause();
+          self.lidarTimePausedAt = self.lidarTime;
+
           // TODO experimental
-          if (!self.sentFirstSlice) { // Only auto slice at the beginning
+          if (!self.sentFirstSlice || self.shouldSendSliceRequest) { // Only auto slice at the beginning
             self.postMessage({msg: "request-first-slice"}); // Going to be paused so ask for slice request
             self.sentFirstSlice = true;
           } else {
@@ -428,7 +455,7 @@ function updateLidarTime(newLidarTime) {
         } else {
           // compute new seekPosBytes at current lidarTime and restart()
           // TODO handle caching of buffer eventually -- for now throw it all away
-          console.log("DataLoader should restart from new seek point");
+          // console.log("DataLoader should restart from new seek point");
 
 
         }

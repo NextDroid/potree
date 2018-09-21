@@ -141,6 +141,7 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
     } else {
       // Stop Previous Stream:
       DataLoader.postMessage({msg: "stop"});
+      DataLoader.postMessage({msg: "send-slice-request-request"});
 
       // Compute Number of Bytes per Point:
       var bytesPerPoint = 0;
@@ -243,13 +244,33 @@ function handleDataLoaderMessage(response) {
 
       if (typeof(window.firstSliceRequested) != "undefined" && window.firstSliceRequested) {
         startVisualization();
+        window.numSlices = 1;
+        window.sliceTimeMillis = slice.sliceTimeMillis;
+      } else {
+        window.sliceTimeMillis = (window.sliceTimeMillis*window.numSlices+slice.sliceTimeMillis)/(window.numSlices+1);
+        window.numSlices++;
       }
+      console.log("Slice Time (ms): ", window.sliceTimeMillis);
       window.openSliceRequest = false;
       break;
 
     case "heartbeat":
       console.log("heartbeat: ", response.data, "\nstate: ", response.data.state);
       heartbeat = response.data;
+
+      window.pauseTimeChanged = (window.lastPauseTime != heartbeat.pauseTime);
+
+      // Update loading bar if paused (see DataLoader's LoadingStates for enum val)
+      if (window.loadingScreenUp) {
+        if (heartbeat.numPoints != heartbeat.totalNumPoints) {
+          loadingBar.set(100*heartbeat.numPoints/heartbeat.totalNumPoints);
+        } else if (window.pauseTimeChanged) {
+          var loadingBarValue = 100*(1-(heartbeat.lidarTime - heartbeat.tmin)/(heartbeat.lidarTime - heartbeat.pauseTime));
+          loadingBar.set(loadingBarValue);
+        }
+      } else {
+        loadingBar.set(0);
+      }
 
       // TODO do something with heartbeat
       // Save TBmin, TBmax, numPoints, memSize
@@ -318,7 +339,6 @@ function startVisualization() {
   // Start Animation:
   animation.resume();
   $("#playbutton").mousedown(); // Toggle playbutton
-
 
   camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
   viewer.scene.view.position.copy(camPoint); // changed from camera

@@ -1,6 +1,6 @@
 #loading_overlay {
     position: fixed; /* Sit on top of the page content */
-    display: block; /* Hidden by default */
+    display: table; /* Hidden by default */
     width: 100%; /* Full width (cover the whole page) */
     height: 100%; /* Full height (cover the whole page) */
     top: 0;
@@ -9,7 +9,7 @@
     bottom: 0;
     background-color: rgba(0,0,0,0.5); /* Black background with opacity */
     z-index: 10; /* Specify a stack order in case you're using a different order for other elements */
-    pointer-events: none;
+    pointer-events: none
 }
 
 .loading_text {
@@ -20,4 +20,15 @@
   left: 50%;
   top: 50%;
   color: #FFFFFF;
+}
+
+#loading-bar {
+  margin: auto;
+  width: 50%;
+  height: 50%;
+  font-family: 'Open Sans', sans-serif;
+  color: #FFFFFF;
+  text-shadow: none;
+  display: table-cell;
+  vertical-align: middle;
 }
