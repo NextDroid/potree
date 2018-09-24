@@ -89,16 +89,14 @@ function handleInputMessage(e) {
     self.shouldSendSliceRequest = true;
   } else if (e.data.msg == "rtkLookup") {
     self.rtkLookup = e.data.rtkLookup;
-    self.rtkLookupPos = [];
-    self.rtkLookupOrient = [];
-    debugger; // loop below
+    self.rtkLookupPos = [];   // TODO potential optimization
+    self.rtkLookupOrient = [];// TODO potential optimization
     for (let ii=0; ii<self.rtkLookup.length; ii++) {
       for (let jj=0; jj<3; jj++) {
         self.rtkLookupPos.push(self.rtkLookup[ii].position[jj]);
         self.rtkLookupOrient.push(self.rtkLookup[ii].orientation[jj]);
       }
     }
-    debugger; // loop above
   } else if (e.data.msg == "rtkTimeConversion") {
     self.rtkTimeConversion = e.data.rtkTimeConversion;
   }

@@ -52,7 +52,7 @@
 		<div id="potree_sidebar_container"> </div>
 	</div>
 
-	<script type="x-shader/x-vertex" id="vertexshader">
+	<script type="x-shader/x-vertex" id="vertexshader-pointcloud">
 
       attribute float alpha;
       attribute float gpsTime;
@@ -78,14 +78,8 @@
 			// Construct Rotation Matrix (roll pitch yaw):
 			vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
 			vec3 dX = currentRtkPosition - originalRtkPosition;
-			dX *= -1.0;
-			// dTheta.z *= -1.0;
-			// mat3 R90 = mat3(
-			// 	0.0, -1.0, 0.0,
-			// 	1.0,  0.0, 0.0,
-			// 	0.0,  0.0, 1.0
-			// );
-			// dTheta = R90*dTheta; // Rotate by 90 degrees
+			dTheta *= -1.0; // TODO why do I need to transform from current to original?
+			dX *= -1.0; // TODO why do I need to translate from current to original?
 
 			float sinRoll = sin(dTheta.x);
 			float cosRoll = cos(dTheta.x);
@@ -130,6 +124,33 @@
 			// vAlpha = 1.0;
       }
   </script>
+
+	<script type="x-shader/x-vertex" id="vertexshader-radar">
+
+			attribute float alpha;
+			attribute float gpsTime;
+			attribute vec3 originalRtkPosition;
+			attribute vec3 originalRtkOrientation;
+
+			uniform float minGpsTime;
+			uniform float maxGpsTime;
+			uniform float size;
+
+			varying float vAlpha;
+
+			void main() {
+				if (minGpsTime <= gpsTime && gpsTime <= maxGpsTime) {
+					vAlpha = 1.0;
+				} else {
+					vAlpha = 0.0;
+				}
+
+			vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+			gl_Position = projectionMatrix * mvPosition;
+			gl_PointSize = size;
+			}
+	</script>
+
 
   <script type="x-shader/x-fragment" id="fragmentshader">
       uniform vec3 color;
@@ -206,7 +227,7 @@
 	 }
 
 	 // TODO define this in a better way:
-	 var speedFactor = 23;
+	 var speedFactor = 33;
 	 // var speedFactor = 33;
 
 	 var heartbeat;
@@ -218,7 +239,7 @@
 	var material = new THREE.ShaderMaterial({
 		size: 0.05, // 0.005
 		// vertexColors: THREE.VertexColors,	// NOTE using THREE.VertexColors allows individual points to have their own color
-		vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+		vertexShader:   document.getElementById( 'vertexshader-pointcloud' ).textContent,
 		fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
 		transparent:    true,
 		depthWrite: 		 false,		// Otherwise, points behind transparent points will be hidden
@@ -236,25 +257,6 @@
 	cloudMesh.timeRange = {tmin: 0, tmax: 0};
 	cloudMesh.name = "cloud";
 	viewer.scene.scene.add(cloudMesh);
-	cloudMesh.onBeforeRender = function(renderer, scene, camera, geometry, material, group) {
-
-		// // Store camera position as high and low in material:
-		// var pos = Float64Array.from(camera.position.toArray());
-		// var posHi = new Float32Array(3);
-		// var posLo = new Float32Array(3);
-		//
-		// for (let ii=0; ii<3; ii++) {
-		//
-		// 	// Split Float64 into upper and lower Float32 values:
-		// 	// For concept see here: https://www.thasler.com/blog/blog/glsl-part2-emu
-		// 	posHi[ii] = Math.fround(pos[ii]);
-		// 	posLo[ii] = pos[ii] - posHi[ii];
-		// }
-		//
-		// // Update material uniforms:
-		// material.uniforms.camPosHi.value = new THREE.Vector3(...posHi);
-		// material.uniforms.camPosLo.value = new THREE.Vector3(...posLo);
-	};
 
 	// Send Header Request:
 	sendHeaderRequest(settings.serverUrl + ":" + settings.port + "/args/header/" + settings.headerFilename, (e) => {
@@ -316,12 +318,11 @@
 		 // // point cloud material
 		 var shaderMaterial = new THREE.ShaderMaterial( {
 				 uniforms:       uniforms,
-				 vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+				 vertexShader:   document.getElementById( 'vertexshader-radar' ).textContent,
 				 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
 				 transparent:    true,
 				 depthTest: 		 false		// Will not be hidden behind anything
 		 });
-		 debugger;
 		 var material = new THREE.PointsMaterial( {size:0.01} );
 		 material.uniforms = uniforms;
 		 // material.uniforms.size = uniforms.size;
@@ -330,7 +331,7 @@
 		 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
 		 // material.uniforms.initialTime = uniforms.initialTime;
 
-		 var mesh = new THREE.Points(geometry, material); // TODO using regular material in the meantime b/c of shader changes for pointcloud
+		 var mesh = new THREE.Points(geometry, shaderMaterial); // TODO using regular material in the meantime b/c of shader changes for pointcloud
 		 mesh.name = "radar";
 		 viewer.scene.scene.add(mesh);
 	 });
@@ -340,17 +341,13 @@
 		 rtkOffset = t_init;
 		 rtkRange = t_range;
 		 rtkLookup = rtkLookupOutput;
-		 debugger; // rtkPosInit below
-
-		 let p0 = rtkLookup[0].position;
-		 let o0 = rtkLookup[0].orientation;
 		 rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
 		 rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
 		 rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
 
 		 DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: rtkOffset, rtkRange:rtkRange}});
 		 DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
-		 debugger; // rtkPosInit
+
 		 console.log("RTK Trajectory Length: ", distance, "meters");
 		 path = pos.map(v => new THREE.Vector3(...v));
 		 orientations = rot.map(v => new THREE.Vector3(...v));
