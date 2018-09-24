@@ -56,12 +56,15 @@
 
       attribute float alpha;
       attribute float gpsTime;
+			attribute vec3 originalRtkPosition;
+			attribute vec3 originalRtkOrientation;
 
       uniform float minGpsTime;
       uniform float maxGpsTime;
 			uniform float size;
-			uniform vec3 camPosHi;
-			uniform vec3 camPosLo;
+
+			uniform vec3 currentRtkPosition;
+			uniform vec3 currentRtkOrientation;
 
       varying float vAlpha;
 
@@ -72,21 +75,59 @@
           vAlpha = 0.0;
         }
 
-				gl_PointSize = size;
+			// Construct Rotation Matrix (roll pitch yaw):
+			vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
+			vec3 dX = currentRtkPosition - originalRtkPosition;
+			dX *= -1.0;
+			// dTheta.z *= -1.0;
+			// mat3 R90 = mat3(
+			// 	0.0, -1.0, 0.0,
+			// 	1.0,  0.0, 0.0,
+			// 	0.0,  0.0, 1.0
+			// );
+			// dTheta = R90*dTheta; // Rotate by 90 degrees
 
-				// gl_Position = vec4(position, 1.0);
-				// vec3 p = position - camPosHi;
-				// p -= camPosLo;
-        // vec4 mvPosition = modelViewMatrix * vec4( p, 1.0 );
-				// vec4 posTmp = projectionMatrix * mvPosition;
-				// posTmp += vec4(camPosHi, 0.0);
-				// posTmp += vec4(camPosLo, 0.0);
-				// gl_Position = posTmp;
+			float sinRoll = sin(dTheta.x);
+			float cosRoll = cos(dTheta.x);
+			float sinPitch = sin(dTheta.y);
+			float cosPitch = cos(dTheta.y);
+			float sinYaw = sin(dTheta.z);
+			float cosYaw = cos(dTheta.z);
 
-				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-				gl_Position = projectionMatrix * mvPosition;
+			mat3 Rx = mat3(
+				1.0, 	0.0, 			0.0,
+				0.0,	cosRoll,	sinRoll,
+				0.0,	-sinRoll, cosRoll
+			);
 
-				// vAlpha = 1.0;
+			mat3 Ry = mat3(
+				cosPitch,	0.0, 	-sinPitch,
+				0.0,			1.0,	0.0,
+				sinPitch, 0.0,	cosPitch
+			);
+
+			mat3 Rz = mat3(
+				cosYaw, 	sinYaw, 0.0,
+				-sinYaw, 	cosYaw, 0.0,
+				0.0,			0.0,		1.0
+			);
+
+			mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+			vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
+
+			mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
+			SE3[3] = T; // Set the translation vector components
+
+			// Apply SE3 transformation to the current position;
+			vec4 newPosition = SE3*vec4(position, 1.0);
+
+
+			vec4 mvPosition = modelViewMatrix * newPosition;
+			// vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+			gl_Position = projectionMatrix * mvPosition;
+			gl_PointSize = size;
+
+			// vAlpha = 1.0;
       }
   </script>
 
@@ -131,7 +172,7 @@
 		var t0 = performance.now();
 		var t1 = 0;
 
-		var rtkOffset, rtkRange, radarOffset, radarRange, lidarOffset, lidarRange;
+		var rtkOffset, rtkRange, rtkLookup, rtkPosInit, rtkOrientInit, radarOffset, radarRange, lidarOffset, lidarRange;
 		window.animationPaused = true; // move this somewhere better
 	  var camPoint = new THREE.Vector3(7.011, -5.318, 8.326);
 	  viewer.scene.view.position.copy(camPoint); // changed from camera
@@ -165,7 +206,8 @@
 	 }
 
 	 // TODO define this in a better way:
-	 var speedFactor = 33;
+	 var speedFactor = 23;
+	 // var speedFactor = 33;
 
 	 var heartbeat;
 	 var slice;
@@ -185,8 +227,8 @@
 			color: { value: new THREE.Color( 0x003DFF ) },
 			minGpsTime: {value: 0.0 },
 			maxGpsTime: {value: 0.0 },
-			camPosHi: {type: "v3", value: new THREE.Vector3(0,0,0)},
-			camPosLo: {type: "v3", value: new THREE.Vector3(0,0,0)}
+			currentRtkPosition: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			currentRtkOrientation: {type: "v3", value: new THREE.Vector3(0,0,0)}
 			// initialTime: {value: t_init}
 		}
 	});
@@ -196,22 +238,22 @@
 	viewer.scene.scene.add(cloudMesh);
 	cloudMesh.onBeforeRender = function(renderer, scene, camera, geometry, material, group) {
 
-		// Store camera position as high and low in material:
-		var pos = Float64Array.from(camera.position.toArray());
-		var posHi = new Float32Array(3);
-		var posLo = new Float32Array(3);
-
-		for (let ii=0; ii<3; ii++) {
-
-			// Split Float64 into upper and lower Float32 values:
-			// For concept see here: https://www.thasler.com/blog/blog/glsl-part2-emu
-			posHi[ii] = Math.fround(pos[ii]);
-			posLo[ii] = pos[ii] - posHi[ii];
-		}
-
-		// Update material uniforms:
-		material.uniforms.camPosHi.value = new THREE.Vector3(...posHi);
-		material.uniforms.camPosLo.value = new THREE.Vector3(...posLo);
+		// // Store camera position as high and low in material:
+		// var pos = Float64Array.from(camera.position.toArray());
+		// var posHi = new Float32Array(3);
+		// var posLo = new Float32Array(3);
+		//
+		// for (let ii=0; ii<3; ii++) {
+		//
+		// 	// Split Float64 into upper and lower Float32 values:
+		// 	// For concept see here: https://www.thasler.com/blog/blog/glsl-part2-emu
+		// 	posHi[ii] = Math.fround(pos[ii]);
+		// 	posLo[ii] = pos[ii] - posHi[ii];
+		// }
+		//
+		// // Update material uniforms:
+		// material.uniforms.camPosHi.value = new THREE.Vector3(...posHi);
+		// material.uniforms.camPosLo.value = new THREE.Vector3(...posLo);
 	};
 
 	// Send Header Request:
@@ -279,14 +321,36 @@
 				 transparent:    true,
 				 depthTest: 		 false		// Will not be hidden behind anything
 		 });
-		 var material = new THREE.PointsMaterial( {size:1.0} );
-		 var mesh = new THREE.Points(geometry, shaderMaterial);
+		 debugger;
+		 var material = new THREE.PointsMaterial( {size:0.01} );
+		 material.uniforms = uniforms;
+		 // material.uniforms.size = uniforms.size;
+		 // material.uniforms.color = uniforms.color;
+		 // material.uniforms.minGpsTime = uniforms.minGpsTime;
+		 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
+		 // material.uniforms.initialTime = uniforms.initialTime;
+
+		 var mesh = new THREE.Points(geometry, material); // TODO using regular material in the meantime b/c of shader changes for pointcloud
 		 mesh.name = "radar";
 		 viewer.scene.scene.add(mesh);
 	 });
 
 	 // Load RTK:
-	 loadRtk((pos, rot, t_init, t_range, numPoints, distance) => {
+	 loadRtk((pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init) => {
+		 rtkOffset = t_init;
+		 rtkRange = t_range;
+		 rtkLookup = rtkLookupOutput;
+		 debugger; // rtkPosInit below
+
+		 let p0 = rtkLookup[0].position;
+		 let o0 = rtkLookup[0].orientation;
+		 rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
+		 rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
+		 rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
+
+		 DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: rtkOffset, rtkRange:rtkRange}});
+		 DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
+		 debugger; // rtkPosInit
 		 console.log("RTK Trajectory Length: ", distance, "meters");
 		 path = pos.map(v => new THREE.Vector3(...v));
 		 orientations = rot.map(v => new THREE.Vector3(...v));
@@ -366,10 +430,10 @@
 				 output.innerHTML = slider.value;
 
 				 // Animate from beginning to end
-				 let start = 0;
-				 let end = Infinity;
-				 let speed = playbackSpeed.value*0.25*speedFactor;	// empirically set as "close to realtime"
-				 let animation = animationPath.animate(start, end, speed, animate);
+				 var start = 0;
+				 var end = Infinity;
+				 var speed = playbackSpeed.value*0.25*speedFactor;	// empirically set as "close to realtime"
+				 var animation = animationPath.animate(start, end, speed, animate);
 
 				 function animate(t, updateCamera=true) {
 					 animation.repeat = true;
@@ -428,6 +492,8 @@
 					 var cloud = viewer.scene.scene.getObjectByName("cloud");
 					 cloud.material.uniforms.minGpsTime.value = minLidarTime;
 					 cloud.material.uniforms.maxGpsTime.value = maxLidarTime;
+					 cloud.material.uniforms.currentRtkPosition.value.copy(rtkPoint.sub(rtkPosInit));
+					 cloud.material.uniforms.currentRtkOrientation.value.copy(vehicleOrientation.sub(rtkOrientInit));
 
 					 // Animate Radar:
 					 minRadarTime = minGpsTime - radarOffset;

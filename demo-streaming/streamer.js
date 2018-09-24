@@ -17,7 +17,7 @@ function startHeartbeat() {
     try {
       var time = 0;
       if (rtkRange != null || rtkOffset != null) {
-        time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+        time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin;
       }
       DataLoader.postMessage({
         msg: "lidarTime",
@@ -220,6 +220,8 @@ function handleDataLoaderMessage(response) {
   switch (response.data.msg) {
 
     case "slice":
+    // debugger;// start slice
+    tStartAddAttr = performance.now();
       console.log("Slice: ", response.data);
       slice = response.data;
 
@@ -227,32 +229,71 @@ function handleDataLoaderMessage(response) {
         var positionAttributes = new THREE.BufferAttribute(slice.pos, 3);
         var intensityAttributes = new THREE.BufferAttribute(slice.i, 1);
         var timeAttributes = new THREE.BufferAttribute(slice.t, 1);
-        // debugger; // check attributes above
+
+        // // TODO add rtkPosition and rtkOrientation attributes:
+        // var rtkPositions = new Float32Array(3*slice.numPoints);
+        // var rtkOrientations  = new Float32Array(3*slice.numPoints);
+        // var t_lidar, t_rtk, idx, rtkState;
+        // for (let ii=0, len=slice.numPoints; ii<len; ii++) {
+        //   t_lidar = slice.t[ii];
+        //   t_rtk = t_lidar + header.tmin - rtkOffset;
+        //   idx = Math.round(t_rtk*100);
+        //   rtkState = rtkLookup[idx];
+        //
+        //   // Note: jj is offset along each row (e.g. x,y,z)
+        //   for (let jj=0; jj<3; jj++) {
+        //     rtkPositions[3*ii+jj] = rtkState.position[jj];
+        //     rtkOrientations[3*ii+jj] = rtkState.orientation[jj];
+        //   }
+        // }
+
+
+        // var t;
+        // var rtkPositions = new Float32Array(3*slice.numPoints);
+        // var rtkOrientations = new Float32Array(3*slice.numPoints);
+        // for (let ii=0, len=slice.numPoints; ii<len; ii++) {
+        //     t = slice.t[ii];
+        //     // TODO convert from lidarTime to rtkTime to playerTime:
+        //     playerTime = (t+header.tmin-rtkOffset)/rtkRange;
+        //     rtkPosition = animation.getPoint(playerTime);
+        //     rtkOrientation = viewer.scene.scene.getObjectByName("bunny").orientationPath.getPoint(playerTime);
+        //
+        //     rtkPositions[ii+0] = rtkPosition.x;
+        //     rtkPositions[ii+1] = rtkPosition.y;
+        //     rtkPositions[ii+2] = rtkPosition.z;
+        //     rtkOrientations[ii+0] = rtkOrientation.x;
+        //     rtkOrientations[ii+1] = rtkOrientation.y;
+        //     rtkOrientations[ii+2] = rtkOrientation.z
+        // }
+        // debugger; // check below
+        var rtkPositionAttributes = new THREE.BufferAttribute(slice.rtkPos, 3);
+        var rtkOrientationAttributes = new THREE.BufferAttribute(slice.rtkOrient, 3);
+        // // debugger; // check attributes above
 
         cloudMesh.geometry.addAttribute("position", positionAttributes);
         cloudMesh.geometry.addAttribute("intensity", intensityAttributes);
         cloudMesh.geometry.addAttribute("gpsTime", timeAttributes);
+        cloudMesh.geometry.addAttribute("originalRtkPosition", rtkPositionAttributes);
+        cloudMesh.geometry.addAttribute("originalRtkOrientation", rtkOrientationAttributes);
+        // debugger; // check attributes;
         cloudMesh.geometry.computeBoundingSphere();
-
-        // TODO Remove
-        // var cloudCenter = cloudMesh.geometry.boundingSphere.center;
-        // var camPoint = cloudCenter.copy(cloudCenter.add(new THREE.Vector3(100, 100, 100)));
-        // viewer.scene.view.position.copy(camPoint); // changed from camera
-        // viewer.scene.view.lookAt(cloudMesh.geometry.boundingSphere.center);
-
       }
+      tEndAddAttr = performance.now();
+      dtAddAttrMillis = tEndAddAttr - tStartAddAttr;
 
       if (typeof(window.firstSliceRequested) != "undefined" && window.firstSliceRequested) {
         startVisualization();
         window.numSlices = 1;
-        window.sliceTimeMillis = slice.sliceTimeMillis;
+        window.sliceTimeMillis = slice.sliceTimeMillis+dtAddAttrMillis;
       } else {
-        window.sliceTimeMillis = (window.sliceTimeMillis*window.numSlices+slice.sliceTimeMillis)/(window.numSlices+1);
+        window.sliceTimeMillis = (window.sliceTimeMillis*window.numSlices+(slice.sliceTimeMillis+dtAddAttrMillis))/(window.numSlices+1);
         window.numSlices++;
       }
       console.log("Slice Time (ms): ", window.sliceTimeMillis);
       window.openSliceRequest = false;
       break;
+
+
 
     case "heartbeat":
       console.log("heartbeat: ", response.data, "\nstate: ", response.data.state);
@@ -282,7 +323,6 @@ function handleDataLoaderMessage(response) {
       break;
 
     case "request-first-slice":
-
       //Request slice from DataLoader:
       var time = 0;
       if (rtkRange != null || rtkOffset != null) {

@@ -16,6 +16,8 @@ self.lidarTimePausedAt = 0;
 self.shouldSendSliceRequest = false;
 self.sentFirstSlice = false;
 self.newFetchRequestExpiraryMillis = -1;
+self.rtkLookup;
+self.rtkTimeConversion;
 
 var LoaderStates = Object.freeze({UNINITIALIZED: 0, PAUSED: 1, LOADING: 2, STOPPED: 3});
 self.LoaderState = LoaderStates.STOPPED;
@@ -62,7 +64,6 @@ function handleInputMessage(e) {
     restart(e.data.task);
 
   } else if (e.data.msg == "slice") {
-
     // Slice Bbuffers:
     var tmin = e.data.tmin;
     var tmax = e.data.tmax;
@@ -86,6 +87,20 @@ function handleInputMessage(e) {
     self.testState = true;
   } else if (e.data.msg == "send-slice-request-request") {
     self.shouldSendSliceRequest = true;
+  } else if (e.data.msg == "rtkLookup") {
+    self.rtkLookup = e.data.rtkLookup;
+    self.rtkLookupPos = [];
+    self.rtkLookupOrient = [];
+    debugger; // loop below
+    for (let ii=0; ii<self.rtkLookup.length; ii++) {
+      for (let jj=0; jj<3; jj++) {
+        self.rtkLookupPos.push(self.rtkLookup[ii].position[jj]);
+        self.rtkLookupOrient.push(self.rtkLookup[ii].orientation[jj]);
+      }
+    }
+    debugger; // loop above
+  } else if (e.data.msg == "rtkTimeConversion") {
+    self.rtkTimeConversion = e.data.rtkTimeConversion;
   }
 }
 
@@ -301,11 +316,69 @@ function slice(tmin, tmax) {
   tfoundMax = performance.now();
 
   // Execute Slices:
+  // TODO optimize by moving all into a single for loop
   var posSlice = Float32Array.from(self.Bbuffers.pos.slice(3*minIdx, 3*maxIdx));
   var iSlice = Float32Array.from(self.Bbuffers.i.slice(minIdx, maxIdx));
   var tSlice = Float32Array.from(self.Bbuffers.t.slice(minIdx, maxIdx));
 
   tcreateSlices = performance.now();
+
+
+  // TODO single loop to create all slices:
+  // debugger; // check below
+  var numPoints = maxIdx-minIdx;
+  // var posSlice = new Float32Array(3*numPoints);
+  // var iSlice = new Float32Array(numPoints);
+  // var tSlice = new Float32Array(numPoints);
+  var rtkPosSlice = new Float32Array(3*numPoints);
+  var rtkOrientSlice = new Float32Array(3*numPoints);
+
+  var t_lidar, t_rtk, idxRtk, rtkState;
+  var rtkOffset = self.rtkTimeConversion.rtkOffset;
+  for (let ii=0; ii<numPoints; ii++) {
+
+    // Get closest RTK State for current point:
+    t_lidar = self.Bbuffers.t.get(minIdx+ii);
+    t_rtk = t_lidar + self.task.header.tmin - rtkOffset;
+    idxRtk = Math.round(t_rtk*100);  //index conversion function
+    rtkState = self.rtkLookup[idxRtk]; // rtkState at time t
+
+    // Populate all 3 Dimensional Slices:
+    // Note: jj is offset for each dimension (e.g. x,y,z)
+    for (let jj=0; jj<3; jj++) {
+      idxOffsetXYZ = 3*ii+jj;
+      // posSlice[idxOffsetXYZ] = self.Bbuffers.pos.get(3*minIdx+idxOffsetXYZ);
+      rtkPosSlice[idxOffsetXYZ] = rtkState.position[jj];
+      rtkOrientSlice[idxOffsetXYZ] = rtkState.orientation[jj];
+    }
+
+    // Fill remaining slices:
+    // iSlice[ii] = self.Bbuffers.i.get(minIdx+ii);
+    // tSlice[ii] = t_lidar;
+  }
+
+
+
+  // // TODO add rtkPosition and rtkOrientation attributes:
+  // var rtkPositions = new Float32Array(3*numPoints);
+  // var rtkOrientations  = new Float32Array(3*numPoints);
+  // var t_lidar, t_rtk, idx, rtkState;
+  // var rtkOffset = self.rtkTimeConversion.rtkOffset;
+  // for (let ii=0, len=numPoints; ii<len; ii++) {
+  //   t_lidar = tSlice[ii];
+  //   t_rtk = t_lidar + self.task.header.tmin - rtkOffset;
+  //   idx = Math.round(t_rtk*100);  //index conversion function
+  //   // debugger; //rtkLookup below
+  //   rtkState = self.rtkLookup[idx];
+  //
+  //   // Note: jj is offset along each row (e.g. x,y,z)
+  //   for (let jj=0; jj<3; jj++) {
+  //     rtkPositions[3*ii+jj] = rtkState.position[jj];
+  //     rtkOrientations[3*ii+jj] = rtkState.orientation[jj];
+  //   }
+  // }
+
+  trtkLookup = performance.now();
 
   // Transfer Slices to runState:
   var transferObj = {
@@ -315,13 +388,15 @@ function slice(tmin, tmax) {
     pos: posSlice,
     i: iSlice,
     t: tSlice,
+    rtkPos: rtkPosSlice,
+    rtkOrient: rtkOrientSlice,
     numPoints: tSlice.length,  // TODO check this value
     sliceTimeMillis: (performance.now() - tslicestart)
   }
 
-  self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer]);
+  self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer, rtkPosSlice.buffer, rtkOrientSlice.buffer]);
   self.shouldSendSliceRequest = false;
-  
+
   tsendSlices = performance.now();
 
 
@@ -329,13 +404,15 @@ function slice(tmin, tmax) {
   dtFindMinMillis = tfoundMin - tSingleLoop;
   dtFindMaxMillis = tfoundMax - tfoundMin;
   dtCreateSliceMillis = tcreateSlices - tfoundMax;
-  dtSendSliceMillis = tsendSlices - tcreateSlices;
+  dtRtkLookupMillis = trtkLookup - tcreateSlices;
+  dtSendSliceMillis = tsendSlices - trtkLookup;
   dtSliceMillis = performance.now() - tslicestart;
 
   console.log("Time for new approach: ", (dtSingleLoop/1000), " seconds",
   "\nTime to find Min Idx: ", (dtFindMinMillis/1000), " seconds",
   "\nTime to find Max Idx: ", (dtFindMaxMillis/1000), " seconds",
   "\nTime to create Slices: ", (dtCreateSliceMillis/1000), " seconds",
+  "\nTime to create RTK Slices: ", (dtRtkLookupMillis/1000), " seconds",
   "\nTime to send Slices: ", (dtSendSliceMillis/1000), " seconds",
   "\nTotal Slice Time: ", (dtSliceMillis/1000), " seconds");
   // debugger; // check if bbuffers were mutated in anyway

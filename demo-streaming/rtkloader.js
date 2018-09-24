@@ -52,6 +52,9 @@ function loadRtk(callback) {
     let lastx, lasty, lastz;
     let lastRoll, lastPitch, lastYaw;
 
+    let rtkLookup = [];
+
+
     for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
       row = rows[ii];
       cols = row.split(' ');
@@ -73,6 +76,8 @@ function loadRtk(callback) {
         if (firstTimestamp) {
           t_init = t;
           firstTimestamp = false;
+          pos_init = [x, y, z];
+          orientation_init = [roll, pitch, yaw];
           lastx = x;
           lasty = y;
           lastz = z;
@@ -97,6 +102,21 @@ function loadRtk(callback) {
         colors.push( Math.random() * 0xffffff );
         mpos.push([x,y,z]);
 
+        // Append into RTK Lookup Object:
+        rtkLookup.push({
+          position: [
+            x-pos_init[0],
+            y-pos_init[1],
+            z-pos_init[2]
+          ],
+          orientation: [
+            minAngle(roll-orientation_init[0]),
+            minAngle(pitch-orientation_init[1]),
+            minAngle(yaw-orientation_init[2])
+          ],
+          time: t-t_init
+        });
+
         roll = lastRoll + minAngle(roll-lastRoll);
         pitch = lastPitch + minAngle(pitch-lastPitch);
         yaw = lastYaw + minAngle(yaw-lastYaw);
@@ -107,6 +127,7 @@ function loadRtk(callback) {
         lastx = x;
         lasty = y;
         lastz = z;
+
       }
     }
 
@@ -123,7 +144,7 @@ function loadRtk(callback) {
     console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
 
 
-    callback(mpos, orientations, t_init, t_range, numPoints, distance);
+    callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init);
   };
 
   t0 = performance.now();
