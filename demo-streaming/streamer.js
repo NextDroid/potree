@@ -5,6 +5,7 @@ var workerID = 0;
 startHeartbeat();
 startDataLoader();
 
+
 function startHeartbeat() {
   // Start Heartbeat:
   var timer = new Worker('timer.js');
@@ -229,6 +230,7 @@ function handleDataLoaderMessage(response) {
         var positionAttributes = new THREE.BufferAttribute(slice.pos, 3);
         var intensityAttributes = new THREE.BufferAttribute(slice.i, 1);
         var timeAttributes = new THREE.BufferAttribute(slice.t, 1);
+        var indicesAttributes = new THREE.Uint8BufferAttribute(slice.idx, 4);
 
         // // TODO add rtkPosition and rtkOrientation attributes:
         // var rtkPositions = new Float32Array(3*slice.numPoints);
@@ -277,6 +279,65 @@ function handleDataLoaderMessage(response) {
         cloudMesh.geometry.addAttribute("originalRtkOrientation", rtkOrientationAttributes);
         // debugger; // check attributes;
         cloudMesh.geometry.computeBoundingSphere();
+        cloudMesh.geometry.computeBoundingBox();
+
+
+        try { // Swap into POTREE
+
+          let cloud = viewer.scene.pointclouds[0];
+          // let bbox = cloudMesh.geometry.boundingBox;
+          // let bsphere = cloudMesh.geometry.boundingSphere;
+          let bbox = new THREE.Box3(new THREE.Vector3(-200, -200, -100), new THREE.Vector3(200, 200, 100)); // Bounding Box centered at vehicle, with dx, dy = 400m and dz = 200m
+          let bsphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 200); // Bounding sphere centered around vehicle with radius 200m
+          // debugger; // check slice Positions
+
+          // // in nodes.r.geometry:
+          // // update attributes:
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("position", positionAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("intensity", intensityAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("gpsTime", timeAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("indices", indicesAttributes);
+          // cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkPosition", rtkPositionAttributes);
+          // cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkOrientation", rtkOrientationAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.boundingSphere = bsphere;
+          cloud.pcoGeometry.nodes.r.geometry.boundinBox = bbox;
+          cloud.pcoGeometry.nodes.r.geometry.tightBoundingBox = bbox;
+          cloud.pcoGeometry.nodes.r.gpsTime = {offset: 0, range: (header.tmax-header.tmin)};
+          cloud.pcoGeometry.nodes.r.geometry.updatedSlice = true;
+          //
+          // // in nodes.r:
+          // cloud.pcoGeometry.nodes.r.numPoints = slice.numPoints;
+          cloud.pcoGeometry.nodes.r.boundingBox = bbox;
+          cloud.pcoGeometry.nodes.r.boundingSphere = bsphere;
+          cloud.pcoGeometry.nodes.r.tightBoundingBox = bbox;
+          // // TODO cloud.pcoGeometry.nodes.r.mean = mean;
+          //
+          // // in pcoGeometry:
+          cloud.pcoGeometry.root = cloud.pcoGeometry.nodes.r;
+          cloud.pcoGeometry.boundingBox = bbox;
+          cloud.pcoGeometry.tightBoundingBox = bbox;
+          cloud.pcoGeometry.boundingSphere = bsphere;
+          cloud.pcoGeometry.tightBoundingSphere = bsphere;
+          cloud.pcoGeometry.offset = new THREE.Vector3(100, 100, 2);
+
+          //
+          // // in pointcloud:
+          cloud.root = cloud.pcoGeometry.nodes.r;
+          cloud.boundingBox = bbox;
+          cloud.boundingSphere = bbox;
+          // cloud.numVisiblePoints = slice.numPoints;
+          // cloud.visibleNodes.push(cloud.root);
+          cloud.position.copy(new THREE.Vector3(0,0,0));
+
+          // Swap cloud octree into scenePointCloud
+          var sceneCloud = viewer.scene.scenePointCloud.getObjectByName("cloud");
+          viewer.scene.scenePointCloud.remove(sceneCloud);
+          viewer.scene.scenePointCloud.add(cloud);
+
+
+        } catch(e) {
+          console.error("Could not update potree pointcloud attributes, ",e);
+        }
       }
       tEndAddAttr = performance.now();
       dtAddAttrMillis = tEndAddAttr - tStartAddAttr;

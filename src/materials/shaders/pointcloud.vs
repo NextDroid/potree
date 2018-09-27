@@ -385,7 +385,7 @@ vec3 getRGB(){
 	rgb = pow(rgb, vec3(rgbGamma));
 	rgb = rgb + rgbBrightness;
 	//rgb = (rgb - 0.5) * getContrastFactor(rgbContrast) + 0.5;
-	rgb.b += 0.8; // VINAY - set blue
+	// rgb.b += 0.8; // VINAY - set blue
 	rgb = clamp(rgb, 0.0, 1.0);
 
 		//rgb = indices.rgb;
@@ -667,11 +667,11 @@ void doClipping(){
 			//return;
 		//}
 
-		if(time > range.x && time < range.y) {
-			//gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
-			vColor.r += .8;
-			vColor.b = 0.0;
-			vColor.g = 0.0;
+		if(!(time > range.x && time < range.y)) {	// NOTE added not to this condition
+			gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
+			// vColor.r += .8;
+			// vColor.b = 0.0;
+			// vColor.g = 0.0;
 			return;
 		}
 

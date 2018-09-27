@@ -18,6 +18,7 @@ self.sentFirstSlice = false;
 self.newFetchRequestExpiraryMillis = -1;
 self.rtkLookup;
 self.rtkTimeConversion;
+self.totalNumberOfPointsReadAllTime = 0;
 
 var LoaderStates = Object.freeze({UNINITIALIZED: 0, PAUSED: 1, LOADING: 2, STOPPED: 3});
 self.LoaderState = LoaderStates.STOPPED;
@@ -174,6 +175,8 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
 
         self.Bbuffers.t.push(view.getFloat32(ii+task.offsets.t, true));
 
+        self.Bbuffers.idx.push(self.totalNumberOfPointsReadAllTime++);
+
         self.numBytesRead += task.bytesPerPoint; // we just read 1 point into our buffers TODO make var variable
 
         self.task.seekPosBytes += task.bytesPerPoint; // track current seek position in file -- NOTE this forces restart command to start from this point...is this ok?
@@ -230,7 +233,8 @@ function resetBuffers() {
   self.Bbuffers = {
     pos: new CBuffer(3*self.maxNumPoints),
     i: new CBuffer(1*self.maxNumPoints),
-    t: new CBuffer(1*self.maxNumPoints)
+    t: new CBuffer(1*self.maxNumPoints),
+    idx: new CBuffer(1*self.maxNumPoints)
   }
 
   self.prevBuffer = new Uint8Array(0);
@@ -318,6 +322,7 @@ function slice(tmin, tmax) {
   var posSlice = Float32Array.from(self.Bbuffers.pos.slice(3*minIdx, 3*maxIdx));
   var iSlice = Float32Array.from(self.Bbuffers.i.slice(minIdx, maxIdx));
   var tSlice = Float32Array.from(self.Bbuffers.t.slice(minIdx, maxIdx));
+  var idxSlice = Uint32Array.from(self.Bbuffers.idx.slice(minIdx, maxIdx));
 
   tcreateSlices = performance.now();
 
@@ -325,11 +330,19 @@ function slice(tmin, tmax) {
   // TODO single loop to create all slices:
   // debugger; // check below
   var numPoints = maxIdx-minIdx;
+  let bboxOffsetFromCorner = [200, 200, 100];
   // var posSlice = new Float32Array(3*numPoints);
   // var iSlice = new Float32Array(numPoints);
   // var tSlice = new Float32Array(numPoints);
   var rtkPosSlice = new Float32Array(3*numPoints);
   var rtkOrientSlice = new Float32Array(3*numPoints);
+
+  // let buff = new ArrayBuffer(numPoints * 4);
+  // let idxSlice = new Uint32Array(buff);
+  //
+  // for (let i = 0; i < numPoints; i++) {
+  //   idxSlice[i] = i;
+  // }
 
   var t_lidar, t_rtk, idxRtk, rtkState;
   var rtkOffset = self.rtkTimeConversion.rtkOffset;
@@ -348,6 +361,9 @@ function slice(tmin, tmax) {
       // posSlice[idxOffsetXYZ] = self.Bbuffers.pos.get(3*minIdx+idxOffsetXYZ);
       rtkPosSlice[idxOffsetXYZ] = rtkState.position[jj];
       rtkOrientSlice[idxOffsetXYZ] = rtkState.orientation[jj];
+
+      // Shift Positions with bbox:
+      posSlice[idxOffsetXYZ] += bboxOffsetFromCorner[jj];
     }
 
     // Fill remaining slices:
@@ -388,11 +404,13 @@ function slice(tmin, tmax) {
     t: tSlice,
     rtkPos: rtkPosSlice,
     rtkOrient: rtkOrientSlice,
+    idx: idxSlice.buffer,
     numPoints: tSlice.length,  // TODO check this value
+    // meanPos: meanPos,
     sliceTimeMillis: (performance.now() - tslicestart)
   }
 
-  self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer, rtkPosSlice.buffer, rtkOrientSlice.buffer]);
+  self.postMessage(transferObj, [posSlice.buffer, iSlice.buffer, tSlice.buffer, rtkPosSlice.buffer, rtkOrientSlice.buffer, idxSlice.buffer]);
   self.shouldSendSliceRequest = false;
 
   tsendSlices = performance.now();

@@ -161,4 +161,3 @@ export class POCLoader {
 		return new THREE.Box3(min, max);
 	}
 }
-

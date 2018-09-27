@@ -121,7 +121,7 @@
 			gl_Position = projectionMatrix * mvPosition;
 			gl_PointSize = size;
 
-			// vAlpha = 1.0;
+			vAlpha = 0.0;
       }
   </script>
 
@@ -179,6 +179,7 @@
       $("#menu_tools").next().show();
       $("#menu_scene").next().show();
       // viewer.toggleSidebar();
+			$(("#show_bounding_box")).trigger("click");
     });
 
 		// Initializations:
@@ -221,13 +222,13 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
 	 	filename: "full_pointcloud-large-zeroed-int16.csv.bin",
-	 	maxMemMB: 100,	// TODO try 40 bytes
+	 	maxMemMB: 15,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
 	 }
 
 	 // TODO define this in a better way:
-	 var speedFactor = 33;
+	 var speedFactor = 3;
 	 // var speedFactor = 33;
 
 	 var heartbeat;
@@ -242,6 +243,7 @@
 		vertexShader:   document.getElementById( 'vertexshader-pointcloud' ).textContent,
 		fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
 		transparent:    true,
+		opacity: 0.0,
 		depthWrite: 		 false,		// Otherwise, points behind transparent points will be hidden
 		uniforms: {
 			size: {value: 0.05},
@@ -266,11 +268,19 @@
 		header = e.data;
 		streamFromFileStart(header, settings);
 
-		// // TODO REMOVE FOR TESTING ONLY:
-		// rtkOffset = 1495189484.5352845;
-		// rtkRange = 600.5599999427795;
-		// streamFromTimeNew(0.05, {offset: rtkOffset, range:rtkRange}, header, settings);
+		Potree.loadPointCloud("../pointclouds/veritas/cube-cloud/cloud.js", "cloud", function(e){ // TODO use empty, but remove GPS_TIME attribute from cloud.js
+			viewer.scene.addPointCloud(e.pointcloud);
+			e.pointcloud.position.z = 0;
+			let material = e.pointcloud.material;
+			material.size = 1;
+			material.pointSizeType = Potree.PointSizeType.FIXED;
+			material.shape = Potree.PointShape.SQUARE
+			// material.pointColorType = Potree.PointColorType.ELEVATION;
+			material.pointColorType = Potree.PointColorType.POINT_INDEX;
+		});
+
 	});
+
 
 
 
@@ -486,6 +496,11 @@
 					 // // Animate Point Cloud:
 					 minLidarTime = minGpsTime - header.tmin;
 					 maxLidarTime = maxGpsTime - header.tmin;
+					 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
+					 viewer.setFilterGPSTimeExtent(minLidarTime-10, maxLidarTime+10);
+
+
+
 					 var cloud = viewer.scene.scene.getObjectByName("cloud");
 					 cloud.material.uniforms.minGpsTime.value = minLidarTime;
 					 cloud.material.uniforms.maxGpsTime.value = maxLidarTime;

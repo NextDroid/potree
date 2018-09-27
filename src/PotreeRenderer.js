@@ -872,13 +872,30 @@ export class Renderer {
 				webglBuffer = this.createBuffer(geometry);
 				this.buffers.set(geometry, webglBuffer);
 			}else{
-				webglBuffer = this.buffers.get(geometry);
-				for(let attributeName in geometry.attributes){
-					let attribute = geometry.attributes[attributeName];
 
-					if(attribute.version > webglBuffer.vbos.get(attributeName).version){
-						this.updateBuffer(geometry);
+				// Check if updated slice:
+				if (typeof(geometry.updatedSlice) != "undefined" && geometry.updatedSlice) {
+					this.buffers.delete(geometry);
+					webglBuffer = this.createBuffer(geometry);
+					this.buffers.set(geometry, webglBuffer);
+					geometry.updatedSlice = false;
+					// debugger;
+				}
+
+
+
+				try {
+					webglBuffer = this.buffers.get(geometry);
+					for(let attributeName in geometry.attributes){
+						let attribute = geometry.attributes[attributeName];
+
+						if(attribute.version > webglBuffer.vbos.get(attributeName).version){
+							this.updateBuffer(geometry);
+						}
 					}
+				} catch (e) {
+					debugger;
+					// console.error("Error in potree renderer:",e);
 				}
 			}
 
