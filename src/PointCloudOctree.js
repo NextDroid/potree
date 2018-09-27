@@ -189,17 +189,17 @@ export class PointCloudOctree extends PointCloudTree {
 			}
 		};
 
-		{ // DEBUG
-			let sg = new THREE.SphereGeometry(1, 16, 16);
-			let sm = new THREE.MeshNormalMaterial();
-			let s = new THREE.Mesh(sg, sm);
-			s.scale.set(5, 5, 5);
-			s.position.copy(geometryNode.mean)
-				.add(this.position)
-				.add(geometryNode.boundingBox.min);
-
-			viewer.scene.scene.add(s);
-		}
+		// { // DEBUG
+		// 	let sg = new THREE.SphereGeometry(1, 16, 16);
+		// 	let sm = new THREE.MeshNormalMaterial();
+		// 	let s = new THREE.Mesh(sg, sm);
+		// 	s.scale.set(5, 5, 5);
+		// 	s.position.copy(geometryNode.mean)
+		// 		.add(this.position)
+		// 		.add(geometryNode.boundingBox.min);
+		//
+		// 	viewer.scene.scene.add(s);
+		// }
 
 		node.geometryNode = geometryNode;
 		node.sceneNode = sceneNode;
