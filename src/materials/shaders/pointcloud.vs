@@ -665,7 +665,7 @@ bool pointInClipPolygon(vec3 point, int polyIdx) {
 }
 #endif
 
-void doClipping(){
+void doClipping(vec4 correctedPosition){
 
 	#if !defined color_type_composite
 		vec4 cl = getClassification();
@@ -728,7 +728,17 @@ void doClipping(){
 
 	#if defined(num_clipboxes) && num_clipboxes > 0
 		for(int i = 0; i < num_clipboxes; i++){
-			vec4 clipPosition = clipBoxes[i] * modelMatrix * vec4( position, 1.0 );
+
+			mat4 SE3 = getSE3();
+			vec3 offset = vec3(200.0, 200.0, 100.0);
+			vec3 offsetPosition = position.xyz - offset;
+			vec4 correctedPosition = SE3*vec4(offsetPosition, 1.0);
+			correctedPosition += vec4(offset, 0.0);
+			vec4 clipPosition = clipBoxes[i] * modelMatrix * correctedPosition;
+
+
+			// vec4 clipPosition = clipBoxes[i] * modelMatrix * vec4( position, 1.0 );
+
 			bool inside = -0.5 <= clipPosition.x && clipPosition.x <= 0.5;
 			inside = inside && -0.5 <= clipPosition.y && clipPosition.y <= 0.5;
 			inside = inside && -0.5 <= clipPosition.z && clipPosition.z <= 0.5;
@@ -783,14 +793,17 @@ void doClipping(){
 //
 
 void main() {
+
 	mat4 SE3 = getSE3();
-	vec3 offsetPosition = position.xyz - vec3(200.0, 200.0, 100.0);
+	vec3 offset = vec3(200.0, 200.0, 100.0);
+	vec3 offsetPosition = position.xyz - offset;
 	vec4 correctedPosition = SE3*vec4(offsetPosition, 1.0);
-	correctedPosition += vec4(200.0, 200.0, 100.0, 0.0);
+	correctedPosition += vec4(offset, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
 	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 	vViewPosition = mvPosition.xyz;
 	gl_Position = projectionMatrix * mvPosition;
+
 	vLogDepth = log2(-mvPosition.z);
 
 	// POINT SIZE
@@ -812,7 +825,7 @@ void main() {
 
 
 	// CLIPPING
-	doClipping();
+	doClipping(correctedPosition);
 
 	#if defined(num_clipspheres) && num_clipspheres > 0
 		for(int i = 0; i < num_clipspheres; i++){
