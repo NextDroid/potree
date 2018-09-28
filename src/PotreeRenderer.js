@@ -143,6 +143,8 @@ let attributeLocations = {
 	"normal": 8,
 	"spacing": 9,
 	"gpsTime": 10,
+	"originalRtkPosition": 11,
+	"originalRtkOrientation": 12
 };
 
 class Shader {
@@ -1100,6 +1102,17 @@ export class Renderer {
 			shader.setUniformMatrix4("viewMatrix", view);
 			shader.setUniformMatrix4("uViewInv", viewInv);
 			shader.setUniformMatrix4("uProjInv", projInv);
+
+			try {
+				let currentRtkPosition = octree.material.uniforms.currentRtkPosition.value.toArray();
+				let currentRtkOrientation = octree.material.uniforms.currentRtkOrientation.value.toArray();
+
+				shader.setUniform3f("currentRtkPosition", currentRtkPosition);
+				shader.setUniform3f("currentRtkOrientation", currentRtkOrientation);
+
+			} catch(e) {
+				debugger; // currentRtkPosition/Orientation doesn't exist
+			}
 
 			let screenWidth = target ? target.width : material.screenWidth;
 			let screenHeight = target ? target.height : material.screenHeight;

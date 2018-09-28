@@ -68,6 +68,47 @@
 
       varying float vAlpha;
 
+			mat4 getSE3() {
+				// Construct Rotation Matrix (roll pitch yaw):
+				vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
+				vec3 dX = currentRtkPosition - originalRtkPosition;
+				dTheta *= -1.0; // TODO why do I need to transform from current to original?
+				dX *= -1.0; // TODO why do I need to translate from current to original?
+
+				float sinRoll = sin(dTheta.x);
+				float cosRoll = cos(dTheta.x);
+				float sinPitch = sin(dTheta.y);
+				float cosPitch = cos(dTheta.y);
+				float sinYaw = sin(dTheta.z);
+				float cosYaw = cos(dTheta.z);
+
+				mat3 Rx = mat3(
+					1.0, 	0.0, 			0.0,
+					0.0,	cosRoll,	sinRoll,
+					0.0,	-sinRoll, cosRoll
+				);
+
+				mat3 Ry = mat3(
+					cosPitch,	0.0, 	-sinPitch,
+					0.0,			1.0,	0.0,
+					sinPitch, 0.0,	cosPitch
+				);
+
+				mat3 Rz = mat3(
+					cosYaw, 	sinYaw, 0.0,
+					-sinYaw, 	cosYaw, 0.0,
+					0.0,			0.0,		1.0
+				);
+
+				mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+				vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
+
+				mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
+				SE3[3] = T; // Set the translation vector components
+
+				return SE3;
+			}
+
       void main() {
         if (minGpsTime <= gpsTime && gpsTime <= maxGpsTime) {
           vAlpha = 1.0;
@@ -75,53 +116,20 @@
           vAlpha = 0.0;
         }
 
-			// Construct Rotation Matrix (roll pitch yaw):
-			vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
-			vec3 dX = currentRtkPosition - originalRtkPosition;
-			dTheta *= -1.0; // TODO why do I need to transform from current to original?
-			dX *= -1.0; // TODO why do I need to translate from current to original?
 
-			float sinRoll = sin(dTheta.x);
-			float cosRoll = cos(dTheta.x);
-			float sinPitch = sin(dTheta.y);
-			float cosPitch = cos(dTheta.y);
-			float sinYaw = sin(dTheta.z);
-			float cosYaw = cos(dTheta.z);
+				mat4 SE3 = getSE3();
 
-			mat3 Rx = mat3(
-				1.0, 	0.0, 			0.0,
-				0.0,	cosRoll,	sinRoll,
-				0.0,	-sinRoll, cosRoll
-			);
-
-			mat3 Ry = mat3(
-				cosPitch,	0.0, 	-sinPitch,
-				0.0,			1.0,	0.0,
-				sinPitch, 0.0,	cosPitch
-			);
-
-			mat3 Rz = mat3(
-				cosYaw, 	sinYaw, 0.0,
-				-sinYaw, 	cosYaw, 0.0,
-				0.0,			0.0,		1.0
-			);
-
-			mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
-			vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
-
-			mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
-			SE3[3] = T; // Set the translation vector components
-
-			// Apply SE3 transformation to the current position;
-			vec4 newPosition = SE3*vec4(position, 1.0);
+				// Apply SE3 transformation to the current position;
+				vec3 tmp = position - vec3(200.0, 200.0, 100.0);
+				vec4 newPosition = SE3*vec4(tmp, 1.0);
 
 
-			vec4 mvPosition = modelViewMatrix * newPosition;
-			// vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-			gl_Position = projectionMatrix * mvPosition;
-			gl_PointSize = size;
+				vec4 mvPosition = modelViewMatrix * newPosition;
+				// vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+				gl_PointSize = size;
 
-			vAlpha = 0.0;
+				// vAlpha = 1.0;
       }
   </script>
 
@@ -228,7 +236,7 @@
 	 }
 
 	 // TODO define this in a better way:
-	 var speedFactor = 3;
+	 var speedFactor = 9;
 	 // var speedFactor = 33;
 
 	 var heartbeat;
@@ -275,8 +283,14 @@
 			material.size = 1;
 			material.pointSizeType = Potree.PointSizeType.FIXED;
 			material.shape = Potree.PointShape.SQUARE
-			// material.pointColorType = Potree.PointColorType.ELEVATION;
-			material.pointColorType = Potree.PointColorType.POINT_INDEX;
+			// material.pointColorType = Potree.PointColorType.INTENSITY;
+			material.pointColorType = Potree.PointColorType.ELEVATION;
+			// material.pointColorType = Potree.PointColorType.POINT_INDEX;
+
+			// debugger; // material uniforms
+			material.uniforms.currentRtkPosition = {type: "v3", value: new THREE.Vector3(0,0,0)};
+			material.uniforms.currentRtkOrientation = {type: "v3", value: new THREE.Vector3(0,0,0)};
+
 		});
 
 	});
@@ -319,7 +333,7 @@
 	 loadRadar("radarData.csv", true, (geometry, t_init) => {
 		 // uniforms
 		 uniforms = {
-			   size: {value: 1.0},
+			   size: {value: 5.0},
 				 color: { value: new THREE.Color( 0xffff00 ) },
 				 minGpsTime: {value: 0.0 },
 				 maxGpsTime: {value: 0.0 },
@@ -493,19 +507,25 @@
 					 var maxGpsTime = gpsTime + parseFloat(tmax.value);
 					 // debugger; // maxGpsTime
 
+					 // Get Current RTK Pose:
+					 var currentRtkPosition = rtkPoint.sub(rtkPosInit);
+					 var currentRtkOrientation = vehicleOrientation.sub(rtkOrientInit);
+
 					 // // Animate Point Cloud:
 					 minLidarTime = minGpsTime - header.tmin;
 					 maxLidarTime = maxGpsTime - header.tmin;
 					 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
 					 viewer.setFilterGPSTimeExtent(minLidarTime-10, maxLidarTime+10);
-
-
+					 // debugger; // uniforms below
+					 var pcloud = viewer.scene.pointclouds[0];
+					 pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+					 pcloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
 
 					 var cloud = viewer.scene.scene.getObjectByName("cloud");
 					 cloud.material.uniforms.minGpsTime.value = minLidarTime;
 					 cloud.material.uniforms.maxGpsTime.value = maxLidarTime;
-					 cloud.material.uniforms.currentRtkPosition.value.copy(rtkPoint.sub(rtkPosInit));
-					 cloud.material.uniforms.currentRtkOrientation.value.copy(vehicleOrientation.sub(rtkOrientInit));
+					 cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+					 cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
 
 					 // Animate Radar:
 					 minRadarTime = minGpsTime - radarOffset;

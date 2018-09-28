@@ -297,8 +297,8 @@ function handleDataLoaderMessage(response) {
           cloud.pcoGeometry.nodes.r.geometry.addAttribute("intensity", intensityAttributes);
           cloud.pcoGeometry.nodes.r.geometry.addAttribute("gpsTime", timeAttributes);
           cloud.pcoGeometry.nodes.r.geometry.addAttribute("indices", indicesAttributes);
-          // cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkPosition", rtkPositionAttributes);
-          // cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkOrientation", rtkOrientationAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkPosition", rtkPositionAttributes);
+          cloud.pcoGeometry.nodes.r.geometry.addAttribute("originalRtkOrientation", rtkOrientationAttributes);
           cloud.pcoGeometry.nodes.r.geometry.boundingSphere = bsphere;
           cloud.pcoGeometry.nodes.r.geometry.boundinBox = bbox;
           cloud.pcoGeometry.nodes.r.geometry.tightBoundingBox = bbox;
@@ -441,7 +441,8 @@ function startVisualization() {
   animation.resume();
   $("#playbutton").mousedown(); // Toggle playbutton
 
-  camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
+  // camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
+  camPoint = new THREE.Vector3(6.025, -45.416, 280.938);
   viewer.scene.view.position.copy(camPoint); // changed from camera
   var targetPosition = new THREE.Vector3(0, 0, 0);
   viewer.scene.view.lookAt(targetPosition);

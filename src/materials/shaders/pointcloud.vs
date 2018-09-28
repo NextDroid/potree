@@ -15,7 +15,11 @@ attribute float pointSourceID;
 attribute vec4 indices;
 attribute float spacing;
 attribute float gpsTime;
+attribute vec3 originalRtkPosition;
+attribute vec3 originalRtkOrientation;
 
+uniform vec3 currentRtkPosition;
+uniform vec3 currentRtkOrientation;
 uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
@@ -120,6 +124,47 @@ varying float 	vPointSize;
 
 float round(float number){
 	return floor(number + 0.5);
+}
+
+mat4 getSE3() {
+	// Construct Rotation Matrix (roll pitch yaw):
+	vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
+	vec3 dX = currentRtkPosition - originalRtkPosition;
+	dTheta *= -1.0; // TODO why do I need to transform from current to original?
+	dX *= -1.0; // TODO why do I need to translate from current to original?
+
+	float sinRoll = sin(dTheta.x);
+	float cosRoll = cos(dTheta.x);
+	float sinPitch = sin(dTheta.y);
+	float cosPitch = cos(dTheta.y);
+	float sinYaw = sin(dTheta.z);
+	float cosYaw = cos(dTheta.z);
+
+	mat3 Rx = mat3(
+		1.0, 	0.0, 			0.0,
+		0.0,	cosRoll,	sinRoll,
+		0.0,	-sinRoll, cosRoll
+	);
+
+	mat3 Ry = mat3(
+		cosPitch,	0.0, 	-sinPitch,
+		0.0,			1.0,	0.0,
+		sinPitch, 0.0,	cosPitch
+	);
+
+	mat3 Rz = mat3(
+		cosYaw, 	sinYaw, 0.0,
+		-sinYaw, 	cosYaw, 0.0,
+		0.0,			0.0,		1.0
+	);
+
+	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+	vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
+
+	mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
+	// SE3[3] = T; // Set the translation vector components
+
+	return SE3;
 }
 
 //
@@ -738,7 +783,10 @@ void doClipping(){
 //
 
 void main() {
-	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+	mat4 SE3 = getSE3();
+	vec4 correctedPosition = SE3*vec4(position, 1.0);
+	vec4 mvPosition = modelViewMatrix * correctedPosition;
+	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 	vViewPosition = mvPosition.xyz;
 	gl_Position = projectionMatrix * mvPosition;
 	vLogDepth = log2(-mvPosition.z);
@@ -762,7 +810,9 @@ void main() {
 
 
 	// CLIPPING
-	doClipping();
+	// doClipping();
+
+	vColor = vec3(1.0, 1.0, 1.0);
 
 	#if defined(num_clipspheres) && num_clipspheres > 0
 		for(int i = 0; i < num_clipspheres; i++){
@@ -837,13 +887,22 @@ void main() {
 		}
 
 	#endif
-
-	//vColor = vec3(1.0, 0.0, 0.0);
+	//
+	// float testCondition = gpsTime;
+	// float testLevel = 2.0;
+	//
+	// if (testCondition < testLevel) {
+	// 	vColor = vec3(1.0, 0.0, 0.0);
+	// } else if (testCondition > testLevel) {
+	// 	vColor = vec3(0.0, 1.0, 0.0);
+	// }
 
 	//if(uDebug){
 	//	vColor.b = (vColor.r + vColor.g + vColor.b) / 3.0;
 	//	vColor.r = 1.0;
 	//	vColor.g = 1.0;
 	//}
+
+
 
 }

@@ -769,27 +769,27 @@ export class PointCloudOctree extends PointCloudTree {
 		}
 
 		// DEBUG: show panel with pick image
-		{
-			let img = Utils.pixelsArrayToImage(pixels, w, h);
-			let screenshot = img.src;
-
-			if(!this.debugDIV){
-				this.debugDIV = $(`
-					<div id="pickDebug"
-					style="position: absolute;
-					right: 400px; width: 300px;
-					bottom: 44px; width: 300px;
-					z-index: 1000;
-					"></div>`);
-				$(document.body).append(this.debugDIV);
-			}
-
-			this.debugDIV.empty();
-			this.debugDIV.append($(`<img src="${screenshot}"
-				style="transform: scaleY(-1); width: 300px"/>`));
-			//$(this.debugWindow.document).append($(`<img src="${screenshot}"/>`));
-			//this.debugWindow.document.write('<img src="'+screenshot+'"/>');
-		}
+		// {
+		// 	let img = Utils.pixelsArrayToImage(pixels, w, h);
+		// 	let screenshot = img.src;
+		//
+		// 	if(!this.debugDIV){
+		// 		this.debugDIV = $(`
+		// 			<div id="pickDebug"
+		// 			style="position: absolute;
+		// 			right: 400px; width: 300px;
+		// 			bottom: 44px; width: 300px;
+		// 			z-index: 1000;
+		// 			"></div>`);
+		// 		$(document.body).append(this.debugDIV);
+		// 	}
+		//
+		// 	this.debugDIV.empty();
+		// 	this.debugDIV.append($(`<img src="${screenshot}"
+		// 		style="transform: scaleY(-1); width: 300px"/>`));
+		// 	//$(this.debugWindow.document).append($(`<img src="${screenshot}"/>`));
+		// 	//this.debugWindow.document.write('<img src="'+screenshot+'"/>');
+		// }
 
 
 		for(let hit of hits){
@@ -828,16 +828,16 @@ export class PointCloudOctree extends PointCloudTree {
 					let values = attribute.array.slice(attribute.itemSize * hit.pIndex, attribute.itemSize * (hit.pIndex + 1)) ;
 					point[attributeName] = values;
 
-					//debugger;
-					//if (values.itemSize === 1) {
-					//	point[attribute.name] = values.array[hit.pIndex];
-					//} else {
-					//	let value = [];
-					//	for (let j = 0; j < values.itemSize; j++) {
-					//		value.push(values.array[values.itemSize * hit.pIndex + j]);
-					//	}
-					//	point[attribute.name] = value;
-					//}
+					debugger;
+					if (values.itemSize === 1) {
+						point[attribute.name] = values.array[hit.pIndex];
+					} else {
+						let value = [];
+						for (let j = 0; j < values.itemSize; j++) {
+							value.push(values.array[values.itemSize * hit.pIndex + j]);
+						}
+						point[attribute.name] = value;
+					}
 				}
 
 			}
