@@ -162,7 +162,7 @@ mat4 getSE3() {
 	vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
 
 	mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
-	// SE3[3] = T; // Set the translation vector components
+	SE3[3] = T; // Set the translation vector components
 
 	return SE3;
 }
@@ -784,7 +784,9 @@ void doClipping(){
 
 void main() {
 	mat4 SE3 = getSE3();
-	vec4 correctedPosition = SE3*vec4(position, 1.0);
+	vec3 offsetPosition = position.xyz - vec3(200.0, 200.0, 100.0);
+	vec4 correctedPosition = SE3*vec4(offsetPosition, 1.0);
+	correctedPosition += vec4(200.0, 200.0, 100.0, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
 	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 	vViewPosition = mvPosition.xyz;
@@ -810,9 +812,7 @@ void main() {
 
 
 	// CLIPPING
-	// doClipping();
-
-	vColor = vec3(1.0, 1.0, 1.0);
+	doClipping();
 
 	#if defined(num_clipspheres) && num_clipspheres > 0
 		for(int i = 0; i < num_clipspheres; i++){
