@@ -344,7 +344,7 @@ function slice(tmin, tmax) {
   //   idxSlice[i] = i;
   // }
 
-  var t_lidar, t_rtk, idxRtk, rtkState;
+  var t_lidar, t_rtk, idxRtk, rtkState, idxRtk0, idxRtk1, rtkState0, rtkState1, alpha;
   var rtkOffset = self.rtkTimeConversion.rtkOffset;
   for (let ii=0; ii<numPoints; ii++) {
 
@@ -353,14 +353,26 @@ function slice(tmin, tmax) {
     t_rtk = t_lidar + self.task.header.tmin - rtkOffset;
     idxRtk = Math.round(t_rtk*100);  //index conversion function
     rtkState = self.rtkLookup[idxRtk]; // rtkState at time t
+    idxRtk0 = Math.floor(t_rtk*100); // index conversion for rtk state before point detection
+    idxRtk1 = Math.ceil(t_rtk*100); // index conversion for rtk state after point detection
+    rtkState0 = self.rtkLookup[idxRtk0]; // rtkState before time t
+    rtkState1 = self.rtkLookup[idxRtk1]; // rtkState after time t
+
+    alpha = 0.0;
+    if (idxRtk0 != idxRtk1) {
+      alpha = (100*t_rtk - idxRtk0)/(idxRtk1-idxRtk0);
+    }
 
     // Populate all 3 Dimensional Slices:
     // Note: jj is offset for each dimension (e.g. x,y,z)
     for (let jj=0; jj<3; jj++) {
       idxOffsetXYZ = 3*ii+jj;
       // posSlice[idxOffsetXYZ] = self.Bbuffers.pos.get(3*minIdx+idxOffsetXYZ);
-      rtkPosSlice[idxOffsetXYZ] = rtkState.position[jj];
-      rtkOrientSlice[idxOffsetXYZ] = rtkState.orientation[jj];
+      // rtkPosSlice[idxOffsetXYZ] = rtkState.position[jj];
+      // rtkOrientSlice[idxOffsetXYZ] = rtkState.orientation[jj];
+
+      rtkPosSlice[idxOffsetXYZ] = alpha*rtkState1.position[jj]+(1-alpha)*rtkState0.position[jj];
+      rtkOrientSlice[idxOffsetXYZ] = alpha*rtkState1.orientation[jj]+(1-alpha)*rtkState0.orientation[jj];
 
       // Shift Positions with bbox:
       posSlice[idxOffsetXYZ] += bboxOffsetFromCorner[jj];

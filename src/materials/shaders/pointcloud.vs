@@ -159,6 +159,7 @@ mat4 getSE3() {
 	);
 
 	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+	// mat3 R = Rx*Ry*Rz;		// Rotation Matrix from Euler angles using ZYX convention
 	vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
 
 	mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
