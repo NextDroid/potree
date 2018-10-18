@@ -4,7 +4,7 @@ var fs = require('fs');
 var ReadStream = require("fs-readstream-seek");
 app = express();
 var port = 4321;
-var filename = __dirname + "/../data/cloud-18M-data.pcd";
+// var filename = __dirname + "/../data/cloud-18M-data.pcd";
 
 app.use(cors());
 
@@ -18,8 +18,8 @@ function sendFile(filename, req, res, seekPos) {
       // Set Headers:
       res.setHeader('Access-Control-Allow-Origin', "*"); // Set CORS
       res.setHeader('Access-Control-Allow-Headers', req.headers.origin); // Set CORS
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Length', stat.size);
+      //res.setHeader('Accept-Ranges', 'bytes');
+      //res.setHeader('Content-Length', stat.size);
       console.log("filesize: " + stat.size);
 
       var stream = new ReadStream(filename);
