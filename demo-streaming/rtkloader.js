@@ -143,8 +143,17 @@ function loadRtk(callback) {
     console.log("Loop Runtime: "+(performance.now()-t0_loop)+"ms");
     console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
 
+    // TODO load calibrations
+    rtk2vehicle = {
+      x: 1,
+      y: 2,
+      z: 3,
+      roll: 4,
+      pitch: 5,
+      yaw: 6
+    }
 
-    callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init);
+    callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
 
   t0 = performance.now();

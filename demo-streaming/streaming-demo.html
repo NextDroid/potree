@@ -16,6 +16,7 @@
 	<link rel="stylesheet" type="text/css" href="../common/playbar.css">
 	<link rel="stylesheet" type="text/css" href="../common/overlay.css">
 	<link rel="stylesheet" type="text/css" href="../common/loading-bar.css"/>
+	<link rel="stylesheet" type="text/css" href="../common/draggable-overlay.css"/>
 	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 
@@ -43,6 +44,7 @@
 	<script src="../libs/other/OBJLoader.js"></script>
 	<script type="text/javascript" src="../common/loading-bar.js"></script>
 	<script src="../common/overlay.js"></script>
+	<script src="../common/draggable-overlay.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
@@ -70,7 +72,7 @@
 
 			mat4 getSE3() {
 				// Construct Rotation Matrix (roll pitch yaw):
-				vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
+				vec3 dTheta = currentRtkOrientation - originalRtkOrientation; // TODO USE BETTER INTERPOLATION
 				vec3 dX = currentRtkPosition - originalRtkPosition;
 				dTheta *= -1.0; // TODO why do I need to transform from current to original?
 				dX *= -1.0; // TODO why do I need to translate from current to original?
@@ -230,7 +232,7 @@
 	 	port: "4321",
 	 	headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
 	 	filename: "full_pointcloud-large-zeroed-int16.csv.bin",
-	 	maxMemMB: 150,	// TODO try 40 bytes
+	 	maxMemMB: 10,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
 	 }
@@ -259,7 +261,11 @@
 			minGpsTime: {value: 0.0 },
 			maxGpsTime: {value: 0.0 },
 			currentRtkPosition: {type: "v3", value: new THREE.Vector3(0,0,0)},
-			currentRtkOrientation: {type: "v3", value: new THREE.Vector3(0,0,0)}
+			currentRtkOrientation: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			// velo2RtkXYZ: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			// velo2RtkXYZ: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			// rtk2VehicleXYZ: {type: "v3", value: new THREE.Vector3(0,0,0)},
+			// rtk2VehicleRPY: {type: "v3", value: new THREE.Vector3(0,0,0)}
 			// initialTime: {value: t_init}
 		}
 	});
@@ -276,6 +282,18 @@
 		header = e.data;
 		streamFromFileStart(header, settings);
 
+		// TODO LOAD velo2rtk INSTEAD OF DEFINING HERE:
+		var velo2rtk = {
+			x: 11,
+			y: 12,
+			z: 13,
+			roll: 14,
+			pitch: 15,
+			yaw: 16
+		}
+		debugger; // follow step
+		storeVelo2Rtk(velo2rtk);
+
 		Potree.loadPointCloud("../pointclouds/veritas/cube-cloud/cloud.js", "cloud", function(e){ // TODO use empty, but remove GPS_TIME attribute from cloud.js
 			viewer.scene.addPointCloud(e.pointcloud);
 			e.pointcloud.position.z = 0;
@@ -291,7 +309,37 @@
 			material.uniforms.currentRtkPosition = {type: "v3", value: new THREE.Vector3(0,0,0)};
 			material.uniforms.currentRtkOrientation = {type: "v3", value: new THREE.Vector3(0,0,0)};
 
+			// Update material with calibration
+			let velo2rtk = getVelo2Rtk();
+			let rtk2vehicle = getRtk2Vehicle();
+			material.uniforms.velo2RtkXYZ = {type: "v3", value: new THREE.Vector3(velo2rtk.x, velo2rtk.y, velo2rtk.z)};
+			material.uniforms.velo2RtkRPY = {type: "v3", value: new THREE.Vector3(velo2rtk.roll, velo2rtk.pitch, velo2rtk.yaw)};
+			material.uniforms.rtk2VehicleXYZ = {type: "v3", value: new THREE.Vector3(rtk2vehicle.x, rtk2vehicle.y, rtk2vehicle.z)};
+			material.uniforms.rtk2VehicleRPY = {type: "v3", value: new THREE.Vector3(rtk2vehicle.roll, rtk2vehicle.pitch, rtk2vehicle.yaw)};
+
+			// Function to update these values as calibration extrinsics get updated
+			window.addEventListener("update-calibration-panel", (e) => {
+				console.log("calibration panel updated: ", e.detail);
+				id = e.detail.id;
+				dim = e.detail.dim;
+				val = e.detail.value;
+
+				if (id == "rtk2vehicle") {
+					let rtk2vehicle = getRtk2Vehicle();
+					material.uniforms.rtk2VehicleXYZ = {type: "v3", value: new THREE.Vector3(rtk2vehicle.x, rtk2vehicle.y, rtk2vehicle.z)};
+					material.uniforms.rtk2VehicleRPY = {type: "v3", value: new THREE.Vector3(rtk2vehicle.roll, rtk2vehicle.pitch, rtk2vehicle.yaw)};
+				} else if (id == "velo2rtk") {
+					let velo2rtk = getVelo2Rtk();
+					material.uniforms.velo2RtkXYZ = {type: "v3", value: new THREE.Vector3(velo2rtk.x, velo2rtk.y, velo2rtk.z)};
+					material.uniforms.velo2RtkRPY = {type: "v3", value: new THREE.Vector3(velo2rtk.roll, velo2rtk.pitch, velo2rtk.yaw)};
+				} else {
+					console.error("Unknown Calibration Extrinsics Id:", id);
+				}
+			});
+
 		});
+
+
 
 	});
 
@@ -355,18 +403,25 @@
 		 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
 		 // material.uniforms.initialTime = uniforms.initialTime;
 
+		 // TODO RADAR TO RTK TO VEHICLE EXTRINSICS (IF NEEDED):
+
 		 var mesh = new THREE.Points(geometry, shaderMaterial); // TODO using regular material in the meantime b/c of shader changes for pointcloud
 		 mesh.name = "radar";
 		 viewer.scene.scene.add(mesh);
 	 });
 
 	 // Load RTK:
-	 loadRtk((pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init) => {
+	 loadRtk((pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
 		 rtkOffset = t_init;
 		 rtkRange = t_range;
 		 rtkLookup = rtkLookupOutput;
 		 rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
 		 rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
+		 // TODO RTK TO VEHICLE (Maybe do this in RTK LOADER)
+		 storeRtk2Vehicle(rtk2vehicle);
+
+
+
 		 rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
 
 		 DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: rtkOffset, rtkRange:rtkRange}});
@@ -723,6 +778,53 @@
 
   </script>
 
+	<script>
+
+		function storeRtk2Vehicle(rtk2vehicle) {
+			try {
+				$("#rtk2vehicle-setpoint-x").val(rtk2vehicle.x);
+				$("#rtk2vehicle-x").text(rtk2vehicle.x.toFixed(4));
+				$("#rtk2vehicle-setpoint-y").val(rtk2vehicle.y);
+				$("#rtk2vehicle-y").text(rtk2vehicle.y.toFixed(4));
+				$("#rtk2vehicle-setpoint-z").val(rtk2vehicle.z);
+				$("#rtk2vehicle-z").text(rtk2vehicle.z.toFixed(4));
+				$("#rtk2vehicle-setpoint-roll").val(rtk2vehicle.roll);
+				$("#rtk2vehicle-roll").text(rtk2vehicle.roll.toFixed(4));
+				$("#rtk2vehicle-setpoint-pitch").val(rtk2vehicle.pitch);
+				$("#rtk2vehicle-pitch").text(rtk2vehicle.pitch.toFixed(4));
+				$("#rtk2vehicle-setpoint-yaw").val(rtk2vehicle.yaw);
+				$("#rtk2vehicle-yaw").text(rtk2vehicle.yaw.toFixed(4));
+				console.log("Stored Rtk to Vehicle Extrinsics");
+
+			} catch (e) {
+				console.error("Could not store RTK to Vehicle Calibration Extrinsics", e);
+			}
+		}
+
+		function storeVelo2Rtk(velo2rtk) {
+			try {
+				$("#velo2rtk-setpoint-x").val(velo2rtk.x);
+				$("#velo2rtk-x").text(velo2rtk.x.toFixed(4));
+				$("#velo2rtk-setpoint-y").val(velo2rtk.y);
+				$("#velo2rtk-y").text(velo2rtk.y.toFixed(4));
+				$("#velo2rtk-setpoint-z").val(velo2rtk.z);
+				$("#velo2rtk-z").text(velo2rtk.z.toFixed(4));
+				$("#velo2rtk-setpoint-roll").val(velo2rtk.roll);
+				$("#velo2rtk-roll").text(velo2rtk.roll.toFixed(4));
+				$("#velo2rtk-setpoint-pitch").val(velo2rtk.pitch);
+				$("#velo2rtk-pitch").text(velo2rtk.pitch.toFixed(4));
+				$("#velo2rtk-setpoint-yaw").val(velo2rtk.yaw);
+				$("#velo2rtk-yaw").text(velo2rtk.yaw.toFixed(4));
+				console.log("Stored Rtk to Vehicle Extrinsics");
+
+			} catch (e) {
+				console.error("Could not store Velodyne to RTK Calibration Extrinsics", e);
+			}
+		}
+
+
+
+	</script>
 
 
 </body>

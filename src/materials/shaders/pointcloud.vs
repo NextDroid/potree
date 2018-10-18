@@ -18,8 +18,14 @@ attribute float gpsTime;
 attribute vec3 originalRtkPosition;
 attribute vec3 originalRtkOrientation;
 
+
 uniform vec3 currentRtkPosition;
 uniform vec3 currentRtkOrientation;
+uniform vec3 rtk2VehicleXYZ;
+uniform vec3 rtk2VehicleRPY;
+uniform vec3 velo2RtkXYZ;
+uniform vec3 velo2RtkRPY;
+
 uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
@@ -126,12 +132,8 @@ float round(float number){
 	return floor(number + 0.5);
 }
 
-mat4 getSE3() {
-	// Construct Rotation Matrix (roll pitch yaw):
-	vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
-	vec3 dX = currentRtkPosition - originalRtkPosition;
-	dTheta *= -1.0; // TODO why do I need to transform from current to original?
-	dX *= -1.0; // TODO why do I need to translate from current to original?
+
+mat4 getSE3(vec3 dX, vec3 dTheta) {
 
 	float sinRoll = sin(dTheta.x);
 	float cosRoll = cos(dTheta.x);
@@ -166,6 +168,27 @@ mat4 getSE3() {
 	SE3[3] = T; // Set the translation vector components
 
 	return SE3;
+}
+
+vec4 applyRtk2VehicleExtrinsics(vec4 X) {
+  mat4 Extrinsics = getSE3(rtk2VehicleXYZ, rtk2VehicleRPY);
+  return Extrinsics*X;
+}
+
+vec4 applyRtk2RtkExtrinsics(vec4 X) {
+	// Construct Rotation Matrix (roll pitch yaw):
+	vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
+	vec3 dX = currentRtkPosition - originalRtkPosition;
+	dTheta *= -1.0; // TODO why do I need to transform from current to original?
+	dX *= -1.0; // TODO why do I need to translate from current to original?
+
+	mat4 Extrinsics = getSE3(dX, dTheta);
+	return Extrinsics*X;
+}
+
+vec4 applyVelo2RtkExtrinsics(vec4 X) {
+  mat4 Extrinsics = getSE3(velo2RtkXYZ, velo2RtkRPY);
+  return Extrinsics*X;
 }
 
 //
@@ -795,10 +818,17 @@ void doClipping(vec4 correctedPosition){
 
 void main() {
 
-	mat4 SE3 = getSE3();
+	// mat4 SE3 = getSE3();
 	vec3 offset = vec3(200.0, 200.0, 100.0);
-	vec3 offsetPosition = position.xyz - offset;
-	vec4 correctedPosition = SE3*vec4(offsetPosition, 1.0);
+	vec3 positionInVeloFrameNoOffset = position.xyz - offset;
+
+	// vec4 correctedPosition = applyRtk2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
+
+	vec4 positionInRtkFrameAtTimeT = applyVelo2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
+	vec4 positionInCurrenRtkFrame = applyRtk2RtkExtrinsics(positionInRtkFrameAtTimeT);
+	vec4 positionInVehicleFrame = applyRtk2VehicleExtrinsics(positionInCurrenRtkFrame);
+	vec4 correctedPosition = positionInVehicleFrame;
+
 	correctedPosition += vec4(offset, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
 	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
