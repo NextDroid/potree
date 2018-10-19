@@ -158,6 +158,7 @@
 			vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 			gl_Position = projectionMatrix * mvPosition;
 			gl_PointSize = size;
+			vAlpha = 0.0;
 			}
 	</script>
 
@@ -181,7 +182,7 @@
     viewer.setPointBudget(1*1000*1000);
     viewer.loadSettingsFromURL();
 
-    viewer.setDescription("Example page to test out streaming point clouds into Potree using Three.js");
+    // viewer.setDescription("Example page to test out streaming point clouds into Potree using Three.js");
 
     viewer.loadGUI(() => {
       viewer.setLanguage('en');
