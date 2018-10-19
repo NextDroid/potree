@@ -298,7 +298,7 @@
 		// debugger; // follow step
 		storeVelo2Rtk(velo2rtk);
 
-		Potree.loadPointCloud("../pointclouds/veritas/cube-cloud/cloud.js", "cloud", function(e){ // TODO use empty, but remove GPS_TIME attribute from cloud.js
+		Potree.loadPointCloud("../pointclouds/placeholders/cube-cloud/cloud.js", "cloud", function(e){ // TODO use empty, but remove GPS_TIME attribute from cloud.js
 			viewer.scene.addPointCloud(e.pointcloud);
 			e.pointcloud.position.z = 0;
 			let material = e.pointcloud.material;
