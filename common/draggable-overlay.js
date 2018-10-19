@@ -5,26 +5,26 @@ $(document).ready(function () {
     <div class="draggable-overlay" id="calibration-overlay-velo2rtk">
       <div class="draggable-overlay-header" id="calibration-overlay-velo2rtk-header">Velodyne to RTK Extrinsics</div>
         <p><span>
-            X: <span class="calibration-value" id="velo2rtk-x">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-x" type="number" placeholder="" step='any' value='0'/> mm
+            X: <span class="calibration-value" id="velo2rtk-x">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-x" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Y: <span class="calibration-value" id="velo2rtk-y">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-y" type="number" placeholder="" step='any' value='0'/> mm
+            Y: <span class="calibration-value" id="velo2rtk-y">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-y" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Z: <span class="calibration-value" id="velo2rtk-z">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-z" type="number" placeholder="" step='any' value='0'/> mm
+            Z: <span class="calibration-value" id="velo2rtk-z">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-z" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
@@ -32,7 +32,7 @@ $(document).ready(function () {
             Roll: <span class="calibration-value" id="velo2rtk-roll">0.0000</span> rad
             Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-roll" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
@@ -40,7 +40,7 @@ $(document).ready(function () {
             Pitch: <span class="calibration-value" id="velo2rtk-pitch">0.0000</span> rad
             Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-pitch" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
@@ -48,7 +48,7 @@ $(document).ready(function () {
             Yaw: <span class="calibration-value" id="velo2rtk-yaw">0.0000</span> rad
             Setpoint: <input class="calibration-setpoint" id="velo2rtk-setpoint-yaw" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
       </div>
@@ -57,50 +57,50 @@ $(document).ready(function () {
         <div class="draggable-overlay-header" id="calibration-overlay-rtk2vehicle-header">RTK to Vehicle Extrinsics</div>
 
         <p><span>
-            X: <span class="calibration-value" id="rtk2vehicle-x">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-x" type="number" placeholder="" step='any' value='0'/> mm
+            X: <span class="calibration-value" id="rtk2vehicle-x">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-x" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Y: <span class="calibration-value" id="rtk2vehicle-y">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-y" type="number" placeholder="" step='any' value='0'/> mm
+            Y: <span class="calibration-value" id="rtk2vehicle-y">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-y" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Z: <span class="calibration-value" id="rtk2vehicle-z">0.0000</span> mm
-            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-z" type="number" placeholder="" step='any' value='0'/> mm
+            Z: <span class="calibration-value" id="rtk2vehicle-z">0.0000</span> m
+            Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-z" type="number" placeholder="" step='any' value='0'/> m
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> mm
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> m
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Roll: <span class="calibration-value" id="rtk2vehicle-roll">0.0000</span> mm
+            Roll: <span class="calibration-value" id="rtk2vehicle-roll">0.0000</span> m
             Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-roll" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Pitch: <span class="calibration-value" id="rtk2vehicle-pitch">0.0000</span> mm
+            Pitch: <span class="calibration-value" id="rtk2vehicle-pitch">0.0000</span> m
             Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-pitch" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
         <p><span>
-            Yaw: <span class="calibration-value" id="rtk2vehicle-yaw">0.0000</span> mm
+            Yaw: <span class="calibration-value" id="rtk2vehicle-yaw">0.0000</span> m
             Setpoint: <input class="calibration-setpoint" id="rtk2vehicle-setpoint-yaw" type="number" placeholder="" step='any' value='0'/> rad
             <input class="calibration-slider" type="range" min="-1" max="1" value="0" step="any" />
-            Step: <input class="calibration-step" type="number" value="1" step='any'/> rad
+            Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
 
@@ -113,9 +113,9 @@ $(document).ready(function () {
               // <p>
               //   <span>
               //     X: <span class="value" id="rtk2vehicle-x"></span>
-              //     Setpoint: <input type="number" placeholder="" step='any' value='0'/> mm
+              //     Setpoint: <input type="number" placeholder="" step='any' value='0'/> m
               //     <input type="range" min="0" max="10" step="any" />
-              //     Step: <input type="number" step='any'/> mm
+              //     Range: <input type="number" step='any'/> m
               //     <button type="button">update</button>
               //   </span>
               // </p>
@@ -186,6 +186,7 @@ $(document).ready(function () {
       let setpoint = span.querySelector(".calibration-setpoint");
       let stepsize = span.querySelector(".calibration-step");
       let slider = span.querySelector(".calibration-slider");
+      let reset = span.querySelector(".calibration-reset");
 
       slider.oninput = function() {
         console.log('TESTING SLIDER VALUE', slider.value+17);
@@ -205,8 +206,23 @@ $(document).ready(function () {
 
         let event = new CustomEvent("update-calibration-panel", {detail:{id:id, dim:dim, val:val}});
         window.dispatchEvent(event);
-
       }
+
+      reset.onmouseup = function() {
+        console.log("Reset Calibration Value");
+        setpoint.value = 0;
+        stepsize.value = 1;
+        slider.value = 0;
+        value.textContent = (0).toFixed(4);
+
+        let idComponents = value.id.split('-');
+        let id = idComponents[0];
+        let dim = idComponents[idComponents.length-1];
+
+        let event = new CustomEvent("update-calibration-panel", {detail:{id:id, dim:dim, val:val}});
+        window.dispatchEvent(event);
+      }
+
     }
   }
   $(".draggable-overlay")[0].children[1].children[0].children; // Gives each span
@@ -221,7 +237,7 @@ function getRtk2Vehicle() {
     pitch: parseFloat($("#rtk2vehicle-pitch").text()),
     yaw: parseFloat($("#rtk2vehicle-yaw").text())
   }
-  debugger; // return
+  // debugger; // return
   return rtk2vehicle;
 }
 
@@ -234,6 +250,6 @@ function getVelo2Rtk() {
     pitch: parseFloat($("#velo2rtk-pitch").text()),
     yaw: parseFloat($("#velo2rtk-yaw").text())
   }
-  debugger; // return
+  // debugger; // return
   return velo2rtk;
 }

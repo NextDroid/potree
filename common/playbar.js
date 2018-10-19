@@ -20,7 +20,8 @@ $(document).ready(function () {
               <input type="checkbox" id="playbar_toggle">
               <span class="toggleslider"></span>
             </label>
-            <input type="range" name="playback_speed", id="playback_speed" min="1" max="8" value="4" step="any">
+            <input type="range" name="playback_speed" id="playback_speed" min="1" max="8" value="4" step="any">
+            <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
           </div>
         </div>
       </div>
@@ -170,6 +171,26 @@ $(document).ready(function () {
         }
     });
 
+    playbarhtml.find("#toggle_calibration_panels").mouseup(function() {
+
+      // Find Calibration Panels:
+      let panels = $(".draggable-overlay");
+      for(ii=0, len=panels.length; ii<len; ii++) {
+
+        let panel = panels[ii];
+
+        // Check is visible and toggle:
+        // panel.style.display = "none";
+        // debugger;
+        if (panel.style.display == "none") {
+          panel.style.display = "block";
+        } else {
+          panel.style.display = "none"
+        }
+
+      }
+
+    });
 
     $(document).tooltip();
 });

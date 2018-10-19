@@ -9,24 +9,46 @@ function minAngle(theta) {
   return theta;
 }
 
-function loadRtk(callback) {
+function loadRtk(filename, isODC, callback) {
 
-  let filename = "rtkdata.csv";
-  let tcol = 1;       // GPS_TIME
-  // let tcol = 3;       // SYSTEM_TIME
-  let xcol = 12;      // RTK_EASTING_M
-  let ycol = 13;      // RTK_NORTHING_M
-  let zcol = 14;      // RTK_ALT_M
-  let yawcol = 15;    // ADJUSTED_HEADING_RAD
-  let pitchcol = 16;  // PITCH_RAD
-  let rollcol = 17;   // ROLL_RAD
+  // let filename = "http://172.18.44.138:4321/rtk.csv";
+  console.log("RTK Filename: ", filename);
+  let tcol, xcol, ycol, zcol, yawcol, pitchcol, rollcol;
+
+  if (isODC) {
+    tcol = 1;       // GPS_TIME
+    // tcol = 3;       // SYSTEM_TIME
+    xcol = 12;      // RTK_EASTING_M
+    ycol = 13;      // RTK_NORTHING_M
+    zcol = 14;      // RTK_ALT_M
+    yawcol = 15;    // ADJUSTED_HEADING_RAD
+    pitchcol = 16;  // PITCH_RAD
+    rollcol = 17;   // ROLL_RAD
+  } else {
+    tcol = 0;       // timestamp
+    xcol = 3;       // easting
+    ycol = 4;       // northing
+    zcol = 5;       // altitude
+    yawcol = 14;    // heading
+    pitchcol = 15;  // pitch
+    rollcol = 16;   // roll
+  }
+
+
+
 
   let t0, t1;
   let tstart = performance.now();
   let distance = 0; // total distance of path
 
+  console.log("Loading RTK File");
+
   const xhr = new XMLHttpRequest();
   xhr.open("GET", filename);
+
+  xhr.onerror = function() {
+    console.error("Error loading RTK file: ", xhr);
+  }
 
   xhr.onprogress = function(event) {
     t1 = performance.now();
@@ -35,6 +57,7 @@ function loadRtk(callback) {
   }
 
   xhr.onload = function(data) {
+
     var t0_loop = performance.now();
     var rows = data.target.response.split('\n');
 
@@ -145,14 +168,14 @@ function loadRtk(callback) {
 
     // TODO load calibrations
     rtk2vehicle = {
-      x: 1,
-      y: 2,
-      z: 3,
-      roll: 4,
-      pitch: 5,
-      yaw: 6
+      x: 0,
+      y: 0,
+      z: 0,
+      roll: 0,
+      pitch: 0,
+      yaw: 0
     }
-
+    debugger;
     callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
 

@@ -227,11 +227,15 @@
 	 // Create Settings:
 	 var settings = {
 	 	serverUrl: "http://localhost",
-		// serverUrl: "http://172.18.44.129",	// virtual box
+		// serverUrl: "http://172.18.44.138",	// virtual box
 		// serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
+	 	// headerFilename: "test.lidar.bin.header",
+	 	// filename: "test.lidar.bin",
 	 	headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
 	 	filename: "full_pointcloud-large-zeroed-int16.csv.bin",
+		rtkFile: "rtk.csv",
+		isOdcData: true,
 	 	maxMemMB: 10,	// TODO try 40 bytes
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
@@ -291,7 +295,7 @@
 			pitch: 15,
 			yaw: 16
 		}
-		debugger; // follow step
+		// debugger; // follow step
 		storeVelo2Rtk(velo2rtk);
 
 		Potree.loadPointCloud("../pointclouds/veritas/cube-cloud/cloud.js", "cloud", function(e){ // TODO use empty, but remove GPS_TIME attribute from cloud.js
@@ -411,7 +415,9 @@
 	 });
 
 	 // Load RTK:
-	 loadRtk((pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
+	 let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
+	 console.log("rtkFile: ", rtkFile);
+	 loadRtk(rtkFile, settings.isOdcData, (pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
 		 rtkOffset = t_init;
 		 rtkRange = t_range;
 		 rtkLookup = rtkLookupOutput;

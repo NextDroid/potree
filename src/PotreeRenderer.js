@@ -1108,7 +1108,7 @@ export class Renderer {
 			shader.setUniformMatrix4("uProjInv", projInv);
 
 			try {
-				debugger; // try below
+				// debugger; // try below
 				let currentRtkPosition = octree.material.uniforms.currentRtkPosition.value.toArray();
 				let currentRtkOrientation = octree.material.uniforms.currentRtkOrientation.value.toArray();
 				let rtk2VehicleXYZ = octree.material.uniforms.rtk2VehicleXYZ.value.toArray();
@@ -1124,7 +1124,7 @@ export class Renderer {
 				shader.setUniform3f("velo2RtkRPY", velo2RtkRPY);
 
 			} catch(e) {
-				debugger; // currentRtkPosition/Orientation doesn't exist
+				// debugger; // currentRtkPosition/Orientation doesn't exist
 			}
 
 			let screenWidth = target ? target.width : material.screenWidth;

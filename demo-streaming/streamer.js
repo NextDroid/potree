@@ -221,7 +221,7 @@ function handleDataLoaderMessage(response) {
   switch (response.data.msg) {
 
     case "slice":
-    // debugger;// start slice
+    debugger;// start slice
     tStartAddAttr = performance.now();
       console.log("Slice: ", response.data);
       slice = response.data;
@@ -419,6 +419,11 @@ function handleDataLoaderMessage(response) {
 
       // if animation is waiting on dataloader --> restart now
       // TODO might break...what happens if call resume when already playing
+
+      // TODO state == 1 means DataLoader is PAUSED - move this to an enum common to both
+      // if (heartbeat.state == 1 && loadingBar.value < 99.99) {
+      //   requestSlice();
+      // }
 
       if (typeof(window.animationPaused) != "undefined" && window.animationPaused) {
         animation.resume();

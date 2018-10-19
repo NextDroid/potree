@@ -159,6 +159,7 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
     if (e.done) {
       // terminate();
       console.log("Reached end of file");
+      debugger;
       self.LoaderState = LoaderStates.PAUSED;
       runState();
       self.postMessage({msg:"reached-end-of-file"});
@@ -328,7 +329,7 @@ function slice(tmin, tmax) {
 
 
   // TODO single loop to create all slices:
-  // debugger; // check below
+  debugger; // check below
   var numPoints = maxIdx-minIdx;
   let bboxOffsetFromCorner = [200, 200, 100];
   // var posSlice = new Float32Array(3*numPoints);
