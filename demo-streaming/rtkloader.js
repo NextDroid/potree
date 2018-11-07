@@ -173,7 +173,7 @@ function loadRtk(filename, isODC, callback) {
       z: 0,
       roll: 0,
       pitch: 0,
-      yaw: 0
+      yaw: 1.6232
     }
     debugger;
     callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);

@@ -19,6 +19,7 @@ function startHeartbeat() {
       var time = 0;
       if (rtkRange != null || rtkOffset != null) {
         time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin;
+        debugger;
       }
       DataLoader.postMessage({
         msg: "lidarTime",

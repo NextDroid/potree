@@ -168,7 +168,7 @@
       varying float vAlpha;
 
       void main() {
-          gl_FragColor = vec4( color, vAlpha );
+          gl_FragColor = vec4( color, 0.0 );
       }
   </script>
 
@@ -238,13 +238,13 @@
 	 	// filename: "full_pointcloud-large-zeroed-int16.csv.bin",
 		rtkFile: "rtk.csv",
 		isOdcData: false,
-	 	maxMemMB: 100,
+	 	maxMemMB: 50,
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
 	 }
 
 	 // TODO define this in a better way:
-	 var speedFactor = 0.5;
+	 var speedFactor = 1.0;
 	 // var speedFactor = 33;
 
 	 var heartbeat;
@@ -516,7 +516,7 @@
 				 // Animate from beginning to end
 				 var start = 0;
 				 var end = Infinity;
-				 var speed = playbackSpeed.value*0.25*speedFactor;	// empirically set as "close to realtime"
+				 var speed = playbackSpeed.value*speedFactor;	// empirically set as "close to realtime"
 				 var animation = animationPath.animate(start, end, speed, animate);
 
 				 function animate(t, updateCamera=true) {
@@ -578,7 +578,7 @@
 					 minLidarTime = minGpsTime - header.tmin;
 					 maxLidarTime = maxGpsTime - header.tmin;
 					 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
-					 viewer.setFilterGPSTimeExtent(minLidarTime-10, maxLidarTime+10);
+
 					 // debugger; // uniforms below
 					 var pcloud = viewer.scene.pointclouds[0];
 					 pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);

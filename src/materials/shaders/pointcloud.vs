@@ -143,21 +143,21 @@ mat4 getSE3(vec3 dX, vec3 dTheta) {
 	float cosYaw = cos(dTheta.z);
 
 	mat3 Rx = mat3(
-		1.0, 	0.0, 			0.0,
-		0.0,	cosRoll,	sinRoll,
-		0.0,	-sinRoll, cosRoll
+		1.0, 	0.0, 		 0.0,
+		0.0,	cosRoll, -sinRoll,
+		0.0,	sinRoll, cosRoll
 	);
 
 	mat3 Ry = mat3(
-		cosPitch,	0.0, 	-sinPitch,
-		0.0,			1.0,	0.0,
-		sinPitch, 0.0,	cosPitch
+		cosPitch,	 0.0,  sinPitch,
+		0.0,			 1.0,	 0.0,
+		-sinPitch, 0.0,	 cosPitch
 	);
 
 	mat3 Rz = mat3(
-		cosYaw, 	sinYaw, 0.0,
-		-sinYaw, 	cosYaw, 0.0,
-		0.0,			0.0,		1.0
+		cosYaw, 	-sinYaw, 0.0,
+		sinYaw, 	cosYaw,  0.0,
+		0.0,			0.0,		 1.0
 	);
 
 	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
@@ -828,6 +828,8 @@ void main() {
 	vec4 positionInCurrenRtkFrame = applyRtk2RtkExtrinsics(positionInRtkFrameAtTimeT);
 	vec4 positionInVehicleFrame = applyRtk2VehicleExtrinsics(positionInCurrenRtkFrame);
 	vec4 correctedPosition = positionInVehicleFrame;
+
+	// correctedPosition = vec4(positionInVeloFrameNoOffset, 1.0); // TODO for testing without extrinsics
 
 	correctedPosition += vec4(offset, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
