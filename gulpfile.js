@@ -82,24 +82,65 @@ gulp.task("shaders", function(){
 		.pipe(gulp.dest('build/shaders'));
 });
 
-gulp.task("build", ['workers','shaders', "icons_viewer", "examples_page"], function(){
+gulp.task('icons_viewer', function() {
+	let iconsPath = "resources/icons";
 
-	gulp.src(paths.html)
-		.pipe(gulp.dest('build/potree'));
+	fs.readdir(iconsPath, function(err, items) {
+		
+		let svgs = items.filter(item => item.endsWith(".svg"));
+		let other = items.filter(item => !item.endsWith(".svg"));
 
-	gulp.src(paths.resources)
-		.pipe(gulp.dest('build/potree/resources'));
+		items = [...svgs, ...other];
+	
+		let iconsCode = ``;
+		for(let item of items){
+			let extension = path.extname(item);
+			if(![".png", ".svg", ".jpg", ".jpeg"].includes(extension)){
+				continue;
+			}
 
-	gulp.src(["LICENSE"])
-		.pipe(gulp.dest('build/potree'));
+			let iconCode = `
+			<span class="icon_container" style="position: relative; float: left">
+				<center>
+				<img src="${item}" style="height: 32px;"/>
+				<div style="font-weight: bold">${item}</div>
+				</center>
+			</span>
+			`;
 
-	return;
-});
+			//iconsCode += `<img src="${item}" />\n`;
+			iconsCode += iconCode;
+		}
 
-// For development, it is now possible to use 'gulp webserver'
-// from the command line to start the server (default port is 8080)
-gulp.task('webserver', function() {
-	server = connect.server({host: '0.0.0.0', port: 1234});
+		let page = `
+			<html>
+				<head>
+					<style>
+						.icon_container{
+							border: 1px solid black;
+							margin: 10px;
+							padding: 10px;
+						}
+					</style>
+				</head>
+				<body>
+					<div id="icons_container">
+						${iconsCode}
+					</div>
+				</body>
+			</html>
+		`;
+
+		fs.writeFile(`${iconsPath}/index.html`, page, (err) => {
+			if(err){
+				console.log(err);
+			}else{
+				console.log(`created ${iconsPath}/index.html`);
+			}
+		});
+
+	});
+
 });
 
 gulp.task('examples_page', function() {
@@ -322,68 +363,27 @@ gulp.task('examples_page', function() {
 
 });
 
-gulp.task('icons_viewer', function() {
-	let iconsPath = "resources/icons";
+gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer", "examples_page")), function(){
 
-	fs.readdir(iconsPath, function(err, items) {
-		
-		let svgs = items.filter(item => item.endsWith(".svg"));
-		let other = items.filter(item => !item.endsWith(".svg"));
+	gulp.src(paths.html)
+		.pipe(gulp.dest('build/potree'));
 
-		items = [...svgs, ...other];
-	
-		let iconsCode = ``;
-		for(let item of items){
-			let extension = path.extname(item);
-			if(![".png", ".svg", ".jpg", ".jpeg"].includes(extension)){
-				continue;
-			}
+	gulp.src(paths.resources)
+		.pipe(gulp.dest('build/potree/resources'));
 
-			let iconCode = `
-			<span class="icon_container" style="position: relative; float: left">
-				<center>
-				<img src="${item}" style="height: 32px;"/>
-				<div style="font-weight: bold">${item}</div>
-				</center>
-			</span>
-			`;
+	gulp.src(["LICENSE"])
+		.pipe(gulp.dest('build/potree'));
 
-			//iconsCode += `<img src="${item}" />\n`;
-			iconsCode += iconCode;
-		}
-
-		let page = `
-			<html>
-				<head>
-					<style>
-						.icon_container{
-							border: 1px solid black;
-							margin: 10px;
-							padding: 10px;
-						}
-					</style>
-				</head>
-				<body>
-					<div id="icons_container">
-						${iconsCode}
-					</div>
-				</body>
-			</html>
-		`;
-
-		fs.writeFile(`${iconsPath}/index.html`, page, (err) => {
-			if(err){
-				console.log(err);
-			}else{
-				console.log(`created ${iconsPath}/index.html`);
-			}
-		});
-
-	});
-
+	return;
 });
 
-gulp.task('watch', ["build", "webserver"], function() {
+// For development, it is now possible to use 'gulp webserver'
+// from the command line to start the server (default port is 8080)
+gulp.task('webserver', function() {
+	server = connect.server({host: '0.0.0.0', port: 1234});
+});
+
+gulp.task('watch', gulp.series(gulp.parallel("build", "webserver")), function() {
 	//gulp.run("build");
 
 	exec('rollup -c', function (err, stdout, stderr) {
