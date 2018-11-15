@@ -5,8 +5,7 @@
   "description": "WebGL point cloud viewer",
   "dependencies": {
     "@material/slider": "^0.41.0",
-    "glob-watcher": "^5.0.1",
-    "gulp": "^3.9.1",
+    "gulp": "^4.0.0",
     "gulp-concat": "^2.6.1",
     "gulp-connect": "^5.6.1",
     "gulp-util": "^3.0.8",
@@ -16,5 +15,6 @@
     "through": "~2.3.4"
   },
   "author": "Markus Schütz",
-  "license": "BSD-2-CLAUSE"
+  "license": "BSD-2-CLAUSE",
+  "devDependencies": {}
 }
