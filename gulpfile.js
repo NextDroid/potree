@@ -363,7 +363,7 @@ gulp.task('examples_page', function() {
 
 });
 
-gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer", "examples_page")), function(){
+gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer", "examples_page"), function(){
 
 	gulp.src(paths.html)
 		.pipe(gulp.dest('build/potree'));
@@ -375,7 +375,7 @@ gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer"
 		.pipe(gulp.dest('build/potree'));
 
 	return;
-});
+}));
 
 // For development, it is now possible to use 'gulp webserver'
 // from the command line to start the server (default port is 8080)
@@ -383,7 +383,7 @@ gulp.task('webserver', function() {
 	server = connect.server({host: '0.0.0.0', port: 1234});
 });
 
-gulp.task('watch', gulp.series(gulp.parallel("build", "webserver")), function() {
+gulp.task('watch', gulp.series(gulp.parallel("build", "webserver"), function() {
 	//gulp.run("build");
 
 	exec('rollup -c', function (err, stdout, stderr) {
@@ -429,7 +429,7 @@ gulp.task('watch', gulp.series(gulp.parallel("build", "webserver")), function() 
 		});
 	});
 
-});
+}));
 
 
 let encodeWorker = function(fileName, opt){
