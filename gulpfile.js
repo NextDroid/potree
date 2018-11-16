@@ -64,7 +64,7 @@ let shaders = [
 ];
 
 
-gulp.task("workers", function(){
+gulp.task("workers", function(done){
 
 	for(let workerName of Object.keys(workers)){
 		
@@ -73,6 +73,7 @@ gulp.task("workers", function(){
 			.pipe(gulp.dest('build/potree/workers'));
 		
 	}
+        done();
 
 });
 
@@ -82,7 +83,7 @@ gulp.task("shaders", function(){
 		.pipe(gulp.dest('build/shaders'));
 });
 
-gulp.task('icons_viewer', function() {
+gulp.task('icons_viewer', function(done) {
 	let iconsPath = "resources/icons";
 
 	fs.readdir(iconsPath, function(err, items) {
@@ -140,10 +141,11 @@ gulp.task('icons_viewer', function() {
 		});
 
 	});
+        done();
 
 });
 
-gulp.task('examples_page', function() {
+gulp.task('examples_page', function(done) {
 
 	let settings = JSON.parse(fs.readFileSync("examples/page.json", 'utf8'));
 	let files = fs.readdirSync("./examples");
@@ -358,12 +360,12 @@ gulp.task('examples_page', function() {
 			console.log(`created examples/page.html`);
 		}
 	});
-
+        done();
 
 
 });
 
-gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer", "examples_page"), function(){
+gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer", "examples_page"), function(done){
 
 	gulp.src(paths.html)
 		.pipe(gulp.dest('build/potree'));
@@ -374,16 +376,17 @@ gulp.task("build", gulp.series(gulp.parallel('workers','shaders', "icons_viewer"
 	gulp.src(["LICENSE"])
 		.pipe(gulp.dest('build/potree'));
 
-	return;
+        done();
 }));
 
 // For development, it is now possible to use 'gulp webserver'
 // from the command line to start the server (default port is 8080)
-gulp.task('webserver', function() {
-	server = connect.server({host: '0.0.0.0', port: 1234});
+gulp.task('webserver', function(done) {
+  server = connect.server({host: '0.0.0.0', port: 1234});
+  done();
 });
 
-gulp.task('watch', gulp.series(gulp.parallel("build", "webserver"), function() {
+gulp.task('watch', gulp.series(gulp.parallel("build", "webserver"), function(done) {
 	//gulp.run("build");
 
 	exec('rollup -c', function (err, stdout, stderr) {
@@ -428,6 +431,7 @@ gulp.task('watch', gulp.series(gulp.parallel("build", "webserver"), function() {
 			//cb(err);
 		});
 	});
+        done();
 
 }));
 
