@@ -1,3 +1,6 @@
+function isNan(n) {
+  return n !== n;
+}
 
 function minAngle(theta) {
   if (theta < - Math.PI) {
@@ -9,7 +12,7 @@ function minAngle(theta) {
   return theta;
 }
 
-function loadRtk(callback) {
+export function loadRtk(callback) {
 
   let filename = "csv/rtkdata.csv";
   let tcol = 1;       // GPS_TIME
@@ -48,7 +51,8 @@ function loadRtk(callback) {
     let row, cols;
     let t_init = 0;
     let firstTimestamp = true;
-    let lastRoll, lastPitch, lastYaw;
+    let x,y,z,t,roll,pitch,yaw;
+    let lastOrientation, lastRoll, lastPitch, lastYaw;
     for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
       row = rows[ii];
       cols = row.split(' ');
@@ -118,7 +122,7 @@ function loadRtk(callback) {
 }
 
 
-function applyRotation(obj, roll, pitch, yaw) {
+export function applyRotation(obj, roll, pitch, yaw) {
   if ( typeof(obj.initialRotation) != "undefined") {
     console.log(obj.ini)
     roll += obj.initialRotation.x;

@@ -1,8 +1,9 @@
+import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
 
-function loadTracks(shaderMaterial, callback) {
+export function loadTracks(shaderMaterial, callback) {
   console.log("Hello World! -- Loading Tracking Truth Data");
 
-  filename = "../data/tracks.bin";
+  let filename = "../data/tracks.bin";
 
   const xhr = new XMLHttpRequest();
   xhr.open("GET", filename);
@@ -17,7 +18,7 @@ function loadTracks(shaderMaterial, callback) {
 
   xhr.onload = function(data) {
 
-    response = data.target.response;
+    let response = data.target.response;
     if (!response) {
       console.error("Could not create buffer from tracks data");
       return;
@@ -46,7 +47,7 @@ function loadTracks(shaderMaterial, callback) {
       segOffset += segSize;
     }
 
-    trackGeometries = createTrackGeometries(shaderMaterial, tracks);
+    let trackGeometries = createTrackGeometries(shaderMaterial, tracks);
     callback(trackGeometries, );
   }
 
@@ -55,12 +56,12 @@ function loadTracks(shaderMaterial, callback) {
 
 function createTrackGeometries(shaderMaterial, tracks) {
 
-  lineMaterial = new THREE.LineBasicMaterial({
+  let lineMaterial = new THREE.LineBasicMaterial({
     color: 0x00ff00,
     transparent: true
   });
 
-  boxMaterial = new THREE.MeshNormalMaterial();
+  let boxMaterial = new THREE.MeshNormalMaterial();
 
   let material = shaderMaterial;
 
@@ -130,7 +131,7 @@ function createTrackGeometries(shaderMaterial, tracks) {
 
         var edges = new THREE.EdgesGeometry( boxGeometry ); // or WireframeGeometry( geometry )
         var wireframe = new THREE.LineSegments( edges, material.clone() ); // TODO don't clone material to assign to multiple meshes
-        boxMesh = wireframe;
+        var boxMesh = wireframe;
 
         boxMesh.position.copy(centroidLocation);
 
@@ -190,7 +191,7 @@ function createTrackGeometries(shaderMaterial, tracks) {
         }
 
 
-        output = {
+        const output = {
           t0: t0,
           boxMesh: boxMesh,
           boxGeometry: boxGeometry2
@@ -222,7 +223,7 @@ function createTrackGeometries(shaderMaterial, tracks) {
 
 
 
-  output = {
+  const output = {
     bbox: bboxs,
     t0: t0,
     x0: x0,

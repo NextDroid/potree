@@ -17,14 +17,15 @@
   <!-- <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 	<script src="../node_modules/flatbuffers/js/flatbuffers.js"></script>
-	<script src="../schemas/GroundTruth_generated_tmp.js"></script>
-  <script src="radarloader.js"></script>
-  <script src="rtkloader.js"></script>
-  <script src="laneLoader.js"></script>
-  <script src="trackLoader.js"></script>
+	<!-- <script type="module" src="../readers/polyline3D.js"></script>
+	<script type="module" src="../schemas/GroundTruth_generated_tmp.js"></script> -->
+  <script type="module" src="radarLoader.js"></script>
+  <script type="module" src="rtkLoader.js"></script>
+  <script type="module" src="laneLoader.js"></script>
+  <script type="module" src="trackLoader.js"></script>
+  <script type="module" src="gapsLoader.js"></script>
   <link rel="stylesheet" type="text/css" href="../common/playbar.css">
-	<script src="../readers/polyline3D.js"></script>
-	
+
 </head>
 
 <body>
@@ -44,7 +45,6 @@
 	<script src="../libs/plasio/js/laslaz.js"></script>
   <script src="../libs/other/OBJLoader.js"></script>
 	<script src="../common/playbar.js"></script>
-	<script src="../node_modules/three.meshline/src/THREE.MeshLine.js"></script>
 	<script src="animationEngine.js"></script>
 
 
@@ -123,7 +123,13 @@
 
 
 
-	<script>
+	<script type="module">
+		import { loadLanes } from "../demo/laneLoader.js";
+		import { loadTracks } from "../demo/trackLoader.js";
+		import { loadRtk, applyRotation } from "../demo/rtkLoader.js";
+		import { loadRadar } from "../demo/radarLoader.js";
+		import { loadGaps } from "../demo/gapsLoader.js";
+
 
 		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
 
@@ -229,7 +235,7 @@
 			// Camera:
 			let updateCamera = false;
 			let lag = 1.01; // seconds
-			camPointZOffset = 10; // meters
+			let camPointZOffset = 10; // meters
 			animationEngine.tweenTargets.push((gpsTime) => {
 				if (updateCamera) {
 					let camera = viewer.scene.getActiveCamera();
@@ -502,8 +508,8 @@
 
     // Load RTK:
     loadRtk((pos, rot, t_init) => {
-      path = pos.map(v => new THREE.Vector3(...v));
-      orientations = rot.map(v => new THREE.Vector3(...v));
+      const path = pos.map(v => new THREE.Vector3(...v));
+      const orientations = rot.map(v => new THREE.Vector3(...v));
 
       let animationPath = new Potree.AnimationPath(path);
       animationPath.closed = false;
@@ -541,10 +547,10 @@
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
 
-      var geometry = new THREE.SphereGeometry( 2, 32, 32 );
-      var material = new THREE.MeshNormalMaterial( {side: THREE.DoubleSide, opacity: 0.92,transparent:true});
-      var sphere = new THREE.Mesh( geometry, material );
-      sphere.position = new THREE.Vector3(...pos[0]);
+      let geometry = new THREE.SphereGeometry( 2, 32, 32 );
+      let material = new THREE.MeshNormalMaterial( {side: THREE.DoubleSide, opacity: 0.92,transparent:true});
+      let sphere = new THREE.Mesh( geometry, material );
+      sphere.position.copy(new THREE.Vector3(...pos[0]));
       console.log(sphere);
 
       // viewer.scene.scene.add( sphere );

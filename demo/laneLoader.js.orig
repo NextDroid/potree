@@ -1,6 +1,10 @@
-import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
+<<<<<<< Updated upstream
+function loadLanes(callback) {
+=======
+import { Flatbuffer } from "../schemas/GroundTruth_generated.js"
 
 export function loadLanes(callback) {
+>>>>>>> Stashed changes
   console.log("Hello World! -- Loading Lane Representation Truth Data");
 
   const filename = "../data/lanes.bin";
@@ -18,7 +22,7 @@ export function loadLanes(callback) {
 
   xhr.onload = function(data) {
 
-    const response = data.target.response;
+    let response = data.target.response;
     if (!response) {
       console.error("Could not create buffer from lanes data");
       return;
@@ -46,6 +50,7 @@ export function loadLanes(callback) {
       segOffset += segSize;
     }
 
+<<<<<<< Updated upstream
     // let vertices = splitLaneVertices(lanes);
     // leftMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
     // rightMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
@@ -70,6 +75,9 @@ export function loadLanes(callback) {
 
     let laneGeometries = createLaneGeometriesOld(lanes);
 
+=======
+    let laneGeometries = createLaneGeometries(lanes);
+>>>>>>> Stashed changes
     callback(laneGeometries);
   }
 

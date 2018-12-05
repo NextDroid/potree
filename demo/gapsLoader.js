@@ -1,32 +1,34 @@
-import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
+import { Flatbuffer } from "../schemas/VisualizationPrimitives_generated.js";
 
-export function loadLanes(callback) {
-  console.log("Hello World! -- Loading Lane Representation Truth Data");
+export function loadGaps(callback) {
+  debugger;
+  console.log("Hello World! -- Loading Gaps from VisualizationPrimitives");
 
-  const filename = "../data/lanes.bin";
+  let filename = "../data/gaps.bin";
 
   const xhr = new XMLHttpRequest();
   xhr.open("GET", filename);
   xhr.responseType = "arraybuffer";
   xhr.onprogress = function(event) {
-    console.log("LANES -- Loaded ["+event.loaded+"] bytes")
+    console.log("GAPS -- Loaded ["+event.loaded+"] bytes")
   }
 
+
   xhr.onerror = function(e) {
-    console.error("LANES -- Error loading lanes: ", e);
+    console.error("GAPS -- Error loading gaps: ", e);
   }
 
   xhr.onload = function(data) {
 
-    const response = data.target.response;
+    response = data.target.response;
     if (!response) {
-      console.error("Could not create buffer from lanes data");
+      console.error("Could not create buffer from gaps data");
       return;
     }
 
     let bytesArray = new Uint8Array(response);
     let numBytes = bytesArray.length;
-    let lanes = [];
+    let gaps = [];
 
     let segOffset = 0;
     let segSize, viewSize, viewData;
@@ -35,92 +37,61 @@ export function loadLanes(callback) {
       // Read SegmentSize:
       viewSize = new DataView(bytesArray.buffer, segOffset, 4);
       segSize = viewSize.getUint32(0, true); // True: little-endian | False: big-endian
-
-      // Get Flatbuffer Lane Object:
+      console.log(segOffset)
+      // Get Flatbuffer gao Object:
       segOffset += 4;
       let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
-      let fbuffer = new flatbuffers.ByteBuffer(buf);
-      let lane = Flatbuffer.GroundTruth.Lane.getRootAsLane(fbuffer);
+      console.log(buf)
 
-      lanes.push(lane);
+      let fbuffer = new flatbuffers.ByteBuffer(buf);
+      console.log(fbuffer)
+      debugger;
+      let gap = Flatbuffer.Primitives.PolyLines3D.getRootAsPolyLines3D (fbuffer);
+
+      gaps.push(gap);
+      debugger;
       segOffset += segSize;
     }
 
-    // let vertices = splitLaneVertices(lanes);
-    // leftMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
-    // rightMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
-    // spineMaterial = new THREE.MeshBasicMaterial({color: 0x0000ff});
-    //
-    // let leftGeometries = createLaneGeometries(vertices.leftGroups, leftMaterial);
-    // let rightGeometries = createLaneGeometries(vertices.rightGroups, rightMaterial);
-    // let spineGeometries = createLaneGeometries(vertices.spineGroups, spineMaterial);
-    // let allGeometries = [];
-    // allGeometries = allGeometries.concat(leftGeometries);
-    // allGeometries = allGeometries.concat(rightGeometries);
-    // allGeometries = allGeometries.concat(spineGeometries);
-    //
-    // debugger; // allGeometries
-    //
-    // let laneGeometries = {
-    //   left: leftGeometries,
-    //   right: rightGeometries,
-    //   spine: spineGeometries,
-    //   all: allGeometries
-    // }
 
-    let laneGeometries = createLaneGeometriesOld(lanes);
 
-    callback(laneGeometries);
+    let gapGeometries = createGapGeometriesOld(gaps);
+
+    callback(gapGeometries);
   }
 
   xhr.send();
 }
 
-function splitLaneVertices(lanes) {
 
-  let leftVertices = [];
-  let rightVertices = [];
-  let spineVertices = [];
+function splitGapVertices(gaps) {
+  debugger;
 
-  let lane, vtx, laneVertices;
-  for (let ii=0, numLanes=lanes.length; ii<numLanes; ii++) {
+  let gapVertices = [];
+  let gapLength, vtx, gapPoints;
+  for (let ii=0, gapLength=gaps.length; ii<gapLength; ii++) {
+    gap = gaps[ii];
 
-    lane = lanes[ii];
-
-    laneVertices = [];
-    for (let jj=0, numLeftVtx=lane.leftLength(); jj<numLeftVtx; jj++) {
-      vtx = lane.left(jj);
-      laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
+    gapVertices = [];
+    for (let jj=0, numGapVtx=gap.gapLength; jj<numGapVtx; jj++) {
+      vtx = gap.vertices(jj);
+      gapVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
     }
-    leftVertices.push(laneVertices);
+    gapVertices.push(gapVertices);
 
-    laneVertices = [];
-    for (let jj=0, numRightVtx=lane.rightLength(); jj<numRightVtx; jj++) {
-      vtx = lane.right(jj);
-      laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
-    }
-    rightVertices.push(laneVertices);
 
-    laneVertices = [];
-    for (let jj=0, numSpineVtx=lane.spineLength(); jj<numSpineVtx; jj++) {
-      vtx = lane.spine(jj);
-      spineVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
-    }
-    spineVertices.push(laneVertices);
   }
 
   let output = {
-    leftGroups: leftVertices,
-    rightGroups: rightVertices,
-    spineGroups: spineVertices
+      gapGroups: gapVertices,
   }
 
   return output;
 }
 
-function createLaneGeometries(vertexGroups, material) {
-
-  let laneGeometries = [];
+function createGapGeometries(vertexGroups, material) {
+  debugger;
+  let gapGeometries = [];
   let allBoxes = new THREE.Geometry();
 
   let allLanes = [];
@@ -171,7 +142,7 @@ function createLaneGeometries(vertexGroups, material) {
         // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
         let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
         mesh.position.copy(firstCenter);
-        laneGeometries.push(mesh);
+        gapGeometries.push(mesh);
         allBoxes = new THREE.Geometry();
         firstCenter = center.clone();
       }
@@ -180,68 +151,38 @@ function createLaneGeometries(vertexGroups, material) {
     }
   }
 
-  return laneGeometries;
+  return gapGeometries;
 }
 
 
-function createLaneGeometriesOld(lanes) {
-
-  let materialLeft = new THREE.LineBasicMaterial({
+function createGapGeometriesOld(gaps) {
+  debugger;
+  materialLeft = new THREE.LineBasicMaterial({
     color: 0xff0000
   });
 
-  let materialSpine = new THREE.LineBasicMaterial({
-    color: 0x00ff00
-  });
 
-  let materialRight = new THREE.LineBasicMaterial({
-    color: 0x0000ff
-  });
 
-  let lane;
+  let gap;
   let lefts = [];
-  let rights = [];
-  let spines = [];
+
   let all = [];
   let allBoxes = new THREE.Geometry();
-  for(let ii=0, len=lanes.length; ii<len; ii++) {
-    lane = lanes[ii];
+  for(let ii=0, len=gaps.length; ii<len; ii++) {
+    gap = gaps[ii];
 
     var geometryLeft = new THREE.Geometry();
-    var geometrySpine = new THREE.Geometry();
-    var geometryRight = new THREE.Geometry();
 
-    let left, right, spine;
-    for(let jj=0, numVertices=lane.leftLength(); jj<numVertices; jj++) {
-      left = lane.left(jj);
-      spine = lane.spine(jj);
-      right = lane.right(jj);
+    let left;
+    for(let jj=0, numVertices=gaps.gapLength(); jj<numVertices; jj++) {
+      left = gap.vertices(jj);
+
 
       geometryLeft.vertices.push( new THREE.Vector3(left.x(), left.y(), left.z()));
-      geometrySpine.vertices.push( new THREE.Vector3(spine.x(), spine.y(), spine.z()));
-      geometryRight.vertices.push( new THREE.Vector3(right.x(), right.y(), right.z()));
+
     }
 
-    // // NOTE TRYING MESHLINE:
-    // var leftLine = new MeshLine();
-    // var spineLine = new MeshLine();
-    // var rightLine = new MeshLine();
-    //
-    // leftLine.setGeometry(geometryLeft);
-    // spineLine.setGeometry(geometrySpine);
-    // rightLine.setGeometry(geometryRight);
-    //
-    // let leftMeshLineMaterial = new MeshLineMaterial();
-    // // let spineMeshLineMaterial = new MeshLineMaterial();
-    // // let rightMeshLineMaterial = new MeshLineMaterial();
-    //
-    // let leftMesh = new THREE.Mesh( leftLine.geometry, leftMeshLineMaterial );
-    // // let spineMesh = new THREE.Mesh( spineLine.geometry, spineMeshLineMaterial );
-    // // let rightMesh = new THREE.Mesh( rightLine.geometry, rightMeshLineMaterial );
-    //
-    // lefts.push(leftMesh);
-    // // spines.push(spineMesh);
-    // // rights.push(rightMesh);
+
 
 
     // NOTE TRYING BOXES:
@@ -251,8 +192,6 @@ function createLaneGeometriesOld(lanes) {
     let offset = new THREE.Vector3(300043.226, 4701247.907, 245.427); // TODO FIX THIS HARDCODED OFFSET (it's just a large number to bring the vertices below close to 0)
 
     createBoxes(geometryLeft.vertices, new THREE.MeshBasicMaterial({color:0xffffff}));
-    createBoxes(geometryRight.vertices, new THREE.MeshBasicMaterial({color:0xffffff}));
-    createBoxes(geometrySpine.vertices, new THREE.MeshBasicMaterial({color:0x00ff00}));
 
     function createBoxes(vertices, material) {
       for (let ii=1, len=vertices.length; ii<len; ii++) {
@@ -308,8 +247,7 @@ function createLaneGeometriesOld(lanes) {
         boxMesh.position.copy(center.clone());
 
         lefts.push(boxMesh);
-        spines.push(boxMesh);
-        rights.push(boxMesh);
+
 
 
         if ((ii%100000)==0 || ii==(len-1)) {
@@ -322,22 +260,11 @@ function createLaneGeometriesOld(lanes) {
         }
       }
     }
-
-
-
-
-
-    // NOTE ORIGINAL:
-    // lefts.push(new THREE.Line(geometryLeft, materialLeft) );
-    // spines.push(new THREE.Line(geometrySpine, materialSpine) );
-    // rights.push(new THREE.Line(geometryRight, materialRight) );
   }
 
-  let output = {
+  output = {
     left: lefts,
-    spine: spines,
-    right: rights,
-    all: all
+
   }
   return output;
 }
