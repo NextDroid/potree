@@ -1,7 +1,7 @@
+import { Vec3 } from "../schemas/BasicTypes_generated.js";
 import { Flatbuffer } from "../schemas/VisualizationPrimitives_generated.js";
 
 export function loadGaps(callback) {
-  debugger;
   console.log("Hello World! -- Loading Gaps from VisualizationPrimitives");
 
   let filename = "../data/gaps.bin";
@@ -20,7 +20,7 @@ export function loadGaps(callback) {
 
   xhr.onload = function(data) {
 
-    response = data.target.response;
+    const response = data.target.response;
     if (!response) {
       console.error("Could not create buffer from gaps data");
       return;
@@ -37,23 +37,16 @@ export function loadGaps(callback) {
       // Read SegmentSize:
       viewSize = new DataView(bytesArray.buffer, segOffset, 4);
       segSize = viewSize.getUint32(0, true); // True: little-endian | False: big-endian
-      console.log(segOffset)
+
       // Get Flatbuffer gao Object:
       segOffset += 4;
       let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
-      console.log(buf)
 
       let fbuffer = new flatbuffers.ByteBuffer(buf);
-      console.log(fbuffer)
-      debugger;
-      let gap = Flatbuffer.Primitives.PolyLines3D.getRootAsPolyLines3D (fbuffer);
-
+      let gap = Flatbuffer.Primitives.PolyLine3D.getRootAsPolyLine3D(fbuffer);
       gaps.push(gap);
-      debugger;
       segOffset += segSize;
     }
-
-
 
     let gapGeometries = createGapGeometriesOld(gaps);
 
@@ -156,8 +149,7 @@ function createGapGeometries(vertexGroups, material) {
 
 
 function createGapGeometriesOld(gaps) {
-  debugger;
-  materialLeft = new THREE.LineBasicMaterial({
+  const materialLeft = new THREE.LineBasicMaterial({
     color: 0xff0000
   });
 
@@ -171,10 +163,10 @@ function createGapGeometriesOld(gaps) {
   for(let ii=0, len=gaps.length; ii<len; ii++) {
     gap = gaps[ii];
 
-    var geometryLeft = new THREE.Geometry();
+    var geometryLeft = new THREE.Geometry();  // TODO this is just a temporary variable to get an array of vertices later, do this in a better way
 
     let left;
-    for(let jj=0, numVertices=gaps.gapLength(); jj<numVertices; jj++) {
+    for(let jj=0, numVertices=gap.verticesLength(); jj<numVertices; jj++) {
       left = gap.vertices(jj);
 
 
@@ -191,7 +183,7 @@ function createGapGeometriesOld(gaps) {
     let vertices = geometryLeft.vertices;
     let offset = new THREE.Vector3(300043.226, 4701247.907, 245.427); // TODO FIX THIS HARDCODED OFFSET (it's just a large number to bring the vertices below close to 0)
 
-    createBoxes(geometryLeft.vertices, new THREE.MeshBasicMaterial({color:0xffffff}));
+    createBoxes(geometryLeft.vertices, new THREE.MeshBasicMaterial({color:0xff0000}));
 
     function createBoxes(vertices, material) {
       for (let ii=1, len=vertices.length; ii<len; ii++) {
@@ -205,8 +197,8 @@ function createGapGeometriesOld(gaps) {
 
 
         let length = p1.distanceTo(p2);
-        let height = 0.01;
         let width = 0.1;
+        let height = 0.01;
 
         let vector = p2.sub(p1);
         let axis = new THREE.Vector3(1, 0, 0);
@@ -227,7 +219,7 @@ function createGapGeometriesOld(gaps) {
         // for allBoxes:
         let boxGeometry = new THREE.BoxGeometry(length, width, height);
         let se3 = new THREE.Matrix4();
-        let quaternion = new THREE.Quaternion().setFromUnitVectors(axis, vector.clone().normalize());
+        let quaternion = new THREE.Quaternion().setFromUnitVectors(axis, vector.clone().normalize()); // TODO NOTE: This aligns the yaw but also applies a roll/pitch as well
         // debugger; // se3;
         se3.makeRotationFromQuaternion(quaternion); // Rotation
         se3.setPosition(delta); // Translation
@@ -237,7 +229,7 @@ function createGapGeometriesOld(gaps) {
         allBoxes.merge(boxGeometry);
 
 
-        let boxMaterial = new THREE.MeshBasicMaterial({color: 0xffffff});
+        let boxMaterial = new THREE.MeshBasicMaterial({color: 0xff0000});
         let boxMesh = new THREE.Mesh(geometry, boxMaterial);
 
 
@@ -253,6 +245,7 @@ function createGapGeometriesOld(gaps) {
         if ((ii%100000)==0 || ii==(len-1)) {
           // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
           let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
+          mesh.name = "Gaps";
           mesh.position.copy(firstCenter);
           all.push(mesh);
           allBoxes = new THREE.Geometry();
@@ -262,9 +255,8 @@ function createGapGeometriesOld(gaps) {
     }
   }
 
-  output = {
-    left: lefts,
-
+  const output = {
+    left: lefts
   }
   return output;
 }

@@ -155,6 +155,10 @@
       // viewer.scene.view.lookAt(new THREE.Vector3(299900.954, 4701576.919, 66.197));
 		});
 
+		// Create Axes Helper:
+		const axesHelper = new THREE.AxesHelper(20);
+		viewer.scene.scene.add(axesHelper);
+
 		window.animationEngine = new AnimationEngine();
 
 		// TODO Fix these hardcoded values
@@ -342,6 +346,24 @@
 			viewer.scene.scene.add(wireframe);
 
 		}
+
+
+
+
+// TODO FROM HERE
+	loadGaps((gapGeometries) => {
+
+		// TODO TESTING -- REMOVE
+		// debugger;
+		for (let ii=0, len=gapGeometries.left.length; ii<len; ii++) {
+			if (ii < 1000) {
+				viewer.scene.scene.add(gapGeometries.left[ii]);
+			}
+		}
+	});
+// TODO TILL HERE
+
+
 
 // TODO FROM HERE
 		// TODO Move this somewhere else
@@ -568,12 +590,30 @@
             }
           } );
 
+
+					// Add Polar Grid Helper:
+					const gridHelper = new THREE.GridHelper( 400, 40, 0x0000ff, 0x808080 );
+					gridHelper.name = "Grid";
+
+					const polarGridHelper = new THREE.PolarGridHelper( 500, 16, 20, 64, 0x0000ff, 0x808080 );
+					polarGridHelper.name = "PolarGrid";
+					polarGridHelper.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI/2);
+					const axesHelper = new THREE.AxesHelper(1000);
+					axesHelper.name = "Axes";
+					axesHelper.rotateOnAxis(new THREE.Vector3(0,0,1), -Math.PI/2);
+
+
+					object.add( gridHelper );
+					object.add( polarGridHelper );
+					object.add( axesHelper );
+
           object.name = "vehicle";
           object.position.set(...pos[0]);
           object.scale.multiplyScalar(.011);
 					object.orientationPath = orientationPath;
           object.rotation.set(0*Math.PI / 2, 0*Math.PI/2., 1*Math.PI/2.0); // Chevy Volt
 					object.initialRotation = object.rotation.clone(); // NOTE is this used?
+
 
           // object.rotation.set(Math.PI / 2, 0*Math.PI/2., 0*Math.PI/2.0); // Shelby Mustang
 
@@ -822,46 +862,46 @@
 			pointcloud.visible = true;
 		});
 
-		Potree.loadPointCloud("../pointclouds/tracks.lidar_converted/cloud.js", "tracks", e => {
-			let pointcloud = e.pointcloud;
-			let material = pointcloud.material;
-			console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
-			viewer.scene.addPointCloud(pointcloud);
-			material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
-			material.color = new THREE.Color().setRGB(0.0, 1.0, 0.0);
-			material.size = 0.01;
-			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-			material.shape = Potree.PointShape.SQUARE;
-			pointcloud.visible = false;
-
-		});
-
-		Potree.loadPointCloud("../pointclouds/unrotated_tracks.lidar_converted/cloud.js", "tracks-unrotated", e => {
-			let pointcloud = e.pointcloud;
-			let material = pointcloud.material;
-			console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
-			viewer.scene.addPointCloud(pointcloud);
-			material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
-			material.color = new THREE.Color().setRGB(1.0, 0.0, 0.0);
-			material.size = 0.01;
-			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-			material.shape = Potree.PointShape.SQUARE;
-			pointcloud.visible = false;
-		});
-
-		Potree.loadPointCloud("../pointclouds/lane-snap-points/cloud.js", "lanes", e => {
-			let pointcloud = e.pointcloud;
-			let material = pointcloud.material;
-			console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
-			viewer.scene.addPointCloud(pointcloud);
-			material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
-			material.color = new THREE.Color().setRGB(1.0, 0.0, 0.0);
-			material.size = 0.1;
-			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-			material.shape = Potree.PointShape.SQUARE;
-			pointcloud.visible = true;
-
-		});
+		// Potree.loadPointCloud("../pointclouds/tracks.lidar_converted/cloud.js", "tracks", e => {
+		// 	let pointcloud = e.pointcloud;
+		// 	let material = pointcloud.material;
+		// 	console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
+		// 	viewer.scene.addPointCloud(pointcloud);
+		// 	material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
+		// 	material.color = new THREE.Color().setRGB(0.0, 1.0, 0.0);
+		// 	material.size = 0.01;
+		// 	material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+		// 	material.shape = Potree.PointShape.SQUARE;
+		// 	pointcloud.visible = false;
+		//
+		// });
+		//
+		// Potree.loadPointCloud("../pointclouds/unrotated_tracks.lidar_converted/cloud.js", "tracks-unrotated", e => {
+		// 	let pointcloud = e.pointcloud;
+		// 	let material = pointcloud.material;
+		// 	console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
+		// 	viewer.scene.addPointCloud(pointcloud);
+		// 	material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
+		// 	material.color = new THREE.Color().setRGB(1.0, 0.0, 0.0);
+		// 	material.size = 0.01;
+		// 	material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+		// 	material.shape = Potree.PointShape.SQUARE;
+		// 	pointcloud.visible = false;
+		// });
+		//
+		// Potree.loadPointCloud("../pointclouds/lane-snap-points/cloud.js", "lanes", e => {
+		// 	let pointcloud = e.pointcloud;
+		// 	let material = pointcloud.material;
+		// 	console.log(pointcloud.pcoGeometry.nodes.r.gpsTime);
+		// 	viewer.scene.addPointCloud(pointcloud);
+		// 	material.pointColorType = Potree.PointColorType.COLOR; // any Potree.PointColorType.XXXX
+		// 	material.color = new THREE.Color().setRGB(1.0, 0.0, 0.0);
+		// 	material.size = 0.1;
+		// 	material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+		// 	material.shape = Potree.PointShape.SQUARE;
+		// 	pointcloud.visible = true;
+		//
+		// });
 
 		</script>
 
