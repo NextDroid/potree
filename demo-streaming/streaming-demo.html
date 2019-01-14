@@ -232,10 +232,10 @@
 		// serverUrl: "http://172.18.44.138",	// virtual box
 		// serverUrl: "http://18.208.171.218",	// ec2 Server
 	 	port: "4321",
-	 	headerFilename: "test.lidar.bin.header",
-	 	filename: "test.lidar.bin",
-	 	// headerFilename: "full_pointcloud-large-zeroed-int16.csv.bin.header",
-	 	// filename: "full_pointcloud-large-zeroed-int16.csv.bin",
+	 	// headerFilename: "test.lidar.bin.header",
+	 	// filename: "test.lidar.bin",
+	 	headerFilename: "VehicleFrameCloud.fb.bin.header",
+	 	filename: "VehicleFrameCloud.fb.bin",
 		rtkFile: "rtk.csv",
 		isOdcData: false,
 	 	maxMemMB: 50,
@@ -383,38 +383,38 @@
  	 ////////////////////////////////////////////////////////////////////////////
  	 ////////////////////////////////////////////////////////////////////////////
 
-	// Load Radar:
-	 loadRadar("radarData.csv", true, (geometry, t_init) => {
-		 // uniforms
-		 uniforms = {
-			   size: {value: 5.0},
-				 color: { value: new THREE.Color( 0xffff00 ) },
-				 minGpsTime: {value: 0.0 },
-				 maxGpsTime: {value: 0.0 },
-				 initialTime: {value: t_init}
-		 };
-		 // // point cloud material
-		 var shaderMaterial = new THREE.ShaderMaterial( {
-				 uniforms:       uniforms,
-				 vertexShader:   document.getElementById( 'vertexshader-radar' ).textContent,
-				 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-				 transparent:    true,
-				 depthTest: 		 false		// Will not be hidden behind anything
-		 });
-		 var material = new THREE.PointsMaterial( {size:0.01} );
-		 material.uniforms = uniforms;
-		 // material.uniforms.size = uniforms.size;
-		 // material.uniforms.color = uniforms.color;
-		 // material.uniforms.minGpsTime = uniforms.minGpsTime;
-		 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
-		 // material.uniforms.initialTime = uniforms.initialTime;
-
-		 // TODO RADAR TO RTK TO VEHICLE EXTRINSICS (IF NEEDED):
-
-		 var mesh = new THREE.Points(geometry, shaderMaterial); // TODO using regular material in the meantime b/c of shader changes for pointcloud
-		 mesh.name = "radar";
-		 viewer.scene.scene.add(mesh);
-	 });
+	// // Load Radar:
+	//  loadRadar("radarData.csv", true, (geometry, t_init) => {
+	// 	 // uniforms
+	// 	 uniforms = {
+	// 		   size: {value: 5.0},
+	// 			 color: { value: new THREE.Color( 0xffff00 ) },
+	// 			 minGpsTime: {value: 0.0 },
+	// 			 maxGpsTime: {value: 0.0 },
+	// 			 initialTime: {value: t_init}
+	// 	 };
+	// 	 // // point cloud material
+	// 	 var shaderMaterial = new THREE.ShaderMaterial( {
+	// 			 uniforms:       uniforms,
+	// 			 vertexShader:   document.getElementById( 'vertexshader-radar' ).textContent,
+	// 			 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+	// 			 transparent:    true,
+	// 			 depthTest: 		 false		// Will not be hidden behind anything
+	// 	 });
+	// 	 var material = new THREE.PointsMaterial( {size:0.01} );
+	// 	 material.uniforms = uniforms;
+	// 	 // material.uniforms.size = uniforms.size;
+	// 	 // material.uniforms.color = uniforms.color;
+	// 	 // material.uniforms.minGpsTime = uniforms.minGpsTime;
+	// 	 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
+	// 	 // material.uniforms.initialTime = uniforms.initialTime;
+	//
+	// 	 // TODO RADAR TO RTK TO VEHICLE EXTRINSICS (IF NEEDED):
+	//
+	// 	 var mesh = new THREE.Points(geometry, shaderMaterial); // TODO using regular material in the meantime b/c of shader changes for pointcloud
+	// 	 mesh.name = "radar";
+	// 	 viewer.scene.scene.add(mesh);
+	//  });
 
 	 // Load RTK:
 	 let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
@@ -525,22 +525,22 @@
 					 // TODO cache this to improve speed?
 					 // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
 					 rtkMesh = viewer.scene.scene.getObjectByName("rtk");
-					 radarMesh = viewer.scene.scene.getObjectByName("radar");
+					 // radarMesh = viewer.scene.scene.getObjectByName("radar");
 					 rtkOffset = rtkMesh.material.uniforms.initialTime.value;
-					 radarOffset = radarMesh.material.uniforms.initialTime.value;
+					 // radarOffset = radarMesh.material.uniforms.initialTime.value;
 					 numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
-					 numRadarPoints = radarMesh.geometry.attributes.gpsTime.count;
+					 // numRadarPoints = radarMesh.geometry.attributes.gpsTime.count;
 
 					 // timeMin = Math.min(lidarOffset, rtkOffset, radarOffset);
 					 timeMin = Math.min(rtkOffset, radarOffset);
 					 // lidarRange = viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
 					 // radarRange = 583.649169921875;  // TODO Hardcoded
-					 radarRange = radarMesh.geometry.attributes.gpsTime.array[numRadarPoints-1];
+					 // radarRange = radarMesh.geometry.attributes.gpsTime.array[numRadarPoints-1];
 					 // rtkRange = 600.5599999427795;   // TODO Hardcoded
 					 rtkRange = rtkMesh.material.uniforms.timeRange.value;
 
 					 // timeMax = Math.max((lidarRange+lidarOffset), (radarRange+radarOffset), (rtkRange+rtkOffset));
-					 timeMax = Math.max((radarRange+radarOffset), (rtkRange+rtkOffset));
+					 timeMax = Math.max(0, (rtkRange+rtkOffset));
 					 timeOffset = timeMin;
 					 timeRange = timeMax - timeMin;
 					 // console.log("Radar Initial Time: ", radarOffset);
@@ -590,12 +590,12 @@
 					 cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
 					 cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
 
-					 // Animate Radar:
-					 minRadarTime = minGpsTime - radarOffset;
-					 maxRadarTime = maxGpsTime - radarOffset;
-					 var radar = viewer.scene.scene.getObjectByName("radar");
-					 radar.material.uniforms.minGpsTime.value = minRadarTime;
-					 radar.material.uniforms.maxGpsTime.value = maxRadarTime;
+					 // // Animate Radar:
+					 // minRadarTime = minGpsTime - radarOffset;
+					 // maxRadarTime = maxGpsTime - radarOffset;
+					 // var radar = viewer.scene.scene.getObjectByName("radar");
+					 // radar.material.uniforms.minGpsTime.value = minRadarTime;
+					 // radar.material.uniforms.maxGpsTime.value = maxRadarTime;
 					 // console.log(radar);
 					 // debugger; // check the rtkTime, slider time, radar time, lidar time
 
