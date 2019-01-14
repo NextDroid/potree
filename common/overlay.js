@@ -1,4 +1,3 @@
-var loadingBar;
 $(document).ready(function () {
 
   // Insert HTML for Playbar:
@@ -12,17 +11,23 @@ $(document).ready(function () {
   // Add to DOM:
   $('body').prepend(loadingscreen);
 
-  // NOTE: using https://loadingbar.io/progress
-  loadingBar = new ldBar("#loading-bar");
+  // // NOTE: using https://loadingbar.io/progress
+  // const loadingBar = new ldBar("#loading-bar"); // TODO not used -- how to export loadingBar variable?
 
 });
 
-function setLoadingScreen() {
+export function setLoadingScreen() {
   window.loadingScreenUp = true;
   document.getElementById("loading_overlay").style.display = "table";
 }
 
-function removeLoadingScreen() {
+export function removeLoadingScreen() {
   window.loadingScreenUp = false;
   document.getElementById("loading_overlay").style.display = "none";
+}
+
+export function getLoadingBar() {
+  // NOTE: using https://loadingbar.io/progress
+  const loadingBar = new ldBar("#loading-bar");
+  return loadingBar;
 }

@@ -18,10 +18,12 @@ $(document).ready(function () {
             </span>
             <label class="switch">
               <input type="checkbox" id="playbar_toggle">
-              <span class="toggleslider"></span>
+              <span class="toggleslider" id="toggleslider"></span>
             </label>
             <input type="range" name="playback_speed" id="playback_speed" min="1" max="8" value="4" step="any">
             <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
+            <button name="load_detections_button" id="load_detections_button">Load Detections</button>
+            <button name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
           </div>
         </div>
       </div>
@@ -35,10 +37,12 @@ $(document).ready(function () {
     function updateClip(disable=false) {
 
       console.log(window.viewer.scene); // gpstime
-      var lidarOffset = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.offset;
+      // var lidarOffset = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.offset;
+      const lidarOffset = window.animationEngine.tstart;
 
       // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
-      var lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
+      // var lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
+      const lidarRange = window.animationEngine.timeRange;
 
       if (disable) {
         // NOTE: is there a better way of disabling the gps clip range filter?
@@ -55,10 +59,13 @@ $(document).ready(function () {
         $("#demo").html((t-lidarOffset).toFixed(4));
         console.log(document.getElementById("demo").innerHTML);
 
-        var dtMin = Number($("#playbar_tmin").val());
-        var dtMax = Number($("#playbar_tmax").val());
+        // var dtMin = Number($("#playbar_tmin").val());
+        // var dtMax = Number($("#playbar_tmax").val());
 
-        tmin = t + dtMin;
+        const dtMin = window.animationEngine.activeWindow.backward;
+        const dtMax = window.animationEngine.activeWindow.forward;
+
+        tmin = t - dtMin;
         tmax = t + dtMax;
 
         window.viewer.setFilterGPSTimeRange(tmin, tmax);
@@ -80,11 +87,15 @@ $(document).ready(function () {
 
     playbarhtml.find("#playbar_tmin").on('input', function() {
       console.log("TMIN");
+      const tmin = playbarhtml.find("#playbar_tmin");
+      window.animationEngine.activeWindow.backward = Math.abs(Number(tmin.val()));
       updateClip();
     });
 
     playbarhtml.find("#playbar_tmax").on('input', function() {
       console.log("TMAX");
+      const tmax = playbarhtml.find("#playbar_tmax");
+      window.animationEngine.activeWindow.forward = Math.abs(Number(tmax.val()));
       updateClip();
     });
 
@@ -98,10 +109,13 @@ $(document).ready(function () {
       console.log("SCROLL");
       console.log(e.originalEvent.deltaY);
       var slider = playbarhtml.find("#myRange");
-      var tmin = playbarhtml.find("#playbar_tmin");
-      var tmax = playbarhtml.find("#playbar_tmax");
+      // var tmin = playbarhtml.find("#playbar_tmin");
+      // var tmax = playbarhtml.find("#playbar_tmax");
       var slideval = Number(slider.val());
       var dy = e.originalEvent.deltaY;
+
+      const tmin = window.animationEngine.activeWindow.backward;
+      const tmax = window.animationEngine.activeWindow.forward;
 
       var scalefactor = 1;
       console.log(e.originalEvent.shiftKey);
@@ -114,15 +128,18 @@ $(document).ready(function () {
 
       var lidarRange = 1;
       try {
-       lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
+       // lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
+       lidarRange = window.animationEngine.timeRange;
      } catch (e) {
        console.log(e);
      }
       var stepY = 0;
       if (dy < 0) {
-        dt = Number(tmax.val());
+        // dt = Number(tmax.val());
+        dt = tmax;
       } else if (dy > 0) {
-        dt = Number(tmin.val());
+        // dt = Number(tmin.val());
+        dt = -tmin;
       }
       dt = dt*scalefactor;
       var sliderange = Number(slider.attr("max")) - Number(slider.attr("min"));
@@ -159,16 +176,16 @@ $(document).ready(function () {
     window.addEventListener("keypress", (e) => {
       console.log("keypress");
       console.log(e);
-      if (e.charCode == 32) {
-        console.log("SPACEBAR");
-        var toggleplay = playbarhtml.find("#toggleplay");
-        toggleplay.trigger('click');
-          if (toggleplay.is(":checked")) {
-            playbarhtml.find("#playbutton").trigger('mousedown');
-          } else {
-            playbarhtml.find("#pausebutton").trigger('mousedown');
-          }
-        }
+      // if (e.charCode == 32) {
+      //   console.log("SPACEBAR");
+      //   var toggleplay = playbarhtml.find("#toggleplay");
+      //   toggleplay.trigger('click');
+      //     if (toggleplay.is(":checked")) {
+      //       playbarhtml.find("#playbutton").trigger('mousedown');
+      //     } else {
+      //       playbarhtml.find("#pausebutton").trigger('mousedown');
+      //     }
+      //   }
     });
 
     playbarhtml.find("#toggle_calibration_panels").mouseup(function() {
@@ -192,5 +209,20 @@ $(document).ready(function () {
 
     });
 
+    window.addEventListener("message", e => {
+     if (e.data === 'pause') {
+       animationEngine.stop()
+     }
+   });
+
     $(document).tooltip();
+
+    // Configure Playbar Appearance:
+    // document.getElementById("playbar_tmin").style.display = "none";
+    // document.getElementById("playbar_tmax").style.display = "none";
+    document.getElementById("playback_speed").style.display = "none";
+    document.getElementById("toggleslider").style.display = "none";
+    document.getElementById("toggle_calibration_panels").style.display = "none";
+    document.getElementById("load_detections_button").style.display = "none";
+    document.getElementById("load_gaps_button").style.display = "none";
 });
