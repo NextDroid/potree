@@ -1,20 +1,34 @@
-$(document).ready(function () {
+// $(document).ready(function () {
+//
+//   // Insert HTML for Playbar:
+//   var loadingscreen = $(`
+//     <div id="loading_overlay">
+//       <div id="loading-bar" class="ldBar label-center" data-preset="circle" data-stroke="data:ldbar/res,gradient(0,1,#f99,#ff9)" data-value="0">
+//       </div>
+//     </div>`);
+//
+//
+//   // Add to DOM:
+//   $('body').prepend(loadingscreen);
+//
+//   // // NOTE: using https://loadingbar.io/progress
+//   // const loadingBar = new ldBar("#loading-bar"); // TODO not used -- how to export loadingBar variable?
+//
+// });
 
-  // Insert HTML for Playbar:
-  var loadingscreen = $(`
-    <div id="loading_overlay">
-      <div id="loading-bar" class="ldBar label-center" data-preset="circle" data-stroke="data:ldbar/res,gradient(0,1,#f99,#ff9)" data-value="0">
-      </div>
-    </div>`);
+// Insert HTML for Playbar:
+let loadingscreen = $(`
+  <div id="loading_overlay">
+    <div id="loading-bar" class="ldBar label-center" data-preset="circle" data-stroke="data:ldbar/res,gradient(0,1,#f99,#ff9)" data-value="0">
+    </div>
+  </div>`);
 
 
-  // Add to DOM:
-  $('body').prepend(loadingscreen);
+// Add to DOM:
+$('body').prepend(loadingscreen);
 
-  // // NOTE: using https://loadingbar.io/progress
-  // const loadingBar = new ldBar("#loading-bar"); // TODO not used -- how to export loadingBar variable?
-
-});
+// // NOTE: using https://loadingbar.io/progress
+export const loadingBar = new ldBar("#loading-bar");
 
 export function setLoadingScreen() {
   window.loadingScreenUp = true;

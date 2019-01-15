@@ -37,13 +37,12 @@
 	<script src="../libs/plasio/js/laslaz.js"></script>
 
 	<!-- <script src="../libs/three.js/examples/js/loaders/PCDLoader.js"></script> -->
-	<script src="streamer.js"></script>
+	<script type="module" src="streamer.js"></script>
 	<script src="rtkloader.js"></script>
-	<script src="radarloader.js"></script>
 	<script src="../common/playbar.js"></script>
 	<script src="../libs/other/OBJLoader.js"></script>
 	<script type="text/javascript" src="../common/loading-bar.js"></script>
-	<script src="../common/overlay.js"></script>
+	<script type="module" src="../common/overlay.js"></script>
 	<script src="../common/draggable-overlay.js"></script>
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
@@ -173,7 +172,11 @@
   </script>
 
 
-  <script>
+  <script type="module">
+		import { setLoadingScreen } from "../common/overlay.js";
+		import * as streamer from "./streamer.js";
+
+
     // Initialize Viewer:
     window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
 
@@ -193,6 +196,9 @@
 			$(("#show_bounding_box")).trigger("click");
     });
 
+		// Create Animation Engine:
+		window.animationEngine = new AnimationEngine();
+
 		// Initializations:
 		var viewerOffset = 100;
 		var bboxMax;
@@ -205,17 +211,13 @@
 		var t0 = performance.now();
 		var t1 = 0;
 
-		var rtkOffset, rtkRange, rtkLookup, rtkPosInit, rtkOrientInit, radarOffset, radarRange, lidarOffset, lidarRange;
+		var rtkOffset, rtkRange, rtkLookup, rtkPosInit, rtkOrientInit, lidarOffset, lidarRange;
 		window.animationPaused = true; // move this somewhere better
 	  var camPoint = new THREE.Vector3(7.011, -5.318, 8.326);
 	  viewer.scene.view.position.copy(camPoint); // changed from camera
 
-		setLoadingScreen();
+		$(document).ready( () => {setLoadingScreen()});
 		window.lastPauseTime = 0;
-
-  </script>
-
-  <script>
 
 
 	 ////////////////////////////////////////////////////////////////////////////
@@ -226,7 +228,7 @@
 	 console.log("Starting Client Streaming Application");
 
 	 // Create Settings:
-	 var settings = {
+	 window.settings = {
 	 	serverUrl: "http://localhost",
 		// serverUrl: "http://10.83.30.184",
 		// serverUrl: "http://172.18.44.138",	// virtual box
@@ -247,9 +249,15 @@
 	 var speedFactor = 1.0;
 	 // var speedFactor = 33;
 
-	 var heartbeat;
-	 var slice;
-	 var header;
+	 // var heartbeat;
+	 // var slice;
+	 // var header;
+
+	 // Configure Playbar:
+	 $(document).ready(() => {
+		document.getElementById("playback_speed").style.display = "block";
+	 	document.getElementById("toggle_calibration_panels").style.display = "block";
+	});
 
  	// Create Geometry and Mesh:
 	var cloudGeometry = new THREE.BufferGeometry();
@@ -275,18 +283,18 @@
 			// initialTime: {value: t_init}
 		}
 	});
-	var cloudMesh = new THREE.Points(cloudGeometry, material);
+	let cloudMesh = new THREE.Points(cloudGeometry, material);
 	cloudMesh.timeRange = {tmin: 0, tmax: 0};
 	cloudMesh.name = "cloud";
 	viewer.scene.scene.add(cloudMesh);
 
 	// Send Header Request:
-	sendHeaderRequest(settings.serverUrl + ":" + settings.port + "/args/header/" + settings.headerFilename, (e) => {
+	streamer.sendHeaderRequest(settings.serverUrl + ":" + settings.port + "/args/header/" + settings.headerFilename, (e) => {
 		console.log(e);
 
 		// Launch Data Loader to Start Streaming:
-		header = e.data;
-		streamFromFileStart(header, settings);
+		window.header = e.data;
+		streamer.streamFromFileStart(window.header, settings);
 
 		// TODO LOAD velo2rtk INSTEAD OF DEFINING HERE:
 		var velo2rtk = {
@@ -326,9 +334,9 @@
 			// Function to update these values as calibration extrinsics get updated
 			window.addEventListener("update-calibration-panel", (e) => {
 				console.log("calibration panel updated: ", e.detail);
-				id = e.detail.id;
-				dim = e.detail.dim;
-				val = e.detail.value;
+				const id = e.detail.id;
+				const dim = e.detail.dim;
+				const val = e.detail.value;
 
 				if (id == "rtk2vehicle") {
 					let rtk2vehicle = getRtk2Vehicle();
@@ -383,45 +391,12 @@
  	 ////////////////////////////////////////////////////////////////////////////
  	 ////////////////////////////////////////////////////////////////////////////
 
-	// // Load Radar:
-	//  loadRadar("radarData.csv", true, (geometry, t_init) => {
-	// 	 // uniforms
-	// 	 uniforms = {
-	// 		   size: {value: 5.0},
-	// 			 color: { value: new THREE.Color( 0xffff00 ) },
-	// 			 minGpsTime: {value: 0.0 },
-	// 			 maxGpsTime: {value: 0.0 },
-	// 			 initialTime: {value: t_init}
-	// 	 };
-	// 	 // // point cloud material
-	// 	 var shaderMaterial = new THREE.ShaderMaterial( {
-	// 			 uniforms:       uniforms,
-	// 			 vertexShader:   document.getElementById( 'vertexshader-radar' ).textContent,
-	// 			 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-	// 			 transparent:    true,
-	// 			 depthTest: 		 false		// Will not be hidden behind anything
-	// 	 });
-	// 	 var material = new THREE.PointsMaterial( {size:0.01} );
-	// 	 material.uniforms = uniforms;
-	// 	 // material.uniforms.size = uniforms.size;
-	// 	 // material.uniforms.color = uniforms.color;
-	// 	 // material.uniforms.minGpsTime = uniforms.minGpsTime;
-	// 	 // material.uniforms.maxGpsTime = uniforms.maxGpsTime;
-	// 	 // material.uniforms.initialTime = uniforms.initialTime;
-	//
-	// 	 // TODO RADAR TO RTK TO VEHICLE EXTRINSICS (IF NEEDED):
-	//
-	// 	 var mesh = new THREE.Points(geometry, shaderMaterial); // TODO using regular material in the meantime b/c of shader changes for pointcloud
-	// 	 mesh.name = "radar";
-	// 	 viewer.scene.scene.add(mesh);
-	//  });
-
 	 // Load RTK:
 	 let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
 	 console.log("rtkFile: ", rtkFile);
 	 loadRtk(rtkFile, settings.isOdcData, (pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
-		 rtkOffset = t_init;
-		 rtkRange = t_range;
+		 window.rtkOffset = t_init;
+		 window.rtkRange = t_range;
 		 rtkLookup = rtkLookupOutput;
 		 rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
 		 rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
@@ -432,12 +407,12 @@
 
 		 rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
 
-		 DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: rtkOffset, rtkRange:rtkRange}});
-		 DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
+		 streamer.DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: window.rtkOffset, rtkRange:window.rtkRange}});
+		 streamer.DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
 
 		 console.log("RTK Trajectory Length: ", distance, "meters");
-		 path = pos.map(v => new THREE.Vector3(...v));
-		 orientations = rot.map(v => new THREE.Vector3(...v));
+		 const path = pos.map(v => new THREE.Vector3(...v));
+		 const orientations = rot.map(v => new THREE.Vector3(...v));
 		 let animationPath = new Potree.AnimationPath(path);
 		 animationPath.closed = false;
 		 var orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
@@ -524,26 +499,18 @@
 
 					 // TODO cache this to improve speed?
 					 // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
-					 rtkMesh = viewer.scene.scene.getObjectByName("rtk");
-					 // radarMesh = viewer.scene.scene.getObjectByName("radar");
-					 rtkOffset = rtkMesh.material.uniforms.initialTime.value;
-					 // radarOffset = radarMesh.material.uniforms.initialTime.value;
-					 numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
-					 // numRadarPoints = radarMesh.geometry.attributes.gpsTime.count;
+					 const rtkMesh = viewer.scene.scene.getObjectByName("rtk");
+					 const rtkOffset = rtkMesh.material.uniforms.initialTime.value;
+					 const numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
 
-					 // timeMin = Math.min(lidarOffset, rtkOffset, radarOffset);
-					 timeMin = Math.min(rtkOffset, radarOffset);
+					 const timeMin = rtkOffset;
 					 // lidarRange = viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
-					 // radarRange = 583.649169921875;  // TODO Hardcoded
-					 // radarRange = radarMesh.geometry.attributes.gpsTime.array[numRadarPoints-1];
 					 // rtkRange = 600.5599999427795;   // TODO Hardcoded
-					 rtkRange = rtkMesh.material.uniforms.timeRange.value;
+					 const rtkRange = rtkMesh.material.uniforms.timeRange.value;
 
-					 // timeMax = Math.max((lidarRange+lidarOffset), (radarRange+radarOffset), (rtkRange+rtkOffset));
-					 timeMax = Math.max(0, (rtkRange+rtkOffset));
-					 timeOffset = timeMin;
-					 timeRange = timeMax - timeMin;
-					 // console.log("Radar Initial Time: ", radarOffset);
+					 const timeMax = Math.max(0, (rtkRange+rtkOffset));
+					 const timeOffset = timeMin;
+					 const timeRange = timeMax - timeMin;
 					 // console.log("RTK Initial Time: ", rtkOffset);
 					 // debugger;
 					 // t is a value between 0 and 1 in rtkTime frame
@@ -575,8 +542,8 @@
 					 var currentRtkOrientation = vehicleOrientation.sub(rtkOrientInit);
 
 					 // // Animate Point Cloud:
-					 minLidarTime = minGpsTime - header.tmin;
-					 maxLidarTime = maxGpsTime - header.tmin;
+					 const minLidarTime = minGpsTime - window.header.tmin;
+					 const maxLidarTime = maxGpsTime - window.header.tmin;
 					 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
 
 					 // debugger; // uniforms below
@@ -590,19 +557,10 @@
 					 cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
 					 cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
 
-					 // // Animate Radar:
-					 // minRadarTime = minGpsTime - radarOffset;
-					 // maxRadarTime = maxGpsTime - radarOffset;
-					 // var radar = viewer.scene.scene.getObjectByName("radar");
-					 // radar.material.uniforms.minGpsTime.value = minRadarTime;
-					 // radar.material.uniforms.maxGpsTime.value = maxRadarTime;
-					 // console.log(radar);
-					 // debugger; // check the rtkTime, slider time, radar time, lidar time
-
 					 if (updateCamera) {
 						 let camera = viewer.scene.getActiveCamera();
 						 let lag = 1.01; // seconds
-						 lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
+						 const lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
 						 // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
 						 let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
 						 camPoint.z += 10;
@@ -656,7 +614,7 @@
 					 slider.addEventListener("mouseup", (e) => {
 						 console.log("mouseup event: ", e);
 
-						 streamFromTimeNew(slider.value/100, {offset:rtkOffset, range: rtkRange}, header, settings);
+						 streamer.streamFromTimeNew(slider.value/100, {offset:rtkOffset, range: rtkRange}, header, settings);
 						 setLoadingScreen();
 						 window.firstSliceRequested = true;
 
@@ -682,8 +640,8 @@
 						 var lidarTime = 0;
 						 var window_tmin = -0.05; // note the negative
 						 var window_tmax = 0.05;
-			       if (rtkRange != null && rtkOffset != null && header.tmin != null) {
-			         lidarTime = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
+			       if (window.rtkRange != null && window.rtkOffset != null && window.header.tmin != null) {
+			         lidarTime = $("#myRange").val()/100*window.rtkRange + window.rtkOffset - window.header.tmin
 			       }
 
 						 // Get Time Window Boundaries:
@@ -692,9 +650,9 @@
 
 						 // Get Current Slice Time Frame (TA):
 						 try {
-							 var numPoints = cloudMesh.geometry.attributes.gpsTime.length;
-							 TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
-							 TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
+							 let numPoints = cloudMesh.geometry.attributes.gpsTime.length;
+							 let TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
+							 let TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
 
 
 							 // Request Slice Logic:
@@ -706,14 +664,14 @@
 							 var slicemax = slicemin + settings.TA;
 
 							 // DataLoader Buffers:
-							 TBmin = heartbeat.tmin;
-							 TBmax = heartbeat.tmax;
+							 let TBmin = window.heartbeat.tmin;
+							 let TBmax = window.heartbeat.tmax;
 
 							 console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
 
 							 // Request Slice:
 							 if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
-								 requestSlice(slicemin, slicemax);
+								 streamer.requestSlice(slicemin, slicemax);
 							 }
 
 							 // TODO potentially need to remove this after testing:
@@ -736,46 +694,6 @@
 							 console.error("Error at Player Slicing Logic: ", e);
 						 }
 
-
-
-
-						 // var updateRestriction = 100000; // only update once every updates
-						 // if ((window.numTimeUpdated % updateRestriction) == 0) {
-						 //
-							//  if (typeof(viewer.scene.scene.getObjectByName("rtk")) != "undefined") {
-						 //
-							//   sliderVal = slider.value/100.0;
-							//   var time = sliderVal * rtkRange + rtkOffset - header.tmin;
-						 //
-							//   var swap = {
-							//  	 tmin: Math.max(0, time),	// start of file check
-							//  	 tmax: Math.min(time+settings.TA, header.tmax-header.tmin) // end of file check
-							//   }
-							//   swap.t = swap.tmin/(header.tmax-header.tmin);
-						 //
-						 //
-							//   if (swap.tmax > heartbeat.tmax) {
-							//  	 if (swap.tmin > heartbeat.tmax) {
-							//  		 // DataLoader.postMessage({msg: "terminate"});	// TODO no longer terminate
-							//  		 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
-							//  	 } else {
-							//  		 // wait -- aka do nothing?
-							//  	 }
-							//   } else if (swap.tmin < heartbeat.tmin) {
-							//  	 // DataLoader.postMessage({msg: "terminate"}); 	// TODO no longer terminate
-							//  	 // streamFromTime(swap.t, header, settings);		// NOTE disabled streamFromTime
-							//   } else {
-							//  	 // Send Slice Request:
-							//  	 DataLoader.postMessage({
-							//  		 msg: "slice",
-							//  		 tmin: swap.tmin,
-							//  		 tmax: swap.tmax
-							//  	 });
-							//   }
-							//  }
-						 // }
-
-
 					 });
 				 $("#pausebutton").trigger("mousedown");
 			 }
@@ -783,10 +701,6 @@
 			 window.animation.pause();
 		 }
 	 });
-
-  </script>
-
-	<script>
 
 		function storeRtk2Vehicle(rtk2vehicle) {
 			try {

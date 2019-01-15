@@ -1,9 +1,10 @@
+import { loadingBar, removeLoadingScreen } from "../common/overlay.js";
 
 var activeDataLoaderTask;
-var DataLoader;
 var workerID = 0;
 startHeartbeat();
-startDataLoader();
+export let DataLoader = startDataLoader();
+
 
 
 function startHeartbeat() {
@@ -34,12 +35,12 @@ function startHeartbeat() {
 function startDataLoader() {
 
   // Start DataLoader:
-  DataLoader = new Worker("data-loader.js");
+  const DataLoader = new Worker("data-loader.js");
   DataLoader.onmessage = handleDataLoaderMessage; // Assign callback function
-
+  return DataLoader;
 }
 
-function sendHeaderRequest(url, headerReceivedCallback) {
+export function sendHeaderRequest(url, headerReceivedCallback) {
   //Send fetch request for header:
   fetch(url).then((response) => handleHeaderResponse(response));
 
@@ -122,18 +123,18 @@ function computeSeekPosBytes(playbarVal, rtkTime, header, settings) {
   return seekPosBytes;
 }
 
-function streamFromFileStart(header, settings) {
+export function streamFromFileStart(header, settings) {
   window.openStreamRequest = {expiraryMillis: -1};
   streamFromTimeNew(0, {offset:header.tmin, range:(header.tmax-header.tmin)}, header, settings);
 }
 
-function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0 <= playbarVal < 1.0
+export function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0 <= playbarVal < 1.0
 
   if (window.openStreamRequest.expiraryMillis < performance.now()) {  // Must wait until previous open request expires
     console.log("Streaming from playbar value: ", playbarVal);
 
     // Compute lidarTime from playbarVal and rtkTime:
-    lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
+    let lidarTime = playbarVal*rtkTime.range + rtkTime.offset - header.tmin;
     // debugger;
 
     // Bounds check lidarTime:
@@ -193,7 +194,7 @@ function streamFromTimeNew(playbarVal, rtkTime, header, settings) { // NOTE: 0.0
   }
 }
 
-function requestSlice(tmin=-1, tmax=-1) {
+export function requestSlice(tmin=-1, tmax=-1) {
 
   if (!window.openSliceRequest) {
     try {
@@ -223,9 +224,10 @@ function handleDataLoaderMessage(response) {
 
     case "slice":
     debugger;// start slice
-    tStartAddAttr = performance.now();
+    const tStartAddAttr = performance.now();
       console.log("Slice: ", response.data);
-      slice = response.data;
+      const slice = response.data;
+      const cloudMesh = viewer.scene.scene.getObjectByName("cloud");
 
       if (typeof(cloudMesh) != "undefined") {
         var positionAttributes = new THREE.BufferAttribute(slice.pos, 3);
@@ -340,8 +342,8 @@ function handleDataLoaderMessage(response) {
           console.error("Could not update potree pointcloud attributes, ",e);
         }
       }
-      tEndAddAttr = performance.now();
-      dtAddAttrMillis = tEndAddAttr - tStartAddAttr;
+      const tEndAddAttr = performance.now();
+      const dtAddAttrMillis = tEndAddAttr - tStartAddAttr;
 
       if (typeof(window.firstSliceRequested) != "undefined" && window.firstSliceRequested) {
         startVisualization();
@@ -359,7 +361,8 @@ function handleDataLoaderMessage(response) {
 
     case "heartbeat":
       console.log("heartbeat: ", response.data, "\nstate: ", response.data.state);
-      heartbeat = response.data;
+      window.heartbeat = response.data;
+      let heartbeat = window.heartbeat;
 
       window.pauseTimeChanged = (window.lastPauseTime != heartbeat.pauseTime);
 
@@ -448,7 +451,7 @@ function startVisualization() {
   $("#playbutton").mousedown(); // Toggle playbutton
 
   // camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
-  camPoint = new THREE.Vector3(6.025, -45.416, 280.938);
+  const camPoint = new THREE.Vector3(6.025, -45.416, 280.938);
   viewer.scene.view.position.copy(camPoint); // changed from camera
   var targetPosition = new THREE.Vector3(0, 0, 0);
   viewer.scene.view.lookAt(targetPosition);

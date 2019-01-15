@@ -522,6 +522,7 @@ function restart(task=null) {
 
 function updateLidarTime(newLidarTime) {
 
+  console.log('update-lidar-time');
   // Store new lidarTime:
   self.lidarTime = newLidarTime;
   var epsilonNumPoints = 500000;

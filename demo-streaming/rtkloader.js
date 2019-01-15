@@ -1,4 +1,8 @@
 
+function isNan(n) {
+  return n !== n;
+}
+
 function minAngle(theta) {
   if (theta < - Math.PI) {
     theta += 2*Math.PI;
