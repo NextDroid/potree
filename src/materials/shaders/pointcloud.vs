@@ -132,15 +132,66 @@ float round(float number){
 	return floor(number + 0.5);
 }
 
+//
+// mat4 getSE3Old(vec3 dX, vec3 dTheta) {
+//
+// 	float sinRoll = sin(dTheta.x);
+// 	float cosRoll = cos(dTheta.x);
+// 	float sinPitch = sin(dTheta.y);
+// 	float cosPitch = cos(dTheta.y);
+// 	float sinYaw = sin(dTheta.z);
+// 	float cosYaw = cos(dTheta.z);
+//
+// 	float c1 = cosRoll;
+// 	float c2 = cosPitch;
+// 	float c3 = cosYaw;
+// 	float s1 = sinRoll;
+// 	float s2 = sinPitch;
+// 	float s3 = sinYaw;
+//
+// 	mat3 Rx = mat3(
+// 		1.0, 	0.0, 		 0.0,
+// 		0.0,	cosRoll, -sinRoll,
+// 		0.0,	sinRoll, cosRoll
+// 	);
+//
+// 	mat3 Ry = mat3(
+// 		cosPitch,	 0.0,  sinPitch,
+// 		0.0,			 1.0,	 0.0,
+// 		-sinPitch, 0.0,	 cosPitch
+// 	);
+//
+// 	mat3 Rz = mat3(
+// 		cosYaw, 	-sinYaw, 0.0,
+// 		sinYaw, 	cosYaw,  0.0,
+// 		0.0,			0.0,		 1.0
+// 	);
+//
+// 	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+//
+// 	mat3 R2 = mat3(
+// 		 c2*c3,  c1*s3 + c3*s1*s2, s1*s3 - c1*c3*s2,	// First Column
+// 		-c2*s3,  c1*c3 - s1*s2*s3, c3*s1 + c1*s2*s3,  // Second Column
+// 		 s2,		  -c2*s1,						 c1*c2						// Third Column
+// 	);
+//
+// 	// mat3 R = Rx*Ry*Rz;		// Rotation Matrix from Euler angles using ZYX convention
+// 	vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
+//
+// 	mat4 SE3 = mat4(R2); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
+// 	SE3[3] = T; // Set the translation vector components
+//
+// 	return SE3;
+// }
 
-mat4 getSE3(vec3 dX, vec3 dTheta) {
+mat3 makeRotationMatrix(vec3 dTheta) {
 
-	float sinRoll = sin(dTheta.x);
-	float cosRoll = cos(dTheta.x);
-	float sinPitch = sin(dTheta.y);
-	float cosPitch = cos(dTheta.y);
-	float sinYaw = sin(dTheta.z);
-	float cosYaw = cos(dTheta.z);
+	float cosRoll = cos(dTheta.x);		float c1 = cosRoll;
+	float cosPitch = cos(dTheta.y);		float c2 = cosPitch;
+	float cosYaw = cos(dTheta.z);			float c3 = cosYaw;
+	float sinRoll = sin(dTheta.x);		float s1 = sinRoll;
+	float sinPitch = sin(dTheta.y);		float s2 = sinPitch;
+	float sinYaw = sin(dTheta.z);			float s3 = sinYaw;
 
 	mat3 Rx = mat3(
 		1.0, 	0.0, 		 0.0,
@@ -161,11 +212,45 @@ mat4 getSE3(vec3 dX, vec3 dTheta) {
 	);
 
 	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
-	// mat3 R = Rx*Ry*Rz;		// Rotation Matrix from Euler angles using ZYX convention
+
+	mat3 R2 = mat3(				// Alternative to above matrix construction
+		 c2*c3,  c1*s3 + c3*s1*s2, s1*s3 - c1*c3*s2,	// First Column
+		-c2*s3,  c1*c3 - s1*s2*s3, c3*s1 + c1*s2*s3,  // Second Column
+		 s2,		  -c2*s1,						 c1*c2						// Third Column
+	);
+
+	return R;
+
+}
+
+mat3 transpose(mat3 M) {
+	mat3 MT = mat3(
+			vec3(M[0].x, M[1].x, M[2].x),
+			vec3(M[0].y, M[1].y, M[2].y),
+			vec3(M[0].z, M[1].z, M[2].z)
+	);
+
+	return MT;
+}
+
+mat4 getSE3(vec3 dX, vec3 dTheta) {
+
+	mat3 R = makeRotationMatrix(dTheta); // Rotation Matrix
 	vec4 T = vec4(dX, 1.0); // Translation Vector in Homogenous Coordinates
 
 	mat4 SE3 = mat4(R); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
 	SE3[3] = T; // Set the translation vector components
+
+	return SE3;
+}
+
+mat4 getSE3Inverse(vec3 dX, vec3 dTheta) {
+
+	mat3 Rtrans = transpose(makeRotationMatrix(dTheta)); // Rotation Matrix (transpose)
+	vec4 Ttrans = vec4(-Rtrans*dX, 1.0); // Translation Vector in Homogenous Coordinates (for inverse of SE3)
+
+	mat4 SE3 = mat4(Rtrans); // creates a 4x4 matrix with 1 on the diagonal and zeros on the rest of the new additions
+	SE3[3] = Ttrans; // Set the translation vector components
 
 	return SE3;
 }
@@ -184,6 +269,15 @@ vec4 applyRtk2RtkExtrinsics(vec4 X) {
 
 	mat4 Extrinsics = getSE3(dX, dTheta);
 	return Extrinsics*X;
+}
+
+vec4 applyRtk2RtkExtrinsicsNew(vec4 X) {
+
+	// Get Transformation from originalRtk to origin (inverse SE3):
+	mat4 originalRtk2Origin = getSE3Inverse(originalRtkPosition, originalRtkOrientation);
+	mat4 origin2CurrentRtk = getSE3(currentRtkPosition, currentRtkOrientation);
+
+	return origin2CurrentRtk*originalRtk2Origin*X; // Transform from original RTK to Origin to current RTK
 }
 
 vec4 applyVelo2RtkExtrinsics(vec4 X) {
@@ -820,6 +914,7 @@ void main() {
 
 	// mat4 SE3 = getSE3();
 	vec3 offset = vec3(200.0, 200.0, 100.0);
+	// vec3 offset = vec3(0.0, 0.0, 0.0);
 	vec3 positionInVeloFrameNoOffset = position.xyz - offset;
 
 	// vec4 correctedPosition = applyRtk2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
