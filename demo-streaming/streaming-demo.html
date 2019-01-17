@@ -44,6 +44,11 @@
 	<script type="text/javascript" src="../common/loading-bar.js"></script>
 	<script type="module" src="../common/overlay.js"></script>
 	<script src="../common/draggable-overlay.js"></script>
+	<script type="module" src="../common/custom-sidebar.js"></script>
+	<script src="../demo/animationEngine.js"></script>
+	<script src="../demo/RtkTrajectory.js"></script>
+
+
 
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
@@ -173,7 +178,8 @@
 
 
   <script type="module">
-		import { setLoadingScreen } from "../common/overlay.js";
+		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
+		import { updateSidebar } from "../common/custom-sidebar.js";
 		import * as streamer from "./streamer.js";
 
 
@@ -188,12 +194,16 @@
     // viewer.setDescription("Example page to test out streaming point clouds into Potree using Three.js");
 
     viewer.loadGUI(() => {
+			// Override Sidebar Potree Branding Panel:
+			document.getElementById("potree_branding").style.display="none";
+
       viewer.setLanguage('en');
 			// viewer.setBackground('white');
       $("#menu_tools").next().show();
       $("#menu_scene").next().show();
       // viewer.toggleSidebar();
 			$(("#show_bounding_box")).trigger("click");
+			updateSidebar();
     });
 
 		// Create Animation Engine:
@@ -253,11 +263,25 @@
 	 // var slice;
 	 // var header;
 
-	 // Configure Playbar:
-	 $(document).ready(() => {
-		document.getElementById("playback_speed").style.display = "block";
-	 	document.getElementById("toggle_calibration_panels").style.display = "block";
-	});
+	 // Playbar Configuration:
+ $(document).ready(() => {
+	 document.getElementById("playbar_tmax").disabled = false;
+	 document.getElementById("playbar_tmin").disabled = false;
+	 document.getElementById("playback_speed").style.display = "block";
+	 document.getElementById("toggle_calibration_panels").style.display = "block";
+
+
+
+	 // Load Data Sources:
+	 (async () => {
+
+		 // Load RTK:
+		 let s3, bucket, name; // TODO undefined for now (integrate s3 later)
+		 await loadRtkCallback(s3, bucket, name);
+
+	 })();
+
+ });
 
  	// Create Geometry and Mesh:
 	var cloudGeometry = new THREE.BufferGeometry();
@@ -353,354 +377,781 @@
 
 		});
 
-
-
 	});
 
 
+ 	 ////////////////////////////////////////////////////////////////////////////
+ 	 ////////////////////////////////////////////////////////////////////////////
+ 	 ////////////////////////////////////////////////////////////////////////////
+
+	 // Load RTK: TODO REFACTOR THIS (a lot of stuff happenning here, break it up if possible)
+	 		async function loadRtkCallback(s3, bucket, name) {
+	 			// await loadRtk(s3, bucket, name, (pos, rot, t_init, t_range) => {
+				let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
+	 			await loadRtk(rtkFile, settings.isOdcData, (pos, rot, timestamps, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
+
+					window.timeframe = {"tstart": t_init, "tend": t_init+t_range};
+
+	 				// TODO Move this into main loader function:
+	 				let tstart = window.timeframe.tstart;	// Set in loadRtkCallback
+	 				let tend = window.timeframe.tend;			// Set in loadRtkCallback
+	 				let playbackRate = 1.0;
+	 				animationEngine.configure(tstart, tend, playbackRate);
+	 				animationEngine.launch();
+
+					// window.rtkOffset = animationEngine.tstart;		// TODO Deprecated -- remove
+					// window.rtkRange = animationEngine.timeRange;	// TODO Deprecated -- remove
+					rtkLookup = rtkLookupOutput;
+					rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
+					rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
+					rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transformation
+					storeRtk2Vehicle(rtk2vehicle);
+
+					console.log("RTK Trajectory Length: ", distance, "meters");
+	 	      const path = pos.map(v => new THREE.Vector3(...v));
+	 	      const orientations = rot.map(v => new THREE.Vector3(...v));
+					const samplingFreq = 100; // Hertz TODO hardcoded
+					const rtkTrajectory = new RtkTrajectory(path, orientations, timestamps, samplingFreq);
+					const closedPath = false;
+	 	      // const animationPath = new Potree.AnimationPath(path);
+	 	      // animationPath.closed = false;
+	 		  	// const orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
+					streamer.DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: animationEngine.tstart, rtkRange:animationEngine.timeRange}});
+					streamer.DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
+					streamer.DataLoader.postMessage({msg:"rtkTrajectory", posesVec3: path, orientationsVec3: orientations, timestamps: timestamps, samplingFreq});
+
+					debugger; // path
+
+	 	      { // render the path
+						let geometry = new THREE.Geometry();
+						for (let ii = 0; ii < rtkTrajectory.numStates; ii++) {
+							geometry.vertices[ii] = rtkTrajectory.states[ii].pose.clone();
+						}
+	 	        let material = new THREE.LineBasicMaterial();
+						material.uniforms = {
+							initialTime:{value:t_init},
+							timeRange: {value:t_range},
+							numPoints: {value: numPoints}
+					 	};
+	 					material.opacity = 0.0;
+	 					material.transparent = true;
+	 	        let line = new THREE.Line(geometry, material, {closed: closedPath});
+	 	        line.name = "rtk";
+	 	        viewer.scene.scene.add(line);
+	 	        console.log("Rendered Path");
+	 	      }
+
+	 	      // CREATE VEHICLE OBJECT:
+	 	      // NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
+	 	      // NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
+	 	      let manager = new THREE.LoadingManager();
+	 	      manager.onProgress = function ( item, loaded, total ) {
+	 	        console.log( item, loaded, total );
+	 	      };
+	 	      let textureLoader = new THREE.TextureLoader( manager );
+	 	      let texture = textureLoader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/reflection_1.png`);
+	 	      // let texture = textureLoader.load(`${Potree.resourcePath}/models/bodybkgd.JPG`);
+	 	      let onProgress = function ( xhr ) {
+	 	        if ( xhr.lengthComputable ) {
+	 	          let percentComplete = xhr.loaded / xhr.total * 100;
+	 	          console.log( Math.round(percentComplete, 2) + '% downloaded' );
+	 	        }
+	 	      };
+	 	      texture.wrapS = THREE.RepeatWrapping;
+	 	      texture.wrapT = THREE.RepeatWrapping;
+
+	 	      let geometry = new THREE.SphereGeometry( 2, 32, 32 );
+	 	      let material = new THREE.MeshNormalMaterial( {side: THREE.DoubleSide, opacity: 0.92,transparent:true});
+	 	      let sphere = new THREE.Mesh( geometry, material );
+	 	      sphere.position.copy(new THREE.Vector3(...pos[0]));
+	 	      console.log(sphere);
+
+	 	      // viewer.scene.scene.add( sphere );
+	 	      console.log("Sphere added");
 
 
-	 // sendHeaderRequest(serverUrl + ":" + port + "/args/header/cloud-18M-header.pcd", (e) => {
-		//  var streamingHeader = e.data;
-		//  console.log("Header File Received: ", streamingHeader);
+	 	      { // Load Textured bunny from obj
+	 	        let onError = function ( xhr ) {};
+	 	        let loader = new THREE.OBJLoader( manager );
+	 	        loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/volt_reduce.obj`,
+	 	        // loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`,
+	 	                    function ( object ) {
+	 	          object.traverse( function ( child ) {
+	 	            if ( child instanceof THREE.Mesh ) {
+	 	              child.material.map = texture;
+	 	            }
+	 	          } );
+
+	 						const vehicleGroup = new THREE.Group();
+	 						vehicleGroup.name = "Vehicle";
+
+	 						// Add Polar Grid Helper:
+	 						const gridRadius = 100; // meters
+	 						const gridSpacing = 5; // meters
+	 						const scaleFactor = 1; // HACK for now because attached to vehicle mesh which is 1/100th scale
+	 						const gridHelper = new THREE.GridHelper( scaleFactor*2*gridRadius, 2*gridRadius/gridSpacing, 0x0000ff, 0x808080 );
+	 						gridHelper.name = "Cartesian Grid";
+	 						gridHelper.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI/2);
+	 						gridHelper.position.z -= 2;
+	 						gridHelper.visible = false;
+	 						viewer.scene.dispatchEvent({"type": "vehicle_layer_added", "vehicleLayer": gridHelper });
+	 						const polarGridHelper = new THREE.PolarGridHelper( scaleFactor*gridRadius, 16, gridRadius/gridSpacing, 64, 0x0000ff, 0x808080 );
+	 						polarGridHelper.name = "Polar Grid";
+	 						polarGridHelper.rotateOnAxis(new THREE.Vector3(1,0,0), Math.PI/2);
+	 						polarGridHelper.position.z -= 2;
+	 						polarGridHelper.visible = false;
+	 						viewer.scene.dispatchEvent({"type": "vehicle_layer_added", "vehicleLayer": polarGridHelper });
+	 						const axesHelper = new THREE.AxesHelper(scaleFactor*gridSpacing);
+	 						axesHelper.name = "3D Axes";
+	 						axesHelper.position.z -= 2;
+	 						// axesHelper.rotateOnAxis(new THREE.Vector3(0,0,1), -Math.PI/2);
+	 						axesHelper.visible = false;
+	 						viewer.scene.dispatchEvent({"type": "vehicle_layer_added", "vehicleLayer": axesHelper });
+
+
+	 						vehicleGroup.add( gridHelper );
+	 						vehicleGroup.add( polarGridHelper );
+	 						vehicleGroup.add( axesHelper );
+
+	 						// Apply RTK to Vehicle Mesh Extrinsics:
+	 	          object.name = "Vehicle Mesh";
+	 	          object.scale.multiplyScalar(.01);
+	 						object.rotation.set(0*Math.PI / 2, 0*Math.PI/2., 1*Math.PI/2.0); // Chevy Volt
+	 						object.position.sub(new THREE.Vector3(0, 0, 2)); // Chevy Volt
+
+	 						// Initialize Vehicle Group:
+	 						// vehicleGroup.position.set(...pos[0]);
+	 						// applyRotation(vehicleGroup, rot[0][0], rot[0][1], rot[0][2]);
+	 						// vehicleGroup.rotation.set(...rot[0]);
+	 						// vehicleGroup.orientationPath = orientationPath;
+							vehicleGroup.rtkTrajectory = rtkTrajectory;
+	 						vehicleGroup.add( object );
+
+	 						// TODO New Camera Initialization:
+	 						let box = new THREE.Box3().setFromObject(vehicleGroup);
+	 						let node = new THREE.Object3D();
+	 						node.boundingBox = box;
+	 						viewer.zoomTo(node, 0.1, 500);
+	 						// viewer.scene.view.lookAt(object.position);
+
+	 	          // viewer.scene.scene.add( object );
+	 	          viewer.scene.scene.add( vehicleGroup );
+	 						viewer.scene.dispatchEvent({"type": "vehicle_layer_added", "vehicleLayer": object });
+
+	 						viewer.setFilterGPSTimeRange(0, 0); // Size 0 Time Window at start of timeline
+	 						// removeLoadingScreen();
+
+
+	 	        }, onProgress, onError );
+	 	      }
+
+	 	      // ANIMATION:
+	 	      { // create Animation Path & make light follow it
+	 	        {// ANIMATION + SLIDER LOGIC:
+	 	          let slider = document.getElementById("myRange");
+	 	          let output = document.getElementById("demo");
+	 						let tmin = document.getElementById("playbar_tmin");
+	 						let tmax = document.getElementById("playbar_tmax");
+							let playbackSpeed = document.getElementById("playback_speed");
+
+	 	          output.innerHTML = slider.value;
+
+	 	          // Playbar Button Functions:
+	 	          let playbutton = document.getElementById("playbutton");
+	 	          let pausebutton = document.getElementById("pausebutton");
+	 	          pausebutton.addEventListener("mousedown", () => {
+	 							animationEngine.stop();
+	 	          });
+	 	          playbutton.addEventListener("mousedown", () => {
+	 							animationEngine.start();
+	 	          });
+
+	 						slider.addEventListener("input", () => {
+	 							animationEngine.stop();
+	 							var val = slider.value/100.0;
+	 							animationEngine.timeline.t = val*animationEngine.timeRange + animationEngine.tstart;
+	 							animationEngine.updateTimeForAll();
+	 						});
+
+	 						slider.addEventListener("wheel", () => {
+	 							animationEngine.stop();
+	 							var val = slider.value/100.0;
+	 							animationEngine.timeline.t = val*animationEngine.timeRange + animationEngine.tstart;
+	 							animationEngine.updateTimeForAll();
+	 						});
+
+	 						window.addEventListener("keypress", (e) => {
+	 							// if (e.charCode == 32) {
+	 				      //     if (toggleplay.checked) {
+	 				      //       animationEngine.start();
+	 				      //     } else {
+	 				      //       animationEngine.stop();
+	 				      //     }
+	 				      //   }
+	 							});
+							slider.addEventListener("mousedown", (e) => {
+								window.interactingWithPlaybar = true;
+							});
+							slider.addEventListener("mouseup", (e) => {
+								setLoadingScreen();
+								const tFrac = (animationEngine.timeline.t - animationEngine.tstart) / animationEngine.timeRange;
+							 	streamer.streamFromTimeNew(tFrac, {offset:animationEngine.tstart, range: animationEngine.timeRange}, header, settings);
+							 	window.firstSliceRequested = true;
+								window.interactingWithPlaybar = false;
+						 	});
+
+							playbackSpeed.addEventListener("input", (e) => {
+								animationEngine.stop();
+								animationEngine.playbackRate = playbackSpeed.value/10;
+								animationEngine.launch();
+								animationEngine.start();
+							});
+	 	        }
+	 	      }
+	 	    });
+
+
+	 			// RTK TweenTarget Callback:
+	 			window.pitchThreshold = 1.00;
+	 			animationEngine.tweenTargets.push((gpsTime) => {
+	 				// try{
+	 				// 	let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
+	 				// 	let bunny = viewer.scene.scene.getObjectByName("Vehicle");
+	 				// 	let lastRtkPoint = bunny.position.clone();
+	 				// 	let lastRtkOrientation = bunny.rotation.clone();
+	 				// 	let lastTransform = bunny.matrixWorld.clone();
+	 				// 	// debugger; //bunny
+	 				// 	let rtkPoint = animation.getPoint(t); // TODO rename animation --> just use CatmullRomCurve3 directly
+	 				// 	let vehicleOrientation = bunny.orientationPath.getPoint(t); // TODO same as above, also double check interpolation is legit
+	 				// 	// rtkPoint.z -= 2.0; // TODO remove hardcoded value
+	 				// 	bunny.position.copy(rtkPoint);
+	 				// 	applyRotation(bunny, vehicleOrientation.x, vehicleOrientation.y, vehicleOrientation.z);
+	 				// 	bunny.updateMatrixWorld();
+					//
+	 				// 	// Apply Transformation to Camera and Target:
+	 				// 	let newTransform = bunny.matrixWorld.clone();
+	 				// 	let lastTransformInverse = lastTransform.getInverse(lastTransform);
+	 				// 	let deltaTransform = lastTransformInverse.premultiply(newTransform);
+	 				// 	let target = viewer.scene.view.position.clone();
+	 				// 	let direction = viewer.scene.view.direction.clone();
+	 				// 	let radius = viewer.scene.view.radius;
+	 				// 	target.add(direction.multiplyScalar(radius));
+	 				// 	viewer.scene.view.position.applyMatrix4(deltaTransform);
+	 				// 	if (Math.abs(viewer.scene.view.pitch) < window.pitchThreshold) {
+	 				// 		viewer.scene.view.lookAt(target.applyMatrix4(deltaTransform));
+	 				// 	}
+	 				// 	console.log("View Yaw: ", viewer.scene.view.yaw);
+	 				// 	console.log("View Pitch: ", viewer.scene.view.pitch);
+					//
+	 				// 	// Set Elevation:
+	 				// 	let elevationDeltaMin = -0;
+	 				// 	let elevationDeltaMax = 2;
+	 				// 	let clouds = viewer.scene.pointclouds;
+	 				// 	for (let ii=0, numClouds = clouds.length; ii<numClouds; ii++) {
+	 				// 			viewer.scene.pointclouds[ii].material.elevationRange = [rtkPoint.z+elevationDeltaMin, rtkPoint.z+elevationDeltaMax];
+	 				// 	}
+	 				// } catch (e) {
+	 				// 	console.error("Caught error: ",e);
+	 				// }
+	 			});
+	 		}
+
+
+	 		// Animation Start/Stop Callbacks:
+	 		// TODO Put these somewhere better
+	 		{
+	 			let playbutton = document.getElementById("playbutton");
+	 			let pausebutton = document.getElementById("pausebutton");
+
+	 			animationEngine.preStartCallback = function () {
+	 				if (!animationEngine.isPlaying) {
+	 					$("#playbutton").trigger("mousedown");
+	 				}
+	 			}
+
+	 			animationEngine.preStopCallback = function() {
+	 				if (animationEngine.isPlaying) {
+	 					$("#pausebutton").trigger("mousedown");
+	 				}
+	 			}
+
+	 		}
+
+	 		// List of all Tween Target Update Functions:
+	 		// TODO Organize these (move them to the right place)
+	 		{
+
+	 			// PointCloud:
+	 			animationEngine.tweenTargets.push((gpsTime) => {
+	 				// debugger; // account for pointcloud offset
+	 				let minGpsTime = gpsTime-animationEngine.activeWindow.backward;
+	 				let maxGpsTime = gpsTime+animationEngine.activeWindow.forward;
+	 				viewer.setFilterGPSTimeRange(minGpsTime, maxGpsTime);
+	 				viewer.setFilterGPSTimeExtent(minGpsTime-1.5*animationEngine.activeWindow.backward, maxGpsTime+1.5*animationEngine.activeWindow.forward);
+
+					// debugger; // uniforms below
+					// Get Current RTK Pose:
+					// var currentRtkPosition = rtkPoint.sub(rtkPosInit);
+					// var currentRtkOrientation = vehicleOrientation.sub(rtkOrientInit);
+					const t = (gpsTime - animationEngine.tstart) / animationEngine.timeRange;
+					let vehicle = viewer.scene.scene.getObjectByName("Vehicle");
+
+					debugger;
+					let state = vehicle.rtkTrajectory.getState(gpsTime);
+					let rtkPoint = state.pose.clone();
+					let vehicleOrientation = state.orient.clone();
+					// let rtkPoint = animation.getPoint(t);
+					// let vehicleOrientation = vehicle.orientationPath.getPoint(t);
+					var currentRtkPosition = rtkPoint.sub(rtkPosInit);
+					var currentRtkOrientation = vehicleOrientation;
+
+					var pcloud = viewer.scene.pointclouds[0];
+					pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+					pcloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+
+					var cloud = viewer.scene.scene.getObjectByName("cloud");
+					cloud.material.uniforms.minGpsTime.value = minGpsTime;
+					cloud.material.uniforms.maxGpsTime.value = maxGpsTime;
+					cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+					cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+
+					window.dispatchEvent(new Event("time-updated"));
+
+	 			});
+
+	 			// Playbar:
+	 			animationEngine.tweenTargets.push((gpsTime) => {
+	 				let slider = document.getElementById("myRange");
+	 				let output = document.getElementById("demo");
+	 				let tmin = document.getElementById("playbar_tmin");
+	 				let tmax = document.getElementById("playbar_tmax");
+	 				let toggleplay = document.getElementById("toggleplay");
+	 				// TODO add playbackSpeed
+	 				output.innerHTML = slider.value;
+
+	 				let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
+	 				slider.value = 100*t;
+	 				output.innerHTML = (gpsTime - animationEngine.tstart).toFixed(4); // Centered to zero
+	 			});
+
+
+
+	 			// // Camera:
+	 			// let updateCamera = false;
+	 			// let lag = 1.01; // seconds
+	 			// let camPointZOffset = 10; // meters
+	 			// window.camControlInitialized = false;
+	 			// window.camPointNeedsToBeComputed = true;
+	 			// window.camControlInUse = false;
+	 			// window.camDeltaTransform = {camStart: new THREE.Matrix4(), vehicleStart: new THREE.Vector3(), camEnd: new THREE.Matrix4(), vehicleEnd: new THREE.Vector3()};
+	 			// window.camPointLocalFrame = {position: new THREE.Vector3(-10,0,10)};
+	 			// window.camTargetLocalFrame = {position: new THREE.Vector3(0, 0, 0)};
+
+
+	 			viewer.renderArea.addEventListener("keypress", (e) => {
+	 				if (e.key == "r") {
+	 					let box = new THREE.Box3().setFromObject(viewer.scene.scene.getObjectByName("Vehicle").getObjectByName("Vehicle Mesh"));
+	 					let node = new THREE.Object3D();
+	 					node.boundingBox = box;
+	 					viewer.zoomTo(node, 5, 500);
+	 				}
+	 			});
+
+				// TODO make this a tweentarget
+				window.addEventListener("time-updated", () => {
+
+					if (window.interactingWithPlaybar) {
+						return;
+					}
+
+					if (typeof(window.numTimeUpdated) == "undefined") {
+						window.numTimeUpdated = 0;
+					} else {
+						window.numTimeUpdated++;
+					}
+
+					var lidarTime = 0;
+					var window_tmin = -0.05; // note the negative
+					var window_tmax = 0.05;
+					const rtkOffset = animationEngine.tstart;
+					const rtkRange = animationEngine.timeRange;
+					if (rtkRange != null && rtkOffset != null && window.header.tmin != null) {
+						lidarTime = $("#myRange").val()/100*rtkRange + rtkOffset - window.header.tmin;
+						lidarTime = animationEngine.timeline.t;
+					}
+
+					// Get Time Window Boundaries:
+					window_tmin = parseFloat($("#playbar_tmin").val());
+					window_tmax = parseFloat($("#playbar_tmax").val());
+
+					// Get Current Slice Time Frame (TA):
+					try {
+						cloudMesh = viewer.scene.pointclouds[0].pcoGeometry.nodes.r;
+						let numPoints = cloudMesh.geometry.attributes.gpsTime.length;
+						let TAmin = cloudMesh.geometry.attributes.gpsTime.array[0] + header.tmin;
+						let TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1] + header.tmin;
+
+
+						// Request Slice Logic:
+						var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
+						var sliceTimeSec = window.sliceTimeMillis/1000;		// TODO measure this after first slice
+
+						// Slice Boundaries:
+						var slicemin = lidarTime - window_tmin - epsilon - animationEngine.tstart;
+						var slicemax = slicemin + settings.TA;
+
+						// DataLoader Buffers:
+						let TBmin = window.heartbeat.tmin;
+						let TBmax = window.heartbeat.tmax;
+
+						console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
+
+						// Request Slice:
+						if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
+							streamer.requestSlice(slicemin, slicemax);
+						}
+
+						// TODO potentially need to remove this after testing:
+						// Pause animation if window_tmax + lidarTime > TA:
+						if ((lidarTime + window_tmax + epsilon) > TAmax) {
+							// debugger; // check why breaking here
+							console.log("VINAY",window.animation);
+							animationEngine.stop();
+							// $("#pausebutton").mousedown();
+							setLoadingScreen();
+							window.animationPaused = true;
+
+							// Slow down animation speed:
+						}
+
+
+
+
+					} catch (e) {
+						console.error("Error at Player Slicing Logic: ", e);
+					}
+
+				});
+	 		}
+
+
+
+ 	 ////////////////////////////////////////////////////////////////////////////
+ 	 ////////////////////////////////////////////////////////////////////////////
+ 	 ////////////////////////////////////////////////////////////////////////////
+
+
+
+	 // // Load RTK:
+	 // let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
+	 // console.log("rtkFile: ", rtkFile);
+	 // loadRtk(rtkFile, settings.isOdcData, (pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
+		//  window.rtkOffset = t_init;
+		//  window.rtkRange = t_range;
+		//  rtkLookup = rtkLookupOutput;
+		//  rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
+		//  rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
+		//  // TODO RTK TO VEHICLE (Maybe do this in RTK LOADER)
+		//  storeRtk2Vehicle(rtk2vehicle);
 	 //
-		//  // Stream from time 0:
-		//  streamFromTime(0, streamingHeader, streamSettings, (attributes) => {
-	 //
-		// 	//  // Create Geometry:
-		// 	cloudGeometry.addAttribute('position', new THREE.Float32BufferAttribute( attributes.pos, 3 ));
-		// 	cloudGeometry.addAttribute('gpsTime', new THREE.Float32BufferAttribute( attributes.timestamp, 1 ));
-		// 	cloudGeometry.computeBoundingSphere();
-		// 	// debugger; // cloudGeometry
 	 //
 	 //
-		// 	 mesh.timeRange = {tmin: attributes.timestamp[0], tmax: attributes.timestamp[attributes.timestamp.length-1]};
-		// 	 debugger; // mesh.timeRange
+		//  rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
+	 //
+		//  streamer.DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: window.rtkOffset, rtkRange:window.rtkRange}});
+		//  streamer.DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
+	 //
+		//  console.log("RTK Trajectory Length: ", distance, "meters");
+		//  const path = pos.map(v => new THREE.Vector3(...v));
+		//  const orientations = rot.map(v => new THREE.Vector3(...v));
+		//  let animationPath = new Potree.AnimationPath(path);
+		//  animationPath.closed = false;
+		//  var orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
+	 //
+		//  { // render the path
+		// 	 let geometry = animationPath.getGeometry();
+		// 	 let material = new THREE.LineBasicMaterial();
+		// 	 material.uniforms = {
+		// 		 initialTime:{value:t_init},
+		// 		 timeRange: {value:t_range},
+		// 		 numPoints: {value: numPoints}
+		// 	 };
+		// 	 let line = new THREE.Line(geometry, material, {closed: animationPath.closed});
+		// 	 line.name = "rtk";
+		// 	 line.visible = false;
+		// 	 viewer.scene.scene.add(line);
+		// 	 console.log("Rendered Path");
+		//  }
+	 //
+		//  // CREATE VEHICLE OBJECT:
+		//  // NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
+		//  // NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
+		//  let manager = new THREE.LoadingManager();
+		//  manager.onProgress = function ( item, loaded, total ) {
+		// 	 console.log( item, loaded, total );
+		//  };
+		//  let textureLoader = new THREE.TextureLoader( manager );
+		//  let texture = textureLoader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/reflection_1.png`);
+	 //
+		//  let onProgress = function ( xhr ) {
+		// 	 if ( xhr.lengthComputable ) {
+		// 		 let percentComplete = xhr.loaded / xhr.total * 100;
+		// 		 console.log( Math.round(percentComplete, 2) + '% downloaded' );
+		// 	 }
+		//  };
+		//  texture.wrapS = THREE.RepeatWrapping;
+		//  texture.wrapT = THREE.RepeatWrapping;
+	 //
+		//  { // Load Textured bunny from obj
+		// 	 let onError = function ( xhr ) {};
+		// 	 let loader = new THREE.OBJLoader( manager );
+		// 	 loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`, function ( object ) {
+		// 	 // loader.load(`${Potree.resourcePath}/models/1967-shelby-ford-mustang.obj`, function ( object ) {
+		// 		 object.traverse( function ( child ) {
+		// 			 if ( child instanceof THREE.Mesh ) {
+		// 				 child.material.map = texture;
+		// 			 }
+		// 		 } );
+		// 		 object.name = "bunny";
+		// 		 object.position.set(...pos[0]);
+		// 		 object.scale.multiplyScalar(.011);
+		// 		 object.orientationPath = orientationPath;
+		// 		 object.rotation.set(0*Math.PI / 2, 0*Math.PI/2., 1*Math.PI/2.0); // Chevy Volt
+		// 		 object.initialRotation = object.rotation.clone(); // NOTE is this used?
+		// 		 // object.rotation.set(Math.PI / 2, 0*Math.PI/2., 0*Math.PI/2.0); // Shelby Mustang
+		// 		 viewer.scene.scene.add( object );
+		// 		 // debugger; // pos[0
+		// 		 var camPos = pos[0];
+		// 		 // viewer.scene.view.position.set(camPos[0]+viewerOffset, camPos[1]+viewerOffset, camPos[2]+viewerOffset);
+		// 		 // viewer.scene.view.lookAt(new THREE.Vector3(...pos[0]));
+		// 	 }, onProgress, onError );
+		//  }
 	 //
 	 //
-		// 	 // Set initial camera position:
-		// 	 camPos = [attributes.pos[0]+viewerOffset, attributes.pos[1]+viewerOffset, attributes.pos[2]+viewerOffset];
+		//  // ANIMATION:
+		//  { // create Animation Path & make light follow it
+		// 	 {// ANIMATION + SLIDER LOGIC:
+		// 		 let slider = document.getElementById("myRange");
+		// 		 let output = document.getElementById("demo");
+		// 		 let tmin = document.getElementById("playbar_tmin");
+		// 		 let tmax = document.getElementById("playbar_tmax");
+		// 		 let toggleplay = document.getElementById("toggleplay");
+		// 		 let playbackSpeed = document.getElementById("playback_speed");
+		// 		 output.innerHTML = slider.value;
 	 //
-		// 	 viewer.scene.view.position.set(...camPos);
-		// 	 viewer.scene.view.lookAt(cloudGeometry.boundingSphere.center);
-		//  });
+		// 		 // Animate from beginning to end
+		// 		 var start = 0;
+		// 		 var end = Infinity;
+		// 		 var speed = playbackSpeed.value*speedFactor;	// empirically set as "close to realtime"
+		// 		 var animation = animationPath.animate(start, end, speed, animate);
 	 //
+		// 		 function animate(t, updateCamera=true) {
+		// 			 animation.repeat = true;
+	 //
+		// 			 // TODO cache this to improve speed?
+		// 			 // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
+		// 			 const rtkMesh = viewer.scene.scene.getObjectByName("rtk");
+		// 			 const rtkOffset = rtkMesh.material.uniforms.initialTime.value;
+		// 			 const numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
+	 //
+		// 			 const timeMin = rtkOffset;
+		// 			 // lidarRange = viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
+		// 			 // rtkRange = 600.5599999427795;   // TODO Hardcoded
+		// 			 const rtkRange = rtkMesh.material.uniforms.timeRange.value;
+	 //
+		// 			 const timeMax = Math.max(0, (rtkRange+rtkOffset));
+		// 			 const timeOffset = timeMin;
+		// 			 const timeRange = timeMax - timeMin;
+		// 			 // console.log("RTK Initial Time: ", rtkOffset);
+		// 			 // debugger;
+		// 			 // t is a value between 0 and 1 in rtkTime frame
+		// 			 var gpsTime = (rtkRange*t) + rtkOffset;  // Convert from rtkTime to gpsTime
+	 //
+	 //
+		// 			 // TODO define slider time frame
+		// 			 slider.value = 100*t; // NOTE this is currently only using the rtkTime as the time frame
+		// 			 output.innerHTML = (gpsTime-rtkOffset).toFixed(4); // Centered to zero
+		// 			 window.dispatchEvent(new Event("time-updated"));
+		// 			 // use getPoint(t) to map from t to the position on the animation path
+	 //
+	 //
+		// 			 var bunny = viewer.scene.scene.getObjectByName("bunny");
+		// 			 let rtkPoint = animation.getPoint(t); // NOTE t is in rtkTime
+		// 			 let vehicleOrientation = bunny.orientationPath.getPoint(t);
+		// 			 rtkPoint.z -= 2.0;
+		// 			 bunny.position.copy(rtkPoint);
+		// 			 applyRotation(bunny, vehicleOrientation.x, vehicleOrientation.y, vehicleOrientation.z);
+		// 			 bunny.visible = true;
+	 //
+		// 			 // Create GPS Time Clipping Event:
+		// 			 var minGpsTime = gpsTime + parseFloat(tmin.value);
+		// 			 var maxGpsTime = gpsTime + parseFloat(tmax.value);
+		// 			 // debugger; // maxGpsTime
+	 //
+		// 			 // Get Current RTK Pose:
+		// 			 var currentRtkPosition = rtkPoint.sub(rtkPosInit);
+		// 			 var currentRtkOrientation = vehicleOrientation.sub(rtkOrientInit);
+	 //
+		// 			 // // Animate Point Cloud:
+		// 			 const minLidarTime = minGpsTime - window.header.tmin;
+		// 			 const maxLidarTime = maxGpsTime - window.header.tmin;
+		// 			 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
+	 //
+		// 			 // debugger; // uniforms below
+		// 			 var pcloud = viewer.scene.pointclouds[0];
+		// 			 pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+		// 			 pcloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+	 //
+		// 			 var cloud = viewer.scene.scene.getObjectByName("cloud");
+		// 			 cloud.material.uniforms.minGpsTime.value = minLidarTime;
+		// 			 cloud.material.uniforms.maxGpsTime.value = maxLidarTime;
+		// 			 cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+		// 			 cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+	 //
+		// 			 if (updateCamera) {
+		// 				 let camera = viewer.scene.getActiveCamera();
+		// 				 let lag = 1.01; // seconds
+		// 				 const lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
+		// 				 // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
+		// 				 let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
+		// 				 camPoint.z += 10;
+	 //
+		// 				 // TODO messing around:
+		// 				 camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
+		// 				 // viewer.scene.view.position.copy(camPoint); // changed from camera
+		// 				 var targetPosition = new THREE.Vector3(0, 0, 0);
+		// 				 // viewer.scene.view.lookAt(targetPosition);
+		// 				 bunny.position.copy(targetPosition);
+		// 				 bunny.position.z -= 2;
+	 //
+		// 				 // viewer.scene.view.position.copy(camPoint); // changed from camera
+		// 				 // var targetPosition = new THREE.Vector3(bunny.position.x, bunny.position.y, bunny.position.z+2);
+		// 			 }
+		// 		 }
+		// 		 window.animation = animation;
+	 //
+		// 		 // Playbar Button Functions:
+		// 		 let playbutton = document.getElementById("playbutton");
+		// 		 let pausebutton = document.getElementById("pausebutton");
+		// 		 pausebutton.addEventListener("mousedown", () => {
+		// 			 animation.pause();
+		// 		 });
+		// 		 playbutton.addEventListener("mousedown", () => {
+		// 			 animation.resume();
+		// 		 });
+		// 		 slider.addEventListener("wheel", () => {
+		// 			 animation.pause();
+		// 			 var val = slider.value/100.0;
+		// 			 animation.t = val;
+		// 			 animate(val, updateCamera=false);
+		// 		 });
+		// 		 window.addEventListener("keypress", (e) => {
+		// 			 if (e.charCode == 32) {
+		// 					 if (toggleplay.checked) {
+		// 						 animation.resume();
+		// 					 } else {
+		// 						 animation.pause();
+		// 					 }
+		// 				 }
+		// 			 });
+		// 			 slider.addEventListener("input", () => {
+		// 			 	animation.pause();
+		// 			 	$("playbar_toggle").click();
+		// 			 	var val = slider.value/100.0;
+		// 			 	animation.t = val;
+		// 			 	animate(val);
+		// 			 });
+	 //
+		// 			 slider.addEventListener("mouseup", (e) => {
+		// 				 console.log("mouseup event: ", e);
+	 //
+		// 				 streamer.streamFromTimeNew(slider.value/100, {offset:rtkOffset, range: rtkRange}, header, settings);
+		// 				 setLoadingScreen();
+		// 				 window.firstSliceRequested = true;
+	 //
+		// 			 });
+	 //
+		// 			 playbackSpeed.addEventListener("mouseup", (e) => {
+		// 				 let speed = playbackSpeed.value*0.25 * speedFactor;
+		// 				 playbackSpeed.setAttribute("title", speed);
+		// 				 animation.speed = speed;
+		// 				 animation.pause();
+		// 				 animation.resume();
+		// 				 console.log("set speed to: ", speed);
+		// 			 })
+	 //
+		// 			 window.addEventListener("time-updated", () => {
+	 //
+		// 				 if (typeof(window.numTimeUpdated) == "undefined") {
+		// 					 window.numTimeUpdated = 0;
+		// 				 } else {
+		// 					 window.numTimeUpdated++;
+		// 				 }
+	 //
+		// 				 var lidarTime = 0;
+		// 				 var window_tmin = -0.05; // note the negative
+		// 				 var window_tmax = 0.05;
+		// 	       if (window.rtkRange != null && window.rtkOffset != null && window.header.tmin != null) {
+		// 	         lidarTime = $("#myRange").val()/100*window.rtkRange + window.rtkOffset - window.header.tmin
+		// 	       }
+	 //
+		// 				 // Get Time Window Boundaries:
+		// 				 window_tmin = parseFloat($("#playbar_tmin").val());
+		// 				 window_tmax = parseFloat($("#playbar_tmax").val());
+	 //
+		// 				 // Get Current Slice Time Frame (TA):
+		// 				 try {
+		// 					 let numPoints = cloudMesh.geometry.attributes.gpsTime.length;
+		// 					 let TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
+		// 					 let TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
+	 //
+	 //
+		// 					 // Request Slice Logic:
+		// 					 var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
+		// 					 var sliceTimeSec = window.sliceTimeMillis/1000;		// TODO measure this after first slice
+	 //
+		// 					 // Slice Boundaries:
+		// 					 var slicemin = lidarTime - window_tmin - epsilon;
+		// 					 var slicemax = slicemin + settings.TA;
+	 //
+		// 					 // DataLoader Buffers:
+		// 					 let TBmin = window.heartbeat.tmin;
+		// 					 let TBmax = window.heartbeat.tmax;
+	 //
+		// 					 console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
+	 //
+		// 					 // Request Slice:
+		// 					 if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
+		// 						 streamer.requestSlice(slicemin, slicemax);
+		// 					 }
+	 //
+		// 					 // TODO potentially need to remove this after testing:
+		// 					 // Pause animation if window_tmax + lidarTime > TA:
+		// 					 if ((lidarTime + window_tmax + epsilon) > TAmax) {
+		// 						 // debugger; // check why breaking here
+		// 						 console.log("VINAY",window.animation);
+		// 						 window.animation.pause(); 	// This isn't pausing
+		// 						 // $("#pausebutton").mousedown();
+		// 						 setLoadingScreen();
+		// 						 window.animationPaused = true;
+	 //
+		// 						 // Slow down animation speed:
+		// 					 }
+	 //
+	 //
+	 //
+	 //
+		// 				 } catch (e) {
+		// 					 console.error("Error at Player Slicing Logic: ", e);
+		// 				 }
+	 //
+		// 			 });
+		// 		 $("#pausebutton").trigger("mousedown");
+		// 	 }
+		// 	 window.animationPath = animationPath;
+		// 	 window.animation.pause();
+		//  }
 	 // });
-
- 	 ////////////////////////////////////////////////////////////////////////////
- 	 ////////////////////////////////////////////////////////////////////////////
- 	 ////////////////////////////////////////////////////////////////////////////
-
-	 // Load RTK:
-	 let rtkFile = settings.serverUrl + ":" + settings.port + "/" + settings.rtkFile;
-	 console.log("rtkFile: ", rtkFile);
-	 loadRtk(rtkFile, settings.isOdcData, (pos, rot, t_init, t_range, numPoints, distance, rtkLookupOutput, pos_init, orient_init, rtk2vehicle) => {
-		 window.rtkOffset = t_init;
-		 window.rtkRange = t_range;
-		 rtkLookup = rtkLookupOutput;
-		 rtkPosInit = new THREE.Vector3(pos_init[0], pos_init[1], pos_init[2]);
-		 rtkPosInit.z -= 2.0; // TODO hack for vehicle to rtk transform
-		 // TODO RTK TO VEHICLE (Maybe do this in RTK LOADER)
-		 storeRtk2Vehicle(rtk2vehicle);
-
-
-
-		 rtkOrientInit = new THREE.Vector3(orient_init[0], orient_init[1], orient_init[2]);
-
-		 streamer.DataLoader.postMessage({msg:"rtkTimeConversion", rtkTimeConversion:{rtkOffset: window.rtkOffset, rtkRange:window.rtkRange}});
-		 streamer.DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
-
-		 console.log("RTK Trajectory Length: ", distance, "meters");
-		 const path = pos.map(v => new THREE.Vector3(...v));
-		 const orientations = rot.map(v => new THREE.Vector3(...v));
-		 let animationPath = new Potree.AnimationPath(path);
-		 animationPath.closed = false;
-		 var orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
-
-		 { // render the path
-			 let geometry = animationPath.getGeometry();
-			 let material = new THREE.LineBasicMaterial();
-			 material.uniforms = {
-				 initialTime:{value:t_init},
-				 timeRange: {value:t_range},
-				 numPoints: {value: numPoints}
-			 };
-			 let line = new THREE.Line(geometry, material, {closed: animationPath.closed});
-			 line.name = "rtk";
-			 line.visible = false;
-			 viewer.scene.scene.add(line);
-			 console.log("Rendered Path");
-		 }
-
-		 // CREATE VEHICLE OBJECT:
-		 // NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
-		 // NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
-		 let manager = new THREE.LoadingManager();
-		 manager.onProgress = function ( item, loaded, total ) {
-			 console.log( item, loaded, total );
-		 };
-		 let textureLoader = new THREE.TextureLoader( manager );
-		 let texture = textureLoader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/reflection_1.png`);
-
-		 let onProgress = function ( xhr ) {
-			 if ( xhr.lengthComputable ) {
-				 let percentComplete = xhr.loaded / xhr.total * 100;
-				 console.log( Math.round(percentComplete, 2) + '% downloaded' );
-			 }
-		 };
-		 texture.wrapS = THREE.RepeatWrapping;
-		 texture.wrapT = THREE.RepeatWrapping;
-
-		 { // Load Textured bunny from obj
-			 let onError = function ( xhr ) {};
-			 let loader = new THREE.OBJLoader( manager );
-			 loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`, function ( object ) {
-			 // loader.load(`${Potree.resourcePath}/models/1967-shelby-ford-mustang.obj`, function ( object ) {
-				 object.traverse( function ( child ) {
-					 if ( child instanceof THREE.Mesh ) {
-						 child.material.map = texture;
-					 }
-				 } );
-				 object.name = "bunny";
-				 object.position.set(...pos[0]);
-				 object.scale.multiplyScalar(.011);
-				 object.orientationPath = orientationPath;
-				 object.rotation.set(0*Math.PI / 2, 0*Math.PI/2., 1*Math.PI/2.0); // Chevy Volt
-				 object.initialRotation = object.rotation.clone(); // NOTE is this used?
-				 // object.rotation.set(Math.PI / 2, 0*Math.PI/2., 0*Math.PI/2.0); // Shelby Mustang
-				 viewer.scene.scene.add( object );
-				 // debugger; // pos[0
-				 var camPos = pos[0];
-				 // viewer.scene.view.position.set(camPos[0]+viewerOffset, camPos[1]+viewerOffset, camPos[2]+viewerOffset);
-				 // viewer.scene.view.lookAt(new THREE.Vector3(...pos[0]));
-			 }, onProgress, onError );
-		 }
-
-
-		 // ANIMATION:
-		 { // create Animation Path & make light follow it
-			 {// ANIMATION + SLIDER LOGIC:
-				 let slider = document.getElementById("myRange");
-				 let output = document.getElementById("demo");
-				 let tmin = document.getElementById("playbar_tmin");
-				 let tmax = document.getElementById("playbar_tmax");
-				 let toggleplay = document.getElementById("toggleplay");
-				 let playbackSpeed = document.getElementById("playback_speed");
-				 output.innerHTML = slider.value;
-
-				 // Animate from beginning to end
-				 var start = 0;
-				 var end = Infinity;
-				 var speed = playbackSpeed.value*speedFactor;	// empirically set as "close to realtime"
-				 var animation = animationPath.animate(start, end, speed, animate);
-
-				 function animate(t, updateCamera=true) {
-					 animation.repeat = true;
-
-					 // TODO cache this to improve speed?
-					 // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
-					 const rtkMesh = viewer.scene.scene.getObjectByName("rtk");
-					 const rtkOffset = rtkMesh.material.uniforms.initialTime.value;
-					 const numRtkPoints = rtkMesh.material.uniforms.numPoints.value;
-
-					 const timeMin = rtkOffset;
-					 // lidarRange = viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
-					 // rtkRange = 600.5599999427795;   // TODO Hardcoded
-					 const rtkRange = rtkMesh.material.uniforms.timeRange.value;
-
-					 const timeMax = Math.max(0, (rtkRange+rtkOffset));
-					 const timeOffset = timeMin;
-					 const timeRange = timeMax - timeMin;
-					 // console.log("RTK Initial Time: ", rtkOffset);
-					 // debugger;
-					 // t is a value between 0 and 1 in rtkTime frame
-					 var gpsTime = (rtkRange*t) + rtkOffset;  // Convert from rtkTime to gpsTime
-
-
-					 // TODO define slider time frame
-					 slider.value = 100*t; // NOTE this is currently only using the rtkTime as the time frame
-					 output.innerHTML = (gpsTime-rtkOffset).toFixed(4); // Centered to zero
-					 window.dispatchEvent(new Event("time-updated"));
-					 // use getPoint(t) to map from t to the position on the animation path
-
-
-					 var bunny = viewer.scene.scene.getObjectByName("bunny");
-					 let rtkPoint = animation.getPoint(t); // NOTE t is in rtkTime
-					 let vehicleOrientation = bunny.orientationPath.getPoint(t);
-					 rtkPoint.z -= 2.0;
-					 bunny.position.copy(rtkPoint);
-					 applyRotation(bunny, vehicleOrientation.x, vehicleOrientation.y, vehicleOrientation.z);
-					 bunny.visible = true;
-
-					 // Create GPS Time Clipping Event:
-					 var minGpsTime = gpsTime + parseFloat(tmin.value);
-					 var maxGpsTime = gpsTime + parseFloat(tmax.value);
-					 // debugger; // maxGpsTime
-
-					 // Get Current RTK Pose:
-					 var currentRtkPosition = rtkPoint.sub(rtkPosInit);
-					 var currentRtkOrientation = vehicleOrientation.sub(rtkOrientInit);
-
-					 // // Animate Point Cloud:
-					 const minLidarTime = minGpsTime - window.header.tmin;
-					 const maxLidarTime = maxGpsTime - window.header.tmin;
-					 viewer.setFilterGPSTimeRange(minLidarTime, maxLidarTime);
-
-					 // debugger; // uniforms below
-					 var pcloud = viewer.scene.pointclouds[0];
-					 pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
-					 pcloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
-
-					 var cloud = viewer.scene.scene.getObjectByName("cloud");
-					 cloud.material.uniforms.minGpsTime.value = minLidarTime;
-					 cloud.material.uniforms.maxGpsTime.value = maxLidarTime;
-					 cloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
-					 cloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
-
-					 if (updateCamera) {
-						 let camera = viewer.scene.getActiveCamera();
-						 let lag = 1.01; // seconds
-						 const lagTime = Math.max(0, (gpsTime - lag - rtkOffset)/rtkRange);
-						 // let lagTime = Math.max(0, (gpsTime-lag)/viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range);
-						 let camPoint = animation.getPoint(lagTime);  // Get point with 2 second lag
-						 camPoint.z += 10;
-
-						 // TODO messing around:
-						 camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
-						 // viewer.scene.view.position.copy(camPoint); // changed from camera
-						 var targetPosition = new THREE.Vector3(0, 0, 0);
-						 // viewer.scene.view.lookAt(targetPosition);
-						 bunny.position.copy(targetPosition);
-						 bunny.position.z -= 2;
-
-						 // viewer.scene.view.position.copy(camPoint); // changed from camera
-						 // var targetPosition = new THREE.Vector3(bunny.position.x, bunny.position.y, bunny.position.z+2);
-					 }
-				 }
-				 window.animation = animation;
-
-				 // Playbar Button Functions:
-				 let playbutton = document.getElementById("playbutton");
-				 let pausebutton = document.getElementById("pausebutton");
-				 pausebutton.addEventListener("mousedown", () => {
-					 animation.pause();
-				 });
-				 playbutton.addEventListener("mousedown", () => {
-					 animation.resume();
-				 });
-				 slider.addEventListener("wheel", () => {
-					 animation.pause();
-					 var val = slider.value/100.0;
-					 animation.t = val;
-					 animate(val, updateCamera=false);
-				 });
-				 window.addEventListener("keypress", (e) => {
-					 if (e.charCode == 32) {
-							 if (toggleplay.checked) {
-								 animation.resume();
-							 } else {
-								 animation.pause();
-							 }
-						 }
-					 });
-					 slider.addEventListener("input", () => {
-					 	animation.pause();
-					 	$("playbar_toggle").click();
-					 	var val = slider.value/100.0;
-					 	animation.t = val;
-					 	animate(val);
-					 });
-
-					 slider.addEventListener("mouseup", (e) => {
-						 console.log("mouseup event: ", e);
-
-						 streamer.streamFromTimeNew(slider.value/100, {offset:rtkOffset, range: rtkRange}, header, settings);
-						 setLoadingScreen();
-						 window.firstSliceRequested = true;
-
-					 });
-
-					 playbackSpeed.addEventListener("mouseup", (e) => {
-						 let speed = playbackSpeed.value*0.25 * speedFactor;
-						 playbackSpeed.setAttribute("title", speed);
-						 animation.speed = speed;
-						 animation.pause();
-						 animation.resume();
-						 console.log("set speed to: ", speed);
-					 })
-
-					 window.addEventListener("time-updated", () => {
-
-						 if (typeof(window.numTimeUpdated) == "undefined") {
-							 window.numTimeUpdated = 0;
-						 } else {
-							 window.numTimeUpdated++;
-						 }
-
-						 var lidarTime = 0;
-						 var window_tmin = -0.05; // note the negative
-						 var window_tmax = 0.05;
-			       if (window.rtkRange != null && window.rtkOffset != null && window.header.tmin != null) {
-			         lidarTime = $("#myRange").val()/100*window.rtkRange + window.rtkOffset - window.header.tmin
-			       }
-
-						 // Get Time Window Boundaries:
-						 window_tmin = parseFloat($("#playbar_tmin").val());
-						 window_tmax = parseFloat($("#playbar_tmax").val());
-
-						 // Get Current Slice Time Frame (TA):
-						 try {
-							 let numPoints = cloudMesh.geometry.attributes.gpsTime.length;
-							 let TAmin = cloudMesh.geometry.attributes.gpsTime.array[0];
-							 let TAmax = cloudMesh.geometry.attributes.gpsTime.array[numPoints-1];
-
-
-							 // Request Slice Logic:
-							 var epsilon = 0.05;		// TODO ensure this value is valid and move somewhere better (or ideally empirically determine this based on network/hardware settings)
-							 var sliceTimeSec = window.sliceTimeMillis/1000;		// TODO measure this after first slice
-
-							 // Slice Boundaries:
-							 var slicemin = lidarTime - window_tmin - epsilon;
-							 var slicemax = slicemin + settings.TA;
-
-							 // DataLoader Buffers:
-							 let TBmin = window.heartbeat.tmin;
-							 let TBmax = window.heartbeat.tmax;
-
-							 console.assert((window_tmax - window_tmin + sliceTimeSec) < settings.TA);
-
-							 // Request Slice:
-							 if ((lidarTime + window_tmax + sliceTimeSec + epsilon) > TAmax) {
-								 streamer.requestSlice(slicemin, slicemax);
-							 }
-
-							 // TODO potentially need to remove this after testing:
-							 // Pause animation if window_tmax + lidarTime > TA:
-							 if ((lidarTime + window_tmax + epsilon) > TAmax) {
-								 // debugger; // check why breaking here
-								 console.log("VINAY",window.animation);
-								 window.animation.pause(); 	// This isn't pausing
-								 // $("#pausebutton").mousedown();
-								 setLoadingScreen();
-								 window.animationPaused = true;
-
-								 // Slow down animation speed:
-							 }
-
-
-
-
-						 } catch (e) {
-							 console.error("Error at Player Slicing Logic: ", e);
-						 }
-
-					 });
-				 $("#pausebutton").trigger("mousedown");
-			 }
-			 window.animationPath = animationPath;
-			 window.animation.pause();
-		 }
-	 });
 
 		function storeRtk2Vehicle(rtk2vehicle) {
 			try {

@@ -20,7 +20,7 @@ $(document).ready(function () {
               <input type="checkbox" id="playbar_toggle">
               <span class="toggleslider" id="toggleslider"></span>
             </label>
-            <input type="range" name="playback_speed" id="playback_speed" min="1" max="8" value="4" step="any">
+            <input type="range" name="playback_speed" id="playback_speed" min="1" max="20" value="10" step="any">
             <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
             <button name="load_detections_button" id="load_detections_button">Load Detections</button>
             <button name="load_gaps_button" id="load_gaps_button">Load Gaps</button>

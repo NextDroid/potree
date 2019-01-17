@@ -50,6 +50,8 @@
 	<script type="module" src="../common/overlay.js"></script>
 	<script src="../node_modules/three.meshline/src/THREE.MeshLine.js"></script>
 	<script src="animationEngine.js"></script>
+	<script src="RtkTrajectory.js"></script>
+
 
 
 	<!-- TODO REMOVE BELOW -->
@@ -222,7 +224,7 @@
 		window.animationEngine = new AnimationEngine();
 
 		// TODO Fix these hardcoded values
-		// TODO change this to pubsubjs 
+		// TODO change this to pubsubjs
 		let tstart = 1495189467.63;
 		let tend = 1495189467.63+600.5599999427795;
 		let playbackRate = 1.0;
@@ -287,8 +289,13 @@
 					let lastRtkOrientation = bunny.rotation.clone();
 					let lastTransform = bunny.matrixWorld.clone();
 					// debugger; //bunny
-					let rtkPoint = animation.getPoint(t); // TODO rename animation --> just use CatmullRomCurve3 directly
-					let vehicleOrientation = bunny.orientationPath.getPoint(t); // TODO same as above, also double check interpolation is legit
+
+					let state = bunny.rtkTrajectory.getState(gpsTime);
+					let rtkPoint = state.pose.clone();
+					let vehicleOrientation = state.orient.clone();
+					// let rtkPoint = animation.getPoint(t); // TODO rename animation --> just use CatmullRomCurve3 directly
+					// let vehicleOrientation = bunny.orientationPath.getPoint(t); // TODO same as above, also double check interpolation is legit
+
 					rtkPoint.z -= 2.0; // TODO remove hardcoded value
 					bunny.position.copy(rtkPoint);
 					applyRotation(bunny, vehicleOrientation.x, vehicleOrientation.y, vehicleOrientation.z);
@@ -673,21 +680,27 @@ $(document).ready(() => {
     // });
 
     // Load RTK:
-      loadRtk(s3, bucket, name, (pos, rot, t_init) => {
+      loadRtk(s3, bucket, name, (pos, rot, timestamps) => {
       const path = pos.map(v => new THREE.Vector3(...v));
       const orientations = rot.map(v => new THREE.Vector3(...v));
+			const samplingFreq = 100; // Hz NOTE Hardcoded
+			const rtkTrajectory = new RtkTrajectory(path, orientations, timestamps, samplingFreq);
+			const closedPath = false;
 
-      const animationPath = new Potree.AnimationPath(path);
-      animationPath.closed = false;
-	  	const orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
+      // const animationPath = new Potree.AnimationPath(path);
+      // animationPath.closed = false;
+	  	// const orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
 
       { // render the path
-        let geometry = animationPath.getGeometry();
+				let geometry = new THREE.Geometry();
+				for (let ii = 0; ii < rtkTrajectory.numStates; ii++) {
+					geometry.vertices[ii] = rtkTrajectory.states[ii].pose.clone();
+				}
         let material = new THREE.LineBasicMaterial();
-        material.uniforms = {initialTime:{value:t_init}};
+        material.uniforms = {initialTime:{value:timestamps[0]}};
 				material.opacity = 0.0;
 				material.transparent = true;
-        let line = new THREE.Line(geometry, material, {closed: animationPath.closed});
+        let line = new THREE.Line(geometry, material, {closed: closedPath});
         line.name = "rtk";
         viewer.scene.scene.add(line);
         console.log("Rendered Path");
@@ -767,7 +780,8 @@ $(document).ready(() => {
 					object.rotation.set(0*Math.PI / 2, 0*Math.PI/2., 1*Math.PI/2.0); // Chevy Volt
 
 					vehicleGroup.position.set(...pos[0]);
-					vehicleGroup.orientationPath = orientationPath;
+					// vehicleGroup.orientationPath = orientationPath;
+					vehicleGroup.rtkTrajectory = rtkTrajectory;
 					vehicleGroup.add( object );
 
 					// TODO New Camera Initialization:
@@ -814,15 +828,15 @@ $(document).ready(() => {
           output.innerHTML = slider.value;
 
           // Animate from beginning to end
-          let start = 0;
-          let end = Infinity;
-          let speed = 33;	// empirically set as "close to realtime"
-          let animation = animationPath.animate(start, end, speed, animate);
-
-					function animate() {
-						// DO NOTHING -- Placeholder will be removed
-					}
-          window.animation = animation;
+          // let start = 0;
+          // let end = Infinity;
+          // let speed = 33;	// empirically set as "close to realtime"
+          // let animation = animationPath.animate(start, end, speed, animate);
+					//
+					// function animate() {
+					// 	// DO NOTHING -- Placeholder will be removed
+					// }
+          // window.animation = animation;
 
 
           // Playbar Button Functions:
@@ -860,8 +874,8 @@ $(document).ready(() => {
 						});
         }
 
-        window.animationPath = animationPath;
-				window.animation.pause();
+        // window.animationPath = animationPath;
+				// window.animation.pause();
       }
 
     });

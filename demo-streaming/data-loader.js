@@ -1,4 +1,9 @@
-self.importScripts("bower_components/cbuffer/cbuffer.js", "bufferFunctions.js");
+self.importScripts(
+  "bower_components/cbuffer/cbuffer.js",
+  "bufferFunctions.js",
+  "../demo/RtkTrajectory.js",
+  "../libs/three.js/build/three.min.js"
+);
 
 // Data Loader Member Variables:
 self.tLifeStart = performance.now();
@@ -17,6 +22,7 @@ self.shouldSendSliceRequest = false;
 self.sentFirstSlice = false;
 self.newFetchRequestExpiraryMillis = -1;
 self.rtkLookup;
+self.rtkTrajectory;
 self.rtkTimeConversion;
 self.totalNumberOfPointsReadAllTime = 0;
 
@@ -98,6 +104,11 @@ function handleInputMessage(e) {
         self.rtkLookupOrient.push(self.rtkLookup[ii].orientation[jj]);
       }
     }
+  } else if (e.data.msg == "rtkTrajectory") {
+    const args = e.data;
+    debugger;
+    self.rtkTrajectory = new RtkTrajectory(args.posesVec3, args.orientationsVec3, args.timestamps, args.samplingFreq);
+
   } else if (e.data.msg == "rtkTimeConversion") {
     self.rtkTimeConversion = e.data.rtkTimeConversion;
   }
@@ -345,35 +356,43 @@ function slice(tmin, tmax) {
   //   idxSlice[i] = i;
   // }
 
-  var t_lidar, t_rtk, idxRtk, rtkState, idxRtk0, idxRtk1, rtkState0, rtkState1, alpha;
+  var t_lidar, gpsTime, t_rtk, idxRtk, rtkState, idxRtk0, idxRtk1, rtkState0, rtkState1, alpha;
   var rtkOffset = self.rtkTimeConversion.rtkOffset;
   for (let ii=0; ii<numPoints; ii++) {
 
     // Get closest RTK State for current point:
     t_lidar = self.Bbuffers.t.get(minIdx+ii);
-    t_rtk = t_lidar + self.task.header.tmin - rtkOffset;
-    idxRtk = Math.round(t_rtk*100);  //index conversion function
-    rtkState = self.rtkLookup[idxRtk]; // rtkState at time t
-    idxRtk0 = Math.floor(t_rtk*100); // index conversion for rtk state before point detection
-    idxRtk1 = Math.ceil(t_rtk*100); // index conversion for rtk state after point detection
-    rtkState0 = self.rtkLookup[idxRtk0]; // rtkState before time t
-    rtkState1 = self.rtkLookup[idxRtk1]; // rtkState after time t
-
-    alpha = 0.0;
-    if (idxRtk0 != idxRtk1) {
-      alpha = (100*t_rtk - idxRtk0)/(idxRtk1-idxRtk0);
-    }
+    gpsTime = t_lidar + self.task.header.tmin;
+    rtkState = self.rtkTrajectory.getState(gpsTime);
+    // t_rtk = t_lidar + self.task.header.tmin - rtkOffset;
+    // idxRtk = Math.round(t_rtk*100);  //index conversion function
+    // rtkState = self.rtkLookup[idxRtk]; // rtkState at time t
+    // idxRtk0 = Math.floor(t_rtk*100); // index conversion for rtk state before point detection
+    // idxRtk1 = Math.ceil(t_rtk*100); // index conversion for rtk state after point detection
+    // rtkState0 = self.rtkLookup[idxRtk0]; // rtkState before time t
+    // rtkState1 = self.rtkLookup[idxRtk1]; // rtkState after time t
+    //
+    //
+    // alpha = 0.0;
+    // if (idxRtk0 != idxRtk1) {
+    //   alpha = (100*t_rtk - idxRtk0)/(idxRtk1-idxRtk0);
+    // }
 
     // Populate all 3 Dimensional Slices:
     // Note: jj is offset for each dimension (e.g. x,y,z)
+    const keys = ['x', 'y', 'z'];
     for (let jj=0; jj<3; jj++) {
       idxOffsetXYZ = 3*ii+jj;
       // posSlice[idxOffsetXYZ] = self.Bbuffers.pos.get(3*minIdx+idxOffsetXYZ);
       // rtkPosSlice[idxOffsetXYZ] = rtkState.position[jj];
       // rtkOrientSlice[idxOffsetXYZ] = rtkState.orientation[jj];
 
-      rtkPosSlice[idxOffsetXYZ] = alpha*rtkState1.position[jj]+(1-alpha)*rtkState0.position[jj];
-      rtkOrientSlice[idxOffsetXYZ] = alpha*rtkState1.orientation[jj]+(1-alpha)*rtkState0.orientation[jj];
+      // rtkPosSlice[idxOffsetXYZ] = alpha*rtkState1.position[jj]+(1-alpha)*rtkState0.position[jj];
+      // rtkOrientSlice[idxOffsetXYZ] = alpha*rtkState1.orientation[jj]+(1-alpha)*rtkState0.orientation[jj];
+
+      debugger;
+      rtkPosSlice[idxOffsetXYZ] = rtkState.pose[keys[jj]]-self.rtkTrajectory.states[0].pose[keys[jj]];
+      rtkOrientSlice[idxOffsetXYZ] = rtkState.orient[keys[jj]];
 
       // Shift Positions with bbox:
       posSlice[idxOffsetXYZ] += bboxOffsetFromCorner[jj];

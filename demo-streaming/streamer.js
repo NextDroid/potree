@@ -18,6 +18,8 @@ function startHeartbeat() {
 
     try {
       var time = 0;
+      const rtkRange = animationEngine.timeRange;
+      const rtkOffset = animationEngine.tstart;
       if (rtkRange != null || rtkOffset != null) {
         time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin;
         // debugger;
@@ -286,7 +288,7 @@ function handleDataLoaderMessage(response) {
 
 
         try { // Swap into POTREE
-
+          debugger;
           let cloud = viewer.scene.pointclouds[0];
           // let bbox = cloudMesh.geometry.boundingBox;
           // let bsphere = cloudMesh.geometry.boundingSphere;
@@ -305,7 +307,7 @@ function handleDataLoaderMessage(response) {
           cloud.pcoGeometry.nodes.r.geometry.boundingSphere = bsphere;
           cloud.pcoGeometry.nodes.r.geometry.boundinBox = bbox;
           cloud.pcoGeometry.nodes.r.geometry.tightBoundingBox = bbox;
-          cloud.pcoGeometry.nodes.r.gpsTime = {offset: 0, range: (header.tmax-header.tmin)};
+          cloud.pcoGeometry.nodes.r.gpsTime = {offset: header.tmin, range: (header.tmax-header.tmin)};
           cloud.pcoGeometry.nodes.r.geometry.updatedSlice = true;
           //
           // // in nodes.r:
@@ -390,6 +392,8 @@ function handleDataLoaderMessage(response) {
     case "request-first-slice":
       //Request slice from DataLoader:
       var time = 0;
+      const rtkRange = animationEngine.timeRange;
+      const rtkOffset = animationEngine.tstart;
       if (rtkRange != null || rtkOffset != null) {
         time = $("#myRange").val()/100*rtkRange + rtkOffset - header.tmin
       }
@@ -408,7 +412,8 @@ function handleDataLoaderMessage(response) {
         let maxGpsTime = cloudMesh.geometry.attributes.gpsTime.array[cloud.geometry.attributes.gpsTime.length-1];
         if (time > maxGpsTime) {
           // TODO stop streaming
-          animation.pause();
+          // animation.pause();
+          animationEngine.stop();
           $("#pausebutton").click();
           window.animationPaused = true;
           DataLoader.postMessage({msg:"stop"});
@@ -430,9 +435,10 @@ function handleDataLoaderMessage(response) {
       // }
 
       if (typeof(window.animationPaused) != "undefined" && window.animationPaused) {
-        animation.resume();
-        $("#playbutton").mousedown();
-        window.animationPaused = false;
+        // animation.resume();
+        // animationEngine.start();
+        // $("#playbutton").mousedown();
+        // window.animationPaused = false;
         removeLoadingScreen();
         // debugger; // click playbutton
       }
@@ -447,13 +453,14 @@ function startVisualization() {
   window.firstSliceRequested = false;
 
   // Start Animation:
-  animation.resume();
-  $("#playbutton").mousedown(); // Toggle playbutton
+  // animation.resume();
+  // animationEngine.start();
+  // $("#playbutton").mousedown(); // Toggle playbutton
 
   // camPoint = new THREE.Vector3(3.356, -11.906, 3.126);
-  const camPoint = new THREE.Vector3(6.025, -45.416, 280.938);
-  viewer.scene.view.position.copy(camPoint); // changed from camera
-  var targetPosition = new THREE.Vector3(0, 0, 0);
-  viewer.scene.view.lookAt(targetPosition);
+  let box = new THREE.Box3().setFromObject(viewer.scene.scene.getObjectByName("Vehicle").getObjectByName("Vehicle Mesh"));
+  let node = new THREE.Object3D();
+  node.boundingBox = box;
+  viewer.zoomTo(node, 5, 500);
   removeLoadingScreen();
 }

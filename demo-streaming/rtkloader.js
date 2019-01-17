@@ -120,7 +120,7 @@ function loadRtk(filename, isODC, callback) {
 
         // timestamps.push(t);
         t_range = t-t_init;
-        timestamps.push(t-t_init);
+        timestamps.push(t);
         positions.push(x);
         positions.push(y);
         positions.push(z);
@@ -180,7 +180,7 @@ function loadRtk(filename, isODC, callback) {
       yaw: 1.6232
     }
     debugger;
-    callback(mpos, orientations, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
+    callback(mpos, orientations, timestamps, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
 
   t0 = performance.now();

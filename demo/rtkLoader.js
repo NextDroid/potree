@@ -25,8 +25,8 @@ export function loadRtk(s3, bucket, name, callback) {
                      console.log(err, err.stack);
                    } else {
                      const string = new TextDecoder().decode(data.Body);
-                     const {mpos, orientations, t_init} = parseRTK(string);
-                     callback(mpos, orientations, t_init);
+                     const {mpos, orientations, timestamps} = parseRTK(string);
+                     callback(mpos, orientations, timestamps);
                    }});
     request.on("httpDownloadProgress", (e) => {
       let loadingBar = getLoadingBar();
@@ -54,9 +54,9 @@ export function loadRtk(s3, bucket, name, callback) {
     }
 
     xhr.onload = function(data) {
-      const {mpos, orientations, t_init} = parseRTK(data.target.response);
+      const {mpos, orientations, timestamps} = parseRTK(data.target.response);
       console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
-      callback(mpos, orientations, t_init);
+      callback(mpos, orientations, timestamps);
     };
 
     t0 = performance.now();
@@ -80,6 +80,7 @@ function parseRTK(RTKstring) {
   let mpos = [];
   let colors = [];
   let orientations = [];
+  let timestamps = [];
 
   let t_init = 0;
   let firstTimestamp = true;
@@ -118,7 +119,7 @@ function parseRTK(RTKstring) {
       colors.push( Math.random() * 0xffffff );
       colors.push( Math.random() * 0xffffff );
       mpos.push([x,y,z]);
-
+      timestamps.push(t);
       orientations.push([
         lastRoll + minAngle(roll-lastRoll),
         lastPitch + minAngle(pitch-lastPitch),
@@ -129,7 +130,7 @@ function parseRTK(RTKstring) {
 
   console.log("Loop Runtime: "+(performance.now()-t0_loop)+"ms");
 
-  return {mpos, orientations, t_init};
+  return {mpos, orientations, timestamps};
 }
 
 
@@ -141,5 +142,24 @@ export function applyRotation(obj, roll, pitch, yaw) {
     yaw += obj.initialRotation.z;
   }
 
-  obj.rotation.set(roll, pitch, yaw);
+
+  const sr = Math.sin(roll);
+  const sp = Math.sin(pitch);
+  const sy = Math.sin(yaw);
+
+  const cr = Math.cos(roll);
+  const cp = Math.cos(pitch);
+  const cy = Math.cos(yaw);
+
+  const rotMat = new THREE.Matrix4().set(
+    cy*cp,  cy*sp*sr - sy*cr,   cy*sp*cr + sy*sr, 0,
+    sy*cp,  sy*sp*sr + cy*cr,   sy*sp*cr - cy*sr, 0,
+    -sp,    cp*sr,              cp*cr,            0,
+    0,      0,                  0,                1,
+  )
+
+  // obj.rotation.set(roll, pitch, yaw);
+  obj.rotation.setFromRotationMatrix(rotMat);
+
+
 }

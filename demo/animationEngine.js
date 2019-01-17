@@ -35,7 +35,7 @@ class AnimationEngine {
 
   launch() {
     console.log("Launching Animation Engine");
-    let durationMillis = this.timeRange*1000*this.playbackRate;
+    let durationMillis = this.timeRange*1000/this.playbackRate;
     this.tweenEngine = new TWEEN.Tween(this.timeline).to({t:this.tend}, durationMillis);
     this.tweenEngine.easing(TWEEN.Easing.Linear.None);
     this.tweenEngine.onUpdate((t) => this.updateTimeForAll(t));
