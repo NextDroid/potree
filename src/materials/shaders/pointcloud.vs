@@ -260,7 +260,7 @@ vec4 applyRtk2VehicleExtrinsics(vec4 X) {
   return Extrinsics*X;
 }
 
-vec4 applyRtk2RtkExtrinsics(vec4 X) {
+vec4 applyRtk2RtkExtrinsicsOld(vec4 X) {
 	// Construct Rotation Matrix (roll pitch yaw):
 	vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
 	vec3 dX = currentRtkPosition - originalRtkPosition;
@@ -271,13 +271,14 @@ vec4 applyRtk2RtkExtrinsics(vec4 X) {
 	return Extrinsics*X;
 }
 
-vec4 applyRtk2RtkExtrinsicsNew(vec4 X) {
+vec4 applyRtk2RtkExtrinsics(vec4 X) {
 
 	// Get Transformation from originalRtk to origin (inverse SE3):
 	mat4 originalRtk2Origin = getSE3Inverse(originalRtkPosition, originalRtkOrientation);
 	mat4 origin2CurrentRtk = getSE3(currentRtkPosition, currentRtkOrientation);
 
-	return origin2CurrentRtk*originalRtk2Origin*X; // Transform from original RTK to Origin to current RTK
+	// return origin2CurrentRtk*originalRtk2Origin*X; // Transform from original RTK to Origin to current RTK
+	return originalRtk2Origin*origin2CurrentRtk*X; // Transform from original RTK to Origin to current RTK
 }
 
 vec4 applyVelo2RtkExtrinsics(vec4 X) {
