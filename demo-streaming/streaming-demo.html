@@ -250,7 +250,7 @@
 	 	filename: "VehicleFrameCloud.fb.bin",
 		rtkFile: "rtk.csv",
 		isOdcData: false,
-	 	maxMemMB: 50,
+	 	maxMemMB: 150,
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
 	 }
@@ -705,9 +705,10 @@
 					var currentRtkPosition = rtkPoint.sub(rtkPosInit);
 					var currentRtkOrientation = vehicleOrientation;
 
-					var pcloud = viewer.scene.pointclouds[0];
-					pcloud.material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
-					pcloud.material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+					// var pcloud = viewer.scene.pointclouds[0];
+					viewer.scene.pointclouds[0].material.uniforms.currentRtkPosition.value.copy(currentRtkPosition);
+					viewer.scene.pointclouds[0].material.uniforms.currentRtkOrientation.value.copy(currentRtkOrientation);
+
 
 					var cloud = viewer.scene.scene.getObjectByName("cloud");
 					cloud.material.uniforms.minGpsTime.value = minGpsTime;

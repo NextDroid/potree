@@ -278,10 +278,12 @@ vec4 applyRtk2RtkExtrinsics(vec4 X) {
 	mat4 origin2CurrentRtk = getSE3(currentRtkPosition, currentRtkOrientation);
 
 	// return origin2CurrentRtk*originalRtk2Origin*X; // Transform from original RTK to Origin to current RTK
-	return originalRtk2Origin*origin2CurrentRtk*X; // Transform from original RTK to Origin to current RTK
+	vec4 tmp = origin2CurrentRtk*X;
+	return originalRtk2Origin*tmp; // Transform from original RTK to Origin to current RTK
 }
 
 vec4 applyVelo2RtkExtrinsics(vec4 X) {
+  // mat4 Extrinsics = getSE3(currentRtkPosition, currentRtkPosition);
   mat4 Extrinsics = getSE3(velo2RtkXYZ, velo2RtkRPY);
   return Extrinsics*X;
 }
@@ -575,7 +577,8 @@ float getGpsTime(){
 	return w;
 }
 
-vec3 getElevation(){
+vec3 getElevation(vec4 correctedPosition){
+	// vec4 world = modelMatrix * vec4( correctedPosition.xyz, 1.0 );
 	vec4 world = modelMatrix * vec4( position, 1.0 );
 	float w = (world.z - elevationRange.x) / (elevationRange.y - elevationRange.x);
 	vec3 cElevation = texture2D(gradient, vec2(w,1.0-w)).rgb;
@@ -609,7 +612,7 @@ vec3 getSourceID(){
 	return texture2D(gradient, vec2(w,1.0 - w)).rgb;
 }
 
-vec3 getCompositeColor(){
+vec3 getCompositeColor(vec4 correctedPosition){
 	vec3 c;
 	float w;
 
@@ -619,7 +622,7 @@ vec3 getCompositeColor(){
 	c += wIntensity * getIntensity() * vec3(1.0, 1.0, 1.0);
 	w += wIntensity;
 
-	c += wElevation * getElevation();
+	c += wElevation * getElevation(correctedPosition);
 	w += wElevation;
 
 	c += wReturnNumber * getReturnNumber();
@@ -655,15 +658,15 @@ vec3 getCompositeColor(){
 
 
 
-vec3 getColor(){
+vec3 getColor(vec4 correctedPosition){
 	vec3 color;
 
 	#ifdef color_type_rgb
 		color = getRGB();
 	#elif defined color_type_height
-		color = getElevation();
+		color = getElevation(correctedPosition);
 	#elif defined color_type_rgb_height
-		vec3 cHeight = getElevation();
+		vec3 cHeight = getElevation(correctedPosition);
 		color = (1.0 - uTransition) * getRGB() + uTransition * cHeight;
 	#elif defined color_type_depth
 		float linearDepth = gl_Position.w;
@@ -698,7 +701,7 @@ vec3 getColor(){
 	#elif defined color_type_phong
 		color = color;
 	#elif defined color_type_composite
-		color = getCompositeColor();
+		color = getCompositeColor(correctedPosition);
 	#endif
 
 	return color;
@@ -917,15 +920,30 @@ void main() {
 	vec3 offset = vec3(200.0, 200.0, 100.0);
 	// vec3 offset = vec3(0.0, 0.0, 0.0);
 	vec3 positionInVeloFrameNoOffset = position.xyz - offset;
+	vec3 identityRotation = vec3(0.0, 0.0, 0.0);
+	vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
 
 	// vec4 correctedPosition = applyRtk2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
 
-	vec4 positionInRtkFrameAtTimeT = applyVelo2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
-	vec4 positionInCurrenRtkFrame = applyRtk2RtkExtrinsics(positionInRtkFrameAtTimeT);
-	vec4 positionInVehicleFrame = applyRtk2VehicleExtrinsics(positionInCurrenRtkFrame);
-	vec4 correctedPosition = positionInVehicleFrame;
+	// NOTE Incorrect
+	// vec4 positionInRtkFrameAtTimeT = applyVelo2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
+	// vec4 positionInCurrenRtkFrame = applyRtk2RtkExtrinsics(positionInRtkFrameAtTimeT);
+	// vec4 positionInVehicleFrame = applyRtk2VehicleExtrinsics(positionInCurrenRtkFrame);
+	// vec4 correctedPosition = positionInVehicleFrame;
 
 	// correctedPosition = vec4(positionInVeloFrameNoOffset, 1.0); // TODO for testing without extrinsics
+
+	// NOTE Correct:
+	mat4 fromVeloFrame2PointFrame = getSE3(positionInVeloFrameNoOffset.xyz, identityRotation);
+	mat4 fromRtkFrame2VeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
+	mat4 fromWorldFrame2OriginalRtkFrame = getSE3(originalRtkPosition, -originalRtkOrientation);
+	mat4 C = fromWorldFrame2OriginalRtkFrame*fromRtkFrame2VeloFrame*fromVeloFrame2PointFrame; // This provides a transformation to the point position in world frame
+	mat4 Ainv = getSE3Inverse(currentRtkPosition, currentRtkOrientation); // This provides the inverse of: the transformation to the current Rtk in the world frame
+
+	mat4 B = Ainv * C; // The transformation from the current Rtk Frame to the point position in World Frame -- this comes from the relation: C = pointInWorldFrame = AB
+
+	vec4 correctedPosition = B*origin; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
+	correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition);
 
 	correctedPosition += vec4(offset, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
@@ -941,7 +959,7 @@ void main() {
 	vPointSize = pointSize;
 
 	// COLOR
-	vColor = getColor();
+	vColor = getColor(correctedPosition);
 
 	#if defined hq_depth_pass
 		float originalDepth = gl_Position.w;
