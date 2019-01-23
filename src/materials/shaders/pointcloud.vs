@@ -195,29 +195,41 @@ mat3 makeRotationMatrix(vec3 dTheta) {
 
 	mat3 Rx = mat3(
 		1.0, 	0.0, 		 0.0,
-		0.0,	cosRoll, -sinRoll,
-		0.0,	sinRoll, cosRoll
+		0.0,	cosRoll, sinRoll,
+		0.0,	-sinRoll, cosRoll
 	);
 
 	mat3 Ry = mat3(
-		cosPitch,	 0.0,  sinPitch,
+		cosPitch,	 0.0,  -sinPitch,
 		0.0,			 1.0,	 0.0,
-		-sinPitch, 0.0,	 cosPitch
+		sinPitch, 0.0,	 cosPitch
 	);
 
 	mat3 Rz = mat3(
-		cosYaw, 	-sinYaw, 0.0,
-		sinYaw, 	cosYaw,  0.0,
+		cosYaw, 	sinYaw, 0.0,
+		-sinYaw, 	cosYaw,  0.0,
 		0.0,			0.0,		 1.0
 	);
 
-	mat3 R = Rz*Ry*Rx;		// Rotation Matrix from Euler angles using XYZ convention
+	mat3 R = (Rz*Ry)*Rx;		// Rotation Matrix from Euler angles using XYZ convention
 
-	mat3 R2 = mat3(				// Alternative to above matrix construction
-		 c2*c3,  c1*s3 + c3*s1*s2, s1*s3 - c1*c3*s2,	// First Column
-		-c2*s3,  c1*c3 - s1*s2*s3, c3*s1 + c1*s2*s3,  // Second Column
-		 s2,		  -c2*s1,						 c1*c2						// Third Column
-	);
+	// mat3 R2 = mat3(				// Alternative to above matrix construction
+	// 	 c2*c3,  c1*s3 + c3*s1*s2, s1*s3 - c1*c3*s2,	// First Column
+	// 	-c2*s3,  c1*c3 - s1*s2*s3, c3*s1 + c1*s2*s3,  // Second Column
+	// 	 s2,		  -c2*s1,						 c1*c2						// Third Column
+	// );
+	//
+	// float maxVal = 0.0;
+	// for (int i = 0; i < 3; i++) {
+	// 	for (int j = 0; j < 3; j++) {
+	// 		maxVal = max(maxVal, abs(R[i][j]-R2[i][j]) );
+	// 	}
+	// }
+	//
+	// float n = 0.1;
+	// vColor.r = min(maxVal, n)/n;
+	// vColor.g = 0.0;
+	// vColor.b = 0.0;
 
 	return R;
 
@@ -578,8 +590,8 @@ float getGpsTime(){
 }
 
 vec3 getElevation(vec4 correctedPosition){
-	// vec4 world = modelMatrix * vec4( correctedPosition.xyz, 1.0 );
-	vec4 world = modelMatrix * vec4( position, 1.0 );
+	vec4 world = modelMatrix * vec4( correctedPosition.xyz, 1.0 );
+	// vec4 world = modelMatrix * vec4( position, 1.0 );
 	float w = (world.z - elevationRange.x) / (elevationRange.y - elevationRange.x);
 	vec3 cElevation = texture2D(gradient, vec2(w,1.0-w)).rgb;
 
@@ -917,9 +929,10 @@ void doClipping(vec4 correctedPosition){
 void main() {
 
 	// mat4 SE3 = getSE3();
-	vec3 offset = vec3(200.0, 200.0, 100.0);
-	// vec3 offset = vec3(0.0, 0.0, 0.0);
-	vec3 positionInVeloFrameNoOffset = position.xyz - offset;
+	// vec3 offset = vec3(200.0, 200.0, -100.0);
+	vec3 offset = vec3(0.0, 0.0, 0.0);
+	vec3 p = position.xyz - offset;
+	vec3 positionInVeloFrameNoOffset = vec3(p.y, -p.x, p.z);	// HACK
 	vec3 identityRotation = vec3(0.0, 0.0, 0.0);
 	vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
 
@@ -934,18 +947,18 @@ void main() {
 	// correctedPosition = vec4(positionInVeloFrameNoOffset, 1.0); // TODO for testing without extrinsics
 
 	// NOTE Correct:
-	mat4 fromVeloFrame2PointFrame = getSE3(positionInVeloFrameNoOffset.xyz, identityRotation);
-	mat4 fromRtkFrame2VeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
-	mat4 fromWorldFrame2OriginalRtkFrame = getSE3(originalRtkPosition, -originalRtkOrientation);
-	mat4 C = fromWorldFrame2OriginalRtkFrame*fromRtkFrame2VeloFrame*fromVeloFrame2PointFrame; // This provides a transformation to the point position in world frame
-	mat4 Ainv = getSE3Inverse(currentRtkPosition, currentRtkOrientation); // This provides the inverse of: the transformation to the current Rtk in the world frame
+	vec4 pointInVeloFrame = getSE3(positionInVeloFrameNoOffset.xyz, identityRotation)*origin;
+	mat4 toOriginalRtkFrameFromVeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
+	mat4 toWorldFrameFromOriginalRtkFrame = getSE3(originalRtkPosition, originalRtkOrientation); // HACK why do we need the negative sign here??
+	mat4 toCurrentRtkFrameFromWorldFrame = getSE3Inverse(currentRtkPosition, currentRtkOrientation); // This provides the inverse of: the transformation to the current Rtk in the world frame
 
-	mat4 B = Ainv * C; // The transformation from the current Rtk Frame to the point position in World Frame -- this comes from the relation: C = pointInWorldFrame = AB
+	mat4 fullTransform = toCurrentRtkFrameFromWorldFrame*toWorldFrameFromOriginalRtkFrame*toOriginalRtkFrameFromVeloFrame; // Full transform from velodyne frame at time t_original to rtk frame at time t_current
+	vec4 correctedPosition = fullTransform * pointInVeloFrame; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
 
-	vec4 correctedPosition = B*origin; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
 	correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition);
 
 	correctedPosition += vec4(offset, 0.0);
+	correctedPosition += vec4(200.0, 200.0, 100.0, 0.0);
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
 	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 	vViewPosition = mvPosition.xyz;
@@ -1063,6 +1076,7 @@ void main() {
 	//	vColor.g = 1.0;
 	//}
 
-
+	vec3 rotation = vec3(1.0, 2.0, 3.0);
+	makeRotationMatrix(rotation);
 
 }

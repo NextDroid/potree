@@ -10,31 +10,47 @@ class RtkState {
     // this.roll = orientVec3.x;
     // this.pitch = orientVec3.y;
     // this.yaw = orientVec3.z;
-    this.quaternion = new THREE.Quaternion().setFromRotationMatrix(this.rotationMatrix);
+    // this.quaternion = new THREE.Quaternion().setFromRotationMatrix(this.rotationMatrix);
+    this.quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(orientVec3.x, orientVec3.y, orientVec3.z, 'ZYX'));
   }
 
-  get rotationMatrix() {
-    // NOTE taken from ODC code: double check the math to ensure that this matches with RTK Manual
-    // NOTE: Checked and confirmed that the rotation matrix below correctly corresponds to THREE.Euler(roll, pitch, yaw, 'XYZ')
-    // TODO Check if RTK rotation matrices correspond to THREE.Euler(roll, pitch, yaw, 'XYZ')
-
-    const sr = Math.sin(this.orient.x);
-    const sp = Math.sin(this.orient.y);
-    const sy = Math.sin(this.orient.z);
-
-    const cr = Math.cos(this.orient.x);
-    const cp = Math.cos(this.orient.y);
-    const cy = Math.cos(this.orient.z);
-
-    const rotMat = new THREE.Matrix4().set(
-      cy*cp,            -sy*cp,             sp,    0,
-      sy*cr + cy*sp*sr,  cy*cr - sy*sp*sr, -cp*sr, 0,
-      sy*sr - cy*sp*cr,  cy*sr + sy*sp*cr,  cp*cr, 0,
-      0,                 0,                 0,     1,
-    );
-
-    return rotMat;
-  }
+  // get rotationMatrix() {
+  //   // NOTE taken from ODC code: double check the math to ensure that this matches with RTK Manual
+  //   // NOTE: Checked and confirmed that the rotation matrix below correctly corresponds to THREE.Euler(roll, pitch, yaw, 'XYZ')
+  //   // TODO Check if RTK rotation matrices correspond to THREE.Euler(roll, pitch, yaw, 'XYZ')
+  //
+  //   const sr = Math.sin(this.orient.x);
+  //   const sp = Math.sin(this.orient.y);
+  //   const sy = Math.sin(this.orient.z);
+  //
+  //   const cr = Math.cos(this.orient.x);
+  //   const cp = Math.cos(this.orient.y);
+  //   const cy = Math.cos(this.orient.z);
+  //
+  //   const s1 = sr;
+  //   const s2 = sp;
+  //   const s3 = sy;
+  //
+  //   const c1 = cr;
+  //   const c2 = cp;
+  //   const c3 = cy;
+  //
+  //   // const rotMat = new THREE.Matrix4().set(
+  //   //   cy*cp,            -sy*cp,             sp,    0,
+  //   //   sy*cr + cy*sp*sr,  cy*cr - sy*sp*sr, -cp*sr, 0,
+  //   //   sy*sr - cy*sp*cr,  cy*sr + sy*sp*cr,  cp*cr, 0,
+  //   //   0,                 0,                 0,     1,
+  //   // );
+  //
+  //   const rotMat = new THREE.Matrix4().set(
+  //     c1*c2, c1*s2*s3 - c3*s1, s1*s3+c1*c3*s2, 0,
+  //     c2*s1, c1*c3+s1*s2*s3,   c3*s1*s2-c1*s3, 0,
+  //     -s2,   c2*s3,            c2*c3,          0,
+  //     0,     0,                0,              1
+  //   );
+  //
+  //   return rotMat;
+  // }
 }
 
 
@@ -165,7 +181,7 @@ class RtkTrajectory {
     // Interpolate Orientations (Constant Angular Velocity):
     const quaternion = new THREE.Quaternion();
     THREE.Quaternion.slerp(state1.quaternion, state2.quaternion, quaternion, alpha);
-    const orientation = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
+    const orientation = new THREE.Euler().setFromQuaternion(quaternion, 'ZYX');
 
     // Return new Interpolated State:
     return new RtkState(timestamp, pose, orientation);
