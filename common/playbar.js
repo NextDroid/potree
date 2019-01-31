@@ -13,8 +13,8 @@ $(document).ready(function () {
             <button class="button" class="pause" id="pausebutton"><i class="material-icons">pause</i></button>
             Time: <span id="demo">0.0000</span> seconds
             <span id="playbar_timewindows">
-              <input type="number" id="playbar_tmin" value=-0.05 max=0 step="0.01">
-              <input type="number" id="playbar_tmax" value=0.05 min=0 step="0.01">
+              <input type="number" id="playbar_tmin" value=-0.0 max=0 step="0.01">
+              <input type="number" id="playbar_tmax" value=0.0 min=0 step="0.01">
             </span>
             <span id="elevation_windows">
               <input type="number" id="elevation_min" value=-0.5 max=0 step="0.01">
@@ -127,8 +127,11 @@ $(document).ready(function () {
       var slideval = Number(slider.val());
       var dy = e.originalEvent.deltaY;
 
-      const tmin = window.animationEngine.activeWindow.backward;
-      const tmax = window.animationEngine.activeWindow.forward;
+      // const tmin = window.animationEngine.activeWindow.backward;
+      // const tmax = window.animationEngine.activeWindow.forward;
+
+      const tmin = 0.05;
+      const tmax = 0.05;
 
       var scalefactor = 1;
       console.log(e.originalEvent.shiftKey);
