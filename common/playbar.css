@@ -128,12 +128,12 @@ input::-webkit-inner-spin-button {
 }
 
 #playbar_tmin {
-  display: block;
+  /* display: block; */
   width: 50px;
 }
 
 #playbar_tmax {
-  display: block;
+  /* display: block; */
   width: 50px;
 }
 

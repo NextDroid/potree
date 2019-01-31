@@ -233,8 +233,8 @@ $(document).ready(function () {
     // Configure Playbar Appearance:
     // document.getElementById("playbar_tmin").style.display = "none";
     // document.getElementById("playbar_tmax").style.display = "none";
-    // document.getElementById("elevation_max").style.display = "none";
-    // document.getElementById("elevation_min").style.display = "none";
+    document.getElementById("elevation_max").style.display = "none";
+    document.getElementById("elevation_min").style.display = "none";
     document.getElementById("playback_speed").style.display = "none";
     document.getElementById("toggleslider").style.display = "none";
     document.getElementById("toggle_calibration_panels").style.display = "none";
