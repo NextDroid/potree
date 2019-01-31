@@ -97,8 +97,8 @@ export function updateSidebar() {
     let mapIcon = `${Potree.resourcePath}/icons/focus.svg`; // TODO Fix this
     let node = createNode(HdMapProvidersTree, mapProviderLayer.name, '', mapProviderLayer);
 
-    assessmentsLayer.addEventListener("visibility_changed", () => {
-      if (assessmentsLayer.visible) {
+    mapProviderLayer.addEventListener("visibility_changed", () => {
+      if (mapProviderLayer.visible) {
         tree.jstree('check_node', node);
       } else {
         tree.jstree('uncheck_node', node);
