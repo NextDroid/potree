@@ -929,38 +929,25 @@ void doClipping(vec4 correctedPosition){
 void main() {
 
 	// mat4 SE3 = getSE3();
-	// vec3 offset = vec3(200.0, 200.0, -100.0);
-	vec3 offset = vec3(0.0, 0.0, 0.0);
-	vec3 p = position.xyz - offset;
-	vec3 positionInVeloFrameNoOffset = vec3(p.y, -p.x, p.z);	// HACK
+	vec3 offset = vec3(200.0, 200.0, 100.0);
+	vec3 p = position.xyz;
+	// vec4 pointInVeloFrame = vec4(p.y, -p.x, p.z, 1.0);	// HACK to transform veloview frame points into rtk frame (rotate 90)
+	vec4 pointInVeloFrame = vec4(p, 1.0);
 	vec3 identityRotation = vec3(0.0, 0.0, 0.0);
 	vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
 
-	// vec4 correctedPosition = applyRtk2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
-
-	// NOTE Incorrect
-	// vec4 positionInRtkFrameAtTimeT = applyVelo2RtkExtrinsics(vec4(positionInVeloFrameNoOffset, 1.0));
-	// vec4 positionInCurrenRtkFrame = applyRtk2RtkExtrinsics(positionInRtkFrameAtTimeT);
-	// vec4 positionInVehicleFrame = applyRtk2VehicleExtrinsics(positionInCurrenRtkFrame);
-	// vec4 correctedPosition = positionInVehicleFrame;
-
-	// correctedPosition = vec4(positionInVeloFrameNoOffset, 1.0); // TODO for testing without extrinsics
-
-	// NOTE Correct:
-	vec4 pointInVeloFrame = getSE3(positionInVeloFrameNoOffset.xyz, identityRotation)*origin;
+	// Construct Transformation Matrices:
 	mat4 toOriginalRtkFrameFromVeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
-	mat4 toWorldFrameFromOriginalRtkFrame = getSE3(originalRtkPosition, originalRtkOrientation); // HACK why do we need the negative sign here??
-	mat4 toCurrentRtkFrameFromWorldFrame = getSE3Inverse(currentRtkPosition, currentRtkOrientation); // This provides the inverse of: the transformation to the current Rtk in the world frame
-
+	mat4 toWorldFrameFromOriginalRtkFrame = getSE3(originalRtkPosition, originalRtkOrientation);
+	mat4 toCurrentRtkFrameFromWorldFrame = getSE3Inverse(currentRtkPosition, currentRtkOrientation);
 	mat4 fullTransform = toCurrentRtkFrameFromWorldFrame*toWorldFrameFromOriginalRtkFrame*toOriginalRtkFrameFromVeloFrame; // Full transform from velodyne frame at time t_original to rtk frame at time t_current
+
 	vec4 correctedPosition = fullTransform * pointInVeloFrame; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
+	correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition); // Apply Rtk 2 Vehicle Mesh Extrinsics
+	correctedPosition += vec4(offset, 0.0);	// Translate Point Cloud into center of bounding box for rendering
 
-	correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition);
-
-	correctedPosition += vec4(offset, 0.0);
-	correctedPosition += vec4(200.0, 200.0, 100.0, 0.0);
+	// Camera Transforms:
 	vec4 mvPosition = modelViewMatrix * correctedPosition;
-	// vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
 	vViewPosition = mvPosition.xyz;
 	gl_Position = projectionMatrix * mvPosition;
 

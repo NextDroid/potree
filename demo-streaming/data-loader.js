@@ -393,9 +393,6 @@ function slice(tmin, tmax) {
       debugger;
       rtkPosSlice[idxOffsetXYZ] = rtkState.pose[keys[jj]]-self.rtkTrajectory.states[0].pose[keys[jj]];
       rtkOrientSlice[idxOffsetXYZ] = rtkState.orient[keys[jj]];
-
-      // Shift Positions with bbox:
-      // posSlice[idxOffsetXYZ] += bboxOffsetFromCorner[jj];
     }
 
     // Fill remaining slices:

@@ -250,7 +250,7 @@
 	 	filename: "VehicleFrameCloud.fb.bin",
 		rtkFile: "rtk.csv",
 		isOdcData: false,
-	 	maxMemMB: 50,
+	 	maxMemMB: 100,
 		bufferEpsilonSec: 6,
 	 	TA: 10	// Seconds
 	 }
@@ -413,6 +413,11 @@
 					const samplingFreq = 100; // Hertz TODO hardcoded
 					const rtkTrajectory = new RtkTrajectory(path, orientations, timestamps, samplingFreq);
 					const closedPath = false;
+
+					if (header.tmin < t_init|| (t_init+t_range) < header.tmax) {
+						console.error("Velodyne timerange does not fall within RTK timerange", header, rtkTrajectory);
+					}
+
 	 	      // const animationPath = new Potree.AnimationPath(path);
 	 	      // animationPath.closed = false;
 	 		  	// const orientationPath = new THREE.CatmullRomCurve3(orientations, animationPath.closed); // NOTE: orientations are represented as a parametric curve in 3d space, this breaks at pi to negative pi transition
@@ -507,7 +512,6 @@
 	 						// axesHelper.rotateOnAxis(new THREE.Vector3(0,0,1), -Math.PI/2);
 	 						axesHelper.visible = false;
 	 						viewer.scene.dispatchEvent({"type": "vehicle_layer_added", "vehicleLayer": axesHelper });
-
 
 	 						vehicleGroup.add( gridHelper );
 	 						vehicleGroup.add( polarGridHelper );
