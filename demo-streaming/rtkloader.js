@@ -17,7 +17,7 @@ function loadRtk(filename, isODC, callback) {
 
   // let filename = "http://172.18.44.138:4321/rtk.csv";
   console.log("RTK Filename: ", filename);
-  let tcol, xcol, ycol, zcol, yawcol, pitchcol, rollcol;
+  let tcol, xcol, ycol, zcol, yawcol, pitchcol, rollcol, validCol;
 
   if (isODC) {
     tcol = 1;       // GPS_TIME
@@ -28,6 +28,7 @@ function loadRtk(filename, isODC, callback) {
     yawcol = 15;    // ADJUSTED_HEADING_RAD
     pitchcol = 16;  // PITCH_RAD
     rollcol = 17;   // ROLL_RAD
+    validCol = tcol; // not in ODC data
   } else {
     tcol = 0;       // timestamp
     xcol = 3;       // easting
@@ -36,6 +37,7 @@ function loadRtk(filename, isODC, callback) {
     yawcol = 14;    // heading
     pitchcol = 15;  // pitch
     rollcol = 16;   // roll
+    validCol = 20;  // isValid
   }
 
 
@@ -93,9 +95,10 @@ function loadRtk(filename, isODC, callback) {
         roll = parseFloat(cols[rollcol]);
         pitch = parseFloat(cols[pitchcol]);
         yaw = parseFloat(cols[yawcol]);
+        valid = cols[validCol] == 1;
 
 
-        if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) {
+        if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) || !valid) {
           // skip
           continue;
         }
