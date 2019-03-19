@@ -98,7 +98,7 @@ function loadRtk(filename, isODC, callback) {
         valid = cols[validCol] == 1;
 
 
-        if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) || !valid) {
+        if (isNan(t) || isNan(x) || isNan(y) || isNan(z) || !valid) {
           // skip
           continue;
         }
