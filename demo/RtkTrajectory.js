@@ -79,8 +79,8 @@ class RtkTrajectory {
     this.numStates = 0;
 
     let lastT;
-    const numStatesInitial = (timestamps[timestamps.length-1] - timestamps[0]) * samplingFreq;
-    for (let ii = 0, tt = timestamps[0]; ii < numStatesInitial; ii++, tt = timestamps[ii]) {
+    // const numStatesInitial = (timestamps[timestamps.length-1] - timestamps[0]) * samplingFreq;
+    for (let ii = 0, tt = timestamps[0]; ii < timestamps.length; ii++, tt = timestamps[ii]) {
 
       // Create new state:
       const state = new RtkState(tt, posesVec3[ii], orientationsVec3[ii]);
