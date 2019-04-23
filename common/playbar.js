@@ -1,42 +1,6 @@
 $(document).ready(function () {
 
-  // Insert HTML for Playbar:
-  var playbarhtml = $(`
-    <div class="overlay">
-      <div class="slidecontainer">
-        <input type="range" min="0" max="100" value=0 step="any" class="slider" id="myRange">
-        <div id="spacer">
-
-          <div id="value" class="inline">
-            <input type="checkbox" id="toggleplay">
-            <button class="button" class="play" id="playbutton" class="inline"><i class="material-icons">play_arrow</i></button>
-            <button class="button" class="pause" id="pausebutton"><i class="material-icons">pause</i></button>
-            Time: <span id="demo">0.0000</span> seconds
-            <span id="playbar_timewindows">
-              <input type="number" id="playbar_tmin" value=-0.05 max=0 step="0.01">
-              <input type="number" id="playbar_tmax" value=0.05 min=0 step="0.01">
-            </span>
-            <span id="elevation_windows">
-              <input type="number" id="elevation_min" value=-0.5 max=0 step="0.01">
-              <input type="number" id="elevation_max" value=0.5 min=0 step="0.01">
-            </span>
-            <label class="switch">
-              <input type="checkbox" id="playbar_toggle">
-              <span class="toggleslider" id="toggleslider"></span>
-            </label>
-            <input type="range" name="playback_speed" id="playback_speed" min="1" max="8" value="4" step="any">
-            <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
-            <button name="load_detections_button" id="load_detections_button">Load Detections</button>
-            <button name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
-            <button name="load_radar_button" id="load_radar_button">Load Radar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    `);
-
-    // Add to DOM:
-    $("#potree_render_area").append(playbarhtml);
+    var playbarhtml = $("#playbar");
 
     // Define function to update clip range:
     function updateClip(disable=false) {
@@ -198,15 +162,4 @@ $(document).ready(function () {
    });
 
     $(document).tooltip();
-
-    // Configure Playbar Appearance:
-    // document.getElementById("playbar_tmin").style.display = "none";
-    // document.getElementById("playbar_tmax").style.display = "none";
-    // document.getElementById("elevation_max").style.display = "none";
-    // document.getElementById("elevation_min").style.display = "none";
-    document.getElementById("playback_speed").style.display = "none";
-    document.getElementById("toggleslider").style.display = "none";
-    document.getElementById("toggle_calibration_panels").style.display = "none";
-    document.getElementById("load_detections_button").style.display = "none";
-    document.getElementById("load_gaps_button").style.display = "none";
 });

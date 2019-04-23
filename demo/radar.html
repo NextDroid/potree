@@ -247,11 +247,20 @@
 		 });
 
 		// Playbar Configuration:
+		var playbarhtml = $('<div id="playbar"></div>');
+		$("#potree_render_area").append(playbarhtml);
+		$("#playbar").load('../common/playbar.html');
 		$(document).ready(() => {
 			document.getElementById("playbar_tmax").disabled = false;
 			document.getElementById("playbar_tmin").disabled = false;
 			document.getElementById("elevation_max").display = false;
 			document.getElementById("elevation_min").disabled = false;
+			// Configure Playbar Appearance:
+	    document.getElementById("playback_speed").style.display = "none";
+	    document.getElementById("toggleslider").style.display = "none";
+	    document.getElementById("toggle_calibration_panels").style.display = "none";
+	    document.getElementById("load_detections_button").style.display = "none";
+	    document.getElementById("load_gaps_button").style.display = "none";
 
 
 			// Load Data Sources:
