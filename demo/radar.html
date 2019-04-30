@@ -161,6 +161,7 @@
 		const fonts =  JSON.parse(params.get("fonts"));
 		const theme = JSON.parse(params.get("theme")); // material-ui theme
 		const comparisonDatasets = names.filter(element => element !== name);
+		let enableComparisonLanes = false; 
 
 		if (fonts) {
 			const head = document.head;
@@ -681,24 +682,25 @@
 			}
 
 			// Load Comparison Dataset (hardcoded to one for now)
-			if (comparisonDatasets.length > 0) {
-				filename = 'lanes.fb';
-				tmpSupplierNum = -2;
-				await loadLanes(s3, bucket, comparisonDatasets[0], filename, tmpSupplierNum, (laneGeometries) => {
+			if (enableComparisonLanes) {
+				if (comparisonDatasets.length > 0) {
+					filename = 'lanes.fb';
+					tmpSupplierNum = -2;
+					await loadLanes(s3, bucket, comparisonDatasets[0], filename, tmpSupplierNum, (laneGeometries) => {
 
-					let lanesLayer = new THREE.Group();
-					lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
-					for (let ii=0, len=laneGeometries.all.length; ii<len; ii++) {
-						lanesLayer.add(laneGeometries.all[ii]);
-					}
-					viewer.scene.scene.add(lanesLayer);
-					viewer.scene.dispatchEvent({
-						"type": "truth_layer_added",
-						"truthLayer": lanesLayer
+						let lanesLayer = new THREE.Group();
+						lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
+						for (let ii=0, len=laneGeometries.all.length; ii<len; ii++) {
+							lanesLayer.add(laneGeometries.all[ii]);
+						}
+						viewer.scene.scene.add(lanesLayer);
+						viewer.scene.dispatchEvent({
+							"type": "truth_layer_added",
+							"truthLayer": lanesLayer
+						});
 					});
-				});
+				}
 			}
-
 
 		}
 // Load Lanes Code (end)
