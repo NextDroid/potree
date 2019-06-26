@@ -51,6 +51,7 @@ $(document).ready(function () {
             Range: <input class="calibration-step" type="number" value="1" step='any'/> rad
             <button type="button" class="calibration-reset">Reset</button>
         </span></p>
+        <button type="button" id="download_cals_button" class="download-cals" onclick="downloadCals();">Download</button>
       </div>
 
       <div class="draggable-overlay" id="calibration-overlay-rtk2vehicle">
@@ -129,6 +130,8 @@ $(document).ready(function () {
   // dragElement($(".draggable-overlay"));
   dragElement(document.getElementById("calibration-overlay-velo2rtk"));
   dragElement(document.getElementById("calibration-overlay-rtk2vehicle"));
+  $("#download_cals_button").click = function() {downloadCals();};
+
 
   function dragElement(elmnt) {
     var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -252,4 +255,28 @@ function getVelo2Rtk() {
   }
   // debugger; // return
   return velo2rtk;
+}
+
+
+function download(filename, text) {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
+
+function downloadCals() {
+  const x =  $("#velo2rtk-x").text()
+  const y =  $("#velo2rtk-y").text()
+  const z =  $("#velo2rtk-z").text()
+  const roll =  $("#velo2rtk-roll").text()
+  const pitch =  $("#velo2rtk-pitch").text()
+  const yaw =  $("#velo2rtk-yaw").text()
+
+  let text = `${x}, ${y}, ${z}\n${roll}, ${pitch}, ${yaw}`;
+
+  download("extrinsics.txt", text);
 }
