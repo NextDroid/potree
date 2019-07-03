@@ -160,7 +160,7 @@
 		const sessionToken = params.get("key3");
 		const fonts =  JSON.parse(params.get("fonts"));
 		const theme = JSON.parse(params.get("theme")); // material-ui theme
-		const comparisonDatasets = names.filter(element => element !== name);
+		// const comparisonDatasets = names.filter(element => element !== name);
 
 		if (fonts) {
 			const head = document.head;
@@ -944,7 +944,7 @@ $(document).ready(() => {
     // });
 
 			if (runForLocalDevelopment) {
-				Potree.loadPointCloud("../pointclouds/test/cloud.js", "full-cloud", e => {
+				Potree.loadPointCloud("../pointclouds/test/cloud.js", "Demo Cloud", e => {
 					const pointcloud = e.pointcloud;
 		      const material = pointcloud.material;
 		      viewer.scene.addPointCloud(pointcloud);

@@ -3,6 +3,50 @@
 
 * [Getting Started](./docs/getting_started.md)
 
+## Instructions for Running Local Demo
+### 1. Install Dependencies
+Make sure you have [node.js](http://nodejs.org/) installed
+
+Install all dependencies, as specified in package.json,
+then, install the gulp build tool:
+
+    cd <potree_directory>
+    npm install --save
+    npm install -g gulp
+    npm install -g rollup
+
+### 2. Symlink to Local Pointcloud
+This local demo is hardcoded to search for a pointcloud at: `<potree_directory>/pointclouds/test/cloud.js`
+
+To setup the demo pointcloud, create a symlink (on a UNIX-based system) to this local cloud as follows:
+```
+ln -s /path/to/local/cloud <potree_directory>/pointclouds/test
+```
+Note: Directly copying the pointcloud directory to this location works as well.
+
+### 3. Symlink the Required Data Files:
+The local demo also looks for several data files to exist in the directory `<potree_directory>/data`:
+
+#### A) Rtk CSV File:
+The `rtk.csv` is __required__ and must exist in the `<potree_directory>/data` folder.
+
+#### B) Additional Data Files:
+Additional files that can be included in the data directory are:
+ - `lanes.fb`
+ - `tracks.fb`
+ - `detections.fb`
+
+Like the `rtk.csv` file these can be symlinked or copied directly. Note that these flatbuffer (.fb) files require the schemas in the directory `<potree_directory>/schemas` in order to be parsed. If your data is not rendering correctly in potree, then you should ensure that the schemas used to generate your flatbuffers match the ones in the schemas directory.
+
+### 4. Run the Potree Server
+Running the ```gulp watch``` command will "compile" the potree code and start a web server at localhost:1234.
+
+Go to http://localhost:1234/demo/radar.html/ to see your dataset visualized (this can also be done by using the `VeritasApplication` webapp)
+
+```
+gulp watch
+```
+
 ## About
 
 Potree is a free open-source WebGL based point cloud renderer for large point clouds.
@@ -22,7 +66,7 @@ Reference: [Potree: Rendering Large Point Clouds in Web Browsers](https://www.cg
 
 Make sure you have [node.js](http://nodejs.org/) installed
 
-Install all dependencies, as specified in package.json, 
+Install all dependencies, as specified in package.json,
 then, install the gulp build tool:
 
     cd <potree_directory>
@@ -30,9 +74,9 @@ then, install the gulp build tool:
     npm install -g gulp
     npm install -g rollup
 
-Use the ```gulp watch``` command to 
+Use the ```gulp watch``` command to
 
-* create ./build/potree 
+* create ./build/potree
 * watch for changes to the source code and automatically create a new build on change
 * start a web server at localhost:1234. Go to http://localhost:1234/examples/ to test the examples.
 
