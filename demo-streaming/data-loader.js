@@ -106,7 +106,6 @@ function handleInputMessage(e) {
     }
   } else if (e.data.msg == "rtkTrajectory") {
     const args = e.data;
-    debugger;
     self.rtkTrajectory = new RtkTrajectory(args.posesVec3, args.orientationsVec3, args.timestamps, args.samplingFreq);
 
   } else if (e.data.msg == "rtkTimeConversion") {
@@ -170,7 +169,6 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
     if (e.done) {
       // terminate();
       console.log("Reached end of file");
-      debugger;
       self.LoaderState = LoaderStates.PAUSED;
       runState();
       self.postMessage({msg:"reached-end-of-file"});
@@ -193,7 +191,6 @@ function pump() { // TODO add streamReader function parameter, remove pump at en
 
         self.task.seekPosBytes += task.bytesPerPoint; // track current seek position in file -- NOTE this forces restart command to start from this point...is this ok?
         if (self.task.seekPosBytes > self.task.filesize) { // NOTE We should never hit this (i.e. assertion)
-          debugger;
         }
       }
 
@@ -340,7 +337,6 @@ function slice(tmin, tmax) {
 
 
   // TODO single loop to create all slices:
-  debugger; // check below
   var numPoints = maxIdx-minIdx;
   let bboxOffsetFromCorner = [200, 200, 100];
   // var posSlice = new Float32Array(3*numPoints);
@@ -390,7 +386,6 @@ function slice(tmin, tmax) {
       // rtkPosSlice[idxOffsetXYZ] = alpha*rtkState1.position[jj]+(1-alpha)*rtkState0.position[jj];
       // rtkOrientSlice[idxOffsetXYZ] = alpha*rtkState1.orientation[jj]+(1-alpha)*rtkState0.orientation[jj];
 
-      debugger;
       rtkPosSlice[idxOffsetXYZ] = rtkState.pose[keys[jj]]-self.rtkTrajectory.states[0].pose[keys[jj]];
       rtkOrientSlice[idxOffsetXYZ] = rtkState.orient[keys[jj]];
     }

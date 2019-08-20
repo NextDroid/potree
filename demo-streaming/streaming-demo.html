@@ -700,7 +700,6 @@
 					const t = (gpsTime - animationEngine.tstart) / animationEngine.timeRange;
 					let vehicle = viewer.scene.scene.getObjectByName("Vehicle");
 
-					debugger;
 					let state = vehicle.rtkTrajectory.getState(gpsTime);
 					let rtkPoint = state.pose.clone();
 					let vehicleOrientation = state.orient.clone();

@@ -225,7 +225,6 @@ function handleDataLoaderMessage(response) {
   switch (response.data.msg) {
 
     case "slice":
-    debugger;// start slice
     const tStartAddAttr = performance.now();
       console.log("Slice: ", response.data);
       const slice = response.data;
@@ -288,7 +287,6 @@ function handleDataLoaderMessage(response) {
 
 
         try { // Swap into POTREE
-          debugger;
           let cloud = viewer.scene.pointclouds[0];
           // let bbox = cloudMesh.geometry.boundingBox;
           // let bsphere = cloudMesh.geometry.boundingSphere;
