@@ -278,5 +278,9 @@ function downloadCals() {
 
   let text = `${x}, ${y}, ${z}\n${roll}, ${pitch}, ${yaw}`;
 
-  download("extrinsics.txt", text);
+  let date = new Date();
+  let year = `${date.getYear() + 1900}`.padStart(4, '0')
+  let month = `${date.getMonth() + 1}`.padStart(2, '0')
+  let day = `${date.getDate() + 0}`.padStart(2, '0')
+  download(`EXTRINSICS_UNKNOWN_${year}${month}${day}_N001.txt`, text);
 }

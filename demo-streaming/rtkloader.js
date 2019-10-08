@@ -83,8 +83,12 @@ function loadRtk(filename, isODC, callback) {
 
     let rtkLookup = [];
 
+    if (rows[0].includes('adjustedHeading')) {
+      yawcol = 17;
+      validCol = 23;
+    }
 
-    for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
+    for (let ii = 0, len = rows.length; ii < len-1; ii+=2) {
       row = rows[ii];
       cols = row.split(' ');
       if (cols.length > 0) {
@@ -98,7 +102,7 @@ function loadRtk(filename, isODC, callback) {
         valid = cols[validCol] == 1;
 
 
-        if (isNan(t) || isNan(x) || isNan(y) || isNan(z) || !valid) {
+        if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) {// || !valid) {
           // skip
           continue;
         }
@@ -180,7 +184,7 @@ function loadRtk(filename, isODC, callback) {
       z: 0,
       roll: 0,
       pitch: 0,
-      yaw: 1.6232
+      yaw: 0
     }
     callback(mpos, orientations, timestamps, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
