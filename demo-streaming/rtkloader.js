@@ -187,9 +187,8 @@ function loadRtk(filename, isODC, callback) {
       z: 0,
       roll: 0,
       pitch: 0,
-      yaw: 1.6232
-    };
-
+      yaw: 0
+    }
     callback(mpos, orientations, timestamps, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
 
