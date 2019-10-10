@@ -67,12 +67,6 @@ function loadRtk(filename, isODC, callback) {
     var t0_loop = performance.now();
     var rows = data.target.response.split('\n');
 
-    if (rows[0].includes("adjustedHeading")) {
-      yawcol = 17;
-      validCol = 23;
-    }
-
-
     var geometry = new THREE.BufferGeometry();
     var mpos = [];
     var positions = [];
@@ -90,8 +84,16 @@ function loadRtk(filename, isODC, callback) {
 
     let rtkLookup = [];
 
+    if (rows[0].includes('adjustedHeading')) {
+      // yawcol = 17;
+      validCol = 23;
+    }
+    window.usingAdjustedHeading = yawcol == 17;
+    if (!window.usingAdjustedHeading) {
+      console.error("NOT USING ADJUSTED HEADING FOR RTK POSES");
+    }
 
-    for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
+    for (let ii = 0, len = rows.length; ii < len-1; ii+=2) {
       row = rows[ii];
       cols = row.split(' ');
       if (cols.length > 0) {
@@ -105,7 +107,7 @@ function loadRtk(filename, isODC, callback) {
         valid = cols[validCol] == 1;
 
 
-        if (isNan(t) || isNan(x) || isNan(y) || isNan(z) || !valid) {
+        if (isNan(t) || isNan(x) || isNan(y) || isNan(z)) {// || !valid) {
           // skip
           continue;
         }

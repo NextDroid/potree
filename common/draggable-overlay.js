@@ -271,7 +271,14 @@ function downloadCals() {
   const pitch =  $("#velo2rtk-pitch").text()
   const yaw =  $("#velo2rtk-yaw").text()
 
-  let text = `${x}, ${y}, ${z}\n${roll}, ${pitch}, ${yaw}`;
+  let version;
+  if (window.usingAdjustedHeading) {
+    version = '2.0';
+  } else {
+    version = '1.0';
+  }
+
+  let text = `${x}, ${y}, ${z}\n${roll}, ${pitch}, ${yaw}\nversion: ${version}`;
 
   let date = new Date();
   let year = `${date.getYear() + 1900}`.padStart(4, '0')
