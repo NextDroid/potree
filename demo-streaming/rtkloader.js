@@ -84,8 +84,12 @@ function loadRtk(filename, isODC, callback) {
     let rtkLookup = [];
 
     if (rows[0].includes('adjustedHeading')) {
-      yawcol = 17;
+      // yawcol = 17;
       validCol = 23;
+    }
+    window.usingAdjustedHeading = yawcol == 17;
+    if (!window.usingAdjustedHeading) {
+      console.error("NOT USING ADJUSTED HEADING FOR RTK POSES");
     }
 
     for (let ii = 0, len = rows.length; ii < len-1; ii+=2) {
