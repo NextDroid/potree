@@ -26,3 +26,7 @@ pointclouds/veritas
 benchmarking/clouds
 clouds
 .swp
+
+# Unwanted Data Filetypes
+*.fb
+*.csv

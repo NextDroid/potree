@@ -22,7 +22,7 @@ export class Measure extends THREE.Object3D {
 		this.sphereGeometry = new THREE.SphereGeometry(0.4, 10, 10);
 		this.color = new THREE.Color(0xff0000);
 
-		this.lengthUnit = {code: 'm'};
+		// this.lengthUnit = {code: 'm'};
 
 		this.spheres = [];
 		this.edges = [];
@@ -85,7 +85,7 @@ export class Measure extends THREE.Object3D {
 		return sphereMaterial;
 	};
 
-	addMarker (point) {
+	addMarker (point, callback) {
 		if (point instanceof THREE.Vector3) {
 			point = {position: point};
 		}else if(point instanceof Array){
@@ -186,6 +186,31 @@ export class Measure extends THREE.Object3D {
 			sphere.addEventListener('drop', drop);
 			sphere.addEventListener('mouseover', mouseover);
 			sphere.addEventListener('mouseleave', mouseleave);
+			sphere.addEventListener('mouseleave', (e) => {console.log(e);});
+			sphere.addEventListener('mousedown', (e) => {
+				console.log("MOUSEDOWN", e);
+
+				if (window.truthAnnotationMode == 1) {
+					let i = this.spheres.indexOf(e.target);
+					if (i != -1) {
+						this.removeMarker(i);
+					} else {
+						console.error("Clicked sphere not in list of spheres: ", e);
+					}
+				} else if (window.truthAnnotationMode == 2) {
+					let i = this.spheres.indexOf(e.target);
+					let lastPoint = this.spheres[this.spheres.length-1].position.clone();
+					this.addMarker(lastPoint, () => {
+						for (let ii = this.spheres.length-2; ii > i; ii--) {
+							let prevSphere = this.spheres[ii-1];
+							let prevPoint = {position: prevSphere.position.clone()};
+							this.setMarker(ii, prevPoint);
+						}
+					});
+				}
+
+
+			});
 		}
 
 		let event = {
@@ -196,6 +221,9 @@ export class Measure extends THREE.Object3D {
 		this.dispatchEvent(event);
 
 		this.setMarker(this.points.length - 1, point);
+		if (callback) {
+			callback();
+		}
 	};
 
 	removeMarker (index) {
@@ -373,7 +401,15 @@ export class Measure extends THREE.Object3D {
 				let distance = point.position.distanceTo(nextPoint.position);
 
 				edgeLabel.position.copy(center);
-				edgeLabel.setText(Utils.addCommas(distance.toFixed(2)) + ' ' + this.lengthUnit.code);
+
+				let suffix = "";
+				if(this.lengthUnit != null && this.lengthUnitDisplay != null){
+					distance = distance / this.lengthUnit.unitspermeter * this.lengthUnitDisplay.unitspermeter;  //convert to meters then to the display unit
+					suffix = this.lengthUnitDisplay.code;
+				}
+
+				let txtLength = Utils.addCommas(distance.toFixed(2));
+				edgeLabel.setText(`${txtLength} ${suffix}`);
 				edgeLabel.visible = this.showDistances && (index < lastIndex || this.closed) && this.points.length >= 2 && distance > 0;
 			}
 
@@ -431,7 +467,15 @@ export class Measure extends THREE.Object3D {
 
 				let heightLabelPosition = start.clone().add(end).multiplyScalar(0.5);
 				this.heightLabel.position.copy(heightLabelPosition);
-				let msg = Utils.addCommas(height.toFixed(2)) + ' ' + this.lengthUnit.code;
+
+				let suffix = "";
+				if(this.lengthUnit != null && this.lengthUnitDisplay != null){
+					height = height / this.lengthUnit.unitspermeter * this.lengthUnitDisplay.unitspermeter;  //convert to meters then to the display unit
+					suffix = this.lengthUnitDisplay.code;
+				}
+
+				let txtHeight = Utils.addCommas(height.toFixed(2));
+				let msg = `${txtHeight} ${suffix}`;
 				this.heightLabel.setText(msg);
 			}
 		}
@@ -439,7 +483,16 @@ export class Measure extends THREE.Object3D {
 		{ // update area label
 			this.areaLabel.position.copy(centroid);
 			this.areaLabel.visible = this.showArea && this.points.length >= 3;
-			let msg = Utils.addCommas(this.getArea().toFixed(1)) + ' ' + this.lengthUnit.code + '\u00B2';
+			let area = this.getArea();
+
+			let suffix = "";
+			if(this.lengthUnit != null && this.lengthUnitDisplay != null){
+				area = area / Math.pow(this.lengthUnit.unitspermeter, 2) * Math.pow(this.lengthUnitDisplay.unitspermeter, 2);  //convert to square meters then to the square display unit
+				suffix = this.lengthUnitDisplay.code;
+			}
+
+			let txtArea = Utils.addCommas(area.toFixed(1));
+			let msg =  `${txtArea} ${suffix}\u00B2`;
 			this.areaLabel.setText(msg);
 		}
 	};

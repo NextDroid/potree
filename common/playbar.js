@@ -8,22 +8,40 @@ $(document).ready(function () {
         <div id="spacer">
 
           <div id="value" class="inline">
-            <input type="checkbox" id="toggleplay">
-            <button class="button" class="play" id="playbutton" class="inline"><i class="material-icons">play_arrow</i></button>
-            <button class="button" class="pause" id="pausebutton"><i class="material-icons">pause</i></button>
-            Time: <span id="demo">0.0000</span> seconds
-            <span id="playbar_timewindows">
-              <input type="number" id="playbar_tmin" value=-0.05 max=0 step="0.01">
-              <input type="number" id="playbar_tmax" value=0.05 min=0 step="0.01">
-            </span>
+
+            <table id='play_pause_table'>
+              <tr>
+                <td><input type="checkbox" id="toggleplay">
+                <button class="button" class="play" id="playbutton" class="inline"><i class="material-icons">play_arrow</i></button>
+                <button class="button" class="pause" id="pausebutton"><i class="material-icons">pause</i></button></td>
+                <td><span id='time_display_span'> Time (seconds): <input type="number" id="time_display" min=0 value=0 step="0.0001"> </span></td>
+              </tr>
+            </table>
+
+            <table id="windows">
+              <tr>
+                <td style="text-align:right">Time Window:</td>
+                <td>[<input type="number" id="playbar_tmin" value=-0.05 max=0 step="0.01">, <input type="number" id="playbar_tmax" value=0.05 min=0 step="0.01">]</td>
+                <td>(s)</td>
+              </tr>
+              <tr>
+                <td style="text-align:right">Elevation Window:</td>
+                <td>[<input type="number" id="elevation_min" value=-0.5 max=0 step="0.01">, <input type="number" id="elevation_max" value=0.5 min=0 step="0.01">]</td>
+                <td>(m)</td>
+              </tr>
+            </table>
+
             <label class="switch">
-              <input type="checkbox" id="playbar_toggle">
+              <input type="checkbox" >
               <span class="toggleslider" id="toggleslider"></span>
             </label>
             <input type="range" name="playback_speed" id="playback_speed" min="1" max="20" value="10" step="any">
             <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
             <button name="load_detections_button" id="load_detections_button">Load Detections</button>
             <button name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
+            <button name="load_radar_button" id="load_radar_button">Load Radar</button>
+            <button name="download_lanes_button" id="download_lanes_button">Download Lanes</button>
+            <button name="reload_lanes_button" id="reload_lanes_button">Annotate Lanes</button>
           </div>
         </div>
       </div>
@@ -36,12 +54,7 @@ $(document).ready(function () {
     // Define function to update clip range:
     function updateClip(disable=false) {
 
-      console.log(window.viewer.scene); // gpstime
-      // var lidarOffset = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.offset;
       const lidarOffset = window.animationEngine.tstart;
-
-      // lidarOffset = 1495189467.550001;  // TODO Hardcoded b/c PotreeConverter is throwing away initial offset
-      // var lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
       const lidarRange = window.animationEngine.timeRange;
 
       if (disable) {
@@ -57,7 +70,6 @@ $(document).ready(function () {
         var sliderVal = $("#myRange").val() / 100.;
         var t = sliderVal * lidarRange + lidarOffset;
         $("#demo").html((t-lidarOffset).toFixed(4));
-        console.log(document.getElementById("demo").innerHTML);
 
         // var dtMin = Number($("#playbar_tmin").val());
         // var dtMax = Number($("#playbar_tmax").val());
@@ -78,7 +90,6 @@ $(document).ready(function () {
       if (slideval) {
         var slider = playbarhtml.find("#myRange");
         slider.val(slideval);
-        console.log("New Value: ", slider.val());
       }
 
       updateClip();
@@ -86,28 +97,34 @@ $(document).ready(function () {
     }
 
     playbarhtml.find("#playbar_tmin").on('input', function() {
-      console.log("TMIN");
       const tmin = playbarhtml.find("#playbar_tmin");
       window.animationEngine.activeWindow.backward = Math.abs(Number(tmin.val()));
       updateClip();
+      window.animationEngine.updateTimeForAll();
     });
 
     playbarhtml.find("#playbar_tmax").on('input', function() {
-      console.log("TMAX");
       const tmax = playbarhtml.find("#playbar_tmax");
       window.animationEngine.activeWindow.forward = Math.abs(Number(tmax.val()));
       updateClip();
+      window.animationEngine.updateTimeForAll();
+    });
+
+    playbarhtml.find("#elevation_max").on('input', function() {
+      const elevationMax = playbarhtml.find("#elevation_max");
+      window.elevationWindow[1] = Math.abs(Number(elevationMax.val()));
+    });
+
+    playbarhtml.find("#elevation_min").on('input', function() {
+      const elevationMin = playbarhtml.find("#elevation_min");
+      window.elevationWindow[0] = Math.abs(Number(elevationMin.val()));
     });
 
     playbarhtml.find("#myRange").on('input', function() {
-      console.log("SLIDER");
-
       updateSlider();
     });
 
     playbarhtml.find("#myRange").on('wheel', function(e) {
-      console.log("SCROLL");
-      console.log(e.originalEvent.deltaY);
       var slider = playbarhtml.find("#myRange");
       // var tmin = playbarhtml.find("#playbar_tmin");
       // var tmax = playbarhtml.find("#playbar_tmax");
@@ -118,12 +135,8 @@ $(document).ready(function () {
       const tmax = window.animationEngine.activeWindow.forward;
 
       var scalefactor = 1;
-      console.log(e.originalEvent.shiftKey);
       if (e.originalEvent.shiftKey) {
-        scalefactor = .01;
-        if (e.originalEvent.ctrlKey) { // shift and ctrl keys
-          scalefactor = 100;
-        }
+        scalefactor = 100;
       }
 
       var lidarRange = 1;
@@ -131,7 +144,6 @@ $(document).ready(function () {
        // lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
        lidarRange = window.animationEngine.timeRange;
      } catch (e) {
-       console.log(e);
      }
       var stepY = 0;
       if (dy < 0) {
@@ -154,38 +166,20 @@ $(document).ready(function () {
     });
 
     playbarhtml.find("#playbar_toggle").click(function() {
-      console.log("Temp Button");
       updateClip(disable=this.checked);
     });
     playbarhtml.find("#playbar_toggle").trigger('click');
 
     playbarhtml.find("#playbutton").mousedown(function() {
-      console.log("PLAY");
       playbarhtml.find("#playbutton").hide();
       playbarhtml.find("#pausebutton").show();
 
     });
 
     playbarhtml.find("#pausebutton").mousedown(function() {
-      console.log("PAUSE");
       playbarhtml.find("#playbutton").show();
       playbarhtml.find("#pausebutton").hide();
 
-    });
-
-    window.addEventListener("keypress", (e) => {
-      console.log("keypress");
-      console.log(e);
-      // if (e.charCode == 32) {
-      //   console.log("SPACEBAR");
-      //   var toggleplay = playbarhtml.find("#toggleplay");
-      //   toggleplay.trigger('click');
-      //     if (toggleplay.is(":checked")) {
-      //       playbarhtml.find("#playbutton").trigger('mousedown');
-      //     } else {
-      //       playbarhtml.find("#pausebutton").trigger('mousedown');
-      //     }
-      //   }
     });
 
     playbarhtml.find("#toggle_calibration_panels").mouseup(function() {
@@ -209,6 +203,50 @@ $(document).ready(function () {
 
     });
 
+    playbarhtml.find("#download_lanes_button").click(function() {
+
+      function download(text, filename) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+      }
+
+      // Download Left Lane Vertices:
+      try {
+        const laneLeft = window.viewer.scene.scene.getChildByName("Lane Left");
+        download(JSON.stringify(laneLeft.points, null, 2), "lane-left.json");
+      } catch (e) {
+        console.error("Couldn't download left lane vertices: ", e);
+      }
+
+      // Download Lane Spine Vertices:
+      try {
+        const laneSpine = window.viewer.scene.scene.getChildByName("Lane Spine");
+        download(JSON.stringify(laneSpine.points, null, 2), "lane-spine.json", "text/plain");
+      } catch (e) {
+        console.error("Couldn't download lane spine vertices: ", e);
+      }
+
+      // Download Right Lane Vertices:
+      try {
+        const laneRight = window.viewer.scene.scene.getChildByName("Lane Right");
+        download(JSON.stringify(laneRight.points, null, 2), "lane-right.json", "text/plain");
+      } catch (e) {
+        console.error("Couldn't download left lane vertices: ", e);
+      }
+
+
+
+
+    });
+
     window.addEventListener("message", e => {
      if (e.data === 'pause') {
        animationEngine.stop()
@@ -220,9 +258,12 @@ $(document).ready(function () {
     // Configure Playbar Appearance:
     // document.getElementById("playbar_tmin").style.display = "none";
     // document.getElementById("playbar_tmax").style.display = "none";
+    // document.getElementById("elevation_max").style.display = "none";
+    // document.getElementById("elevation_min").style.display = "none";
     document.getElementById("playback_speed").style.display = "none";
     document.getElementById("toggleslider").style.display = "none";
     document.getElementById("toggle_calibration_panels").style.display = "none";
     document.getElementById("load_detections_button").style.display = "none";
     document.getElementById("load_gaps_button").style.display = "none";
+    document.getElementById("download_lanes_button").style.display = "none";
 });
