@@ -344,6 +344,7 @@
 			// material.pointColorType = Potree.PointColorType.POINT_INDEX;
 
 			// debugger; // material uniforms
+			material.uniforms.uExtrinsicsMode.value = true;
 			material.uniforms.currentRtkPosition = {type: "v3", value: new THREE.Vector3(0,0,0)};
 			material.uniforms.currentRtkOrientation = {type: "v3", value: new THREE.Vector3(0,0,0)};
 

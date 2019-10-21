@@ -70,6 +70,8 @@ export class PointCloudMaterial extends THREE.RawShaderMaterial {
 		};
 
 		this.uniforms = {
+
+			uExtrinsicsMode: {type: "b", value: false},
 			timeVal: {type: "fv", value: 0.0 },
 			timeRange: {type: "fv", value: 0.0 },
 			level:				{ type: "f", value: 0.0 },

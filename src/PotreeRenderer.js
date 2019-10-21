@@ -725,6 +725,8 @@ export class Renderer {
 
 			let level = node.getLevel();
 
+			shader.setUniform("uExtrinsicsMode", material.uniforms.uExtrinsicsMode.value);
+
 			if(node.debug){
 				shader.setUniform("uDebug", true);
 			}else{

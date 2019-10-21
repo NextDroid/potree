@@ -39,6 +39,7 @@ uniform float near;
 uniform float far;
 
 uniform bool uDebug;
+uniform bool uExtrinsicsMode;
 
 uniform bool uUseOrthographicCamera;
 uniform float uOrthoWidth;
@@ -847,7 +848,13 @@ void doClipping(vec4 correctedPosition){
 			//return;
 		//}
 
-		if(!(time > range.x && time < range.y)) {	// NOTE added not to this condition
+		if(!uExtrinsicsMode && (time > range.x && time < range.y)) {
+			//gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
+			vColor.r = 1.0;
+			vColor.b = 0.0;
+			vColor.g = 0.0;
+
+		}	else if (uExtrinsicsMode && (!(time > range.x && time < range.y))) {	// NOTE added not to this condition
 			gl_Position = vec4(100.0, 100.0, 100.0, 0.0);
 			// vColor.r += .8;
 			// vColor.b = 0.0;
@@ -867,6 +874,8 @@ void doClipping(vec4 correctedPosition){
 
 	#if defined(num_clipboxes) && num_clipboxes > 0
 		for(int i = 0; i < num_clipboxes; i++){
+/// HERE
+			vec4 clipPosition = clipBoxes[i] * modelMatrix * vec4( position, 1.0 );
 
 			mat4 SE3 = getSE3();
 			vec3 offset = vec3(200.0, 200.0, 100.0);
@@ -933,26 +942,32 @@ void doClipping(vec4 correctedPosition){
 
 void main() {
 
-	// mat4 SE3 = getSE3();
-	vec3 offset = vec3(200.0, 200.0, 100.0);
-	vec3 p = position.xyz;
-	// vec4 pointInVeloFrame = vec4(p.y, -p.x, p.z, 1.0);	// HACK to transform veloview frame points into rtk frame (rotate 90)
-	vec4 pointInVeloFrame = vec4(p, 1.0);
-	vec3 identityRotation = vec3(0.0, 0.0, 0.0);
-	vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 mvPosition;
+	vec4 correctedPosition;
 
-	// Construct Transformation Matrices:
-	mat4 toOriginalRtkFrameFromVeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
-	mat4 toWorldFrameFromOriginalRtkFrame = getSE3(originalRtkPosition, originalRtkOrientation);
-	mat4 toCurrentRtkFrameFromWorldFrame = getSE3Inverse(currentRtkPosition, currentRtkOrientation);
-	mat4 fullTransform = toCurrentRtkFrameFromWorldFrame*toWorldFrameFromOriginalRtkFrame*toOriginalRtkFrameFromVeloFrame; // Full transform from velodyne frame at time t_original to rtk frame at time t_current
+	if (!uExtrinsicsMode) {
+		correctedPosition = vec4(position, 1.0);
+		mvPosition = modelViewMatrix * correctedPosition;
+	} else {
+		vec3 offset = vec3(200.0, 200.0, 100.0);
+		vec3 p = position.xyz;
+		// vec4 pointInVeloFrame = vec4(p.y, -p.x, p.z, 1.0);	// HACK to transform veloview frame points into rtk frame (rotate 90)
+		vec4 pointInVeloFrame = vec4(p, 1.0);
+		vec3 identityRotation = vec3(0.0, 0.0, 0.0);
+		vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
 
-	vec4 correctedPosition = fullTransform * pointInVeloFrame; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
-	correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition); // Apply Rtk 2 Vehicle Mesh Extrinsics
-	correctedPosition += vec4(offset, 0.0);	// Translate Point Cloud into center of bounding box for rendering
+		// Construct Transformation Matrices:
+		mat4 toOriginalRtkFrameFromVeloFrame = getSE3(velo2RtkXYZ, velo2RtkRPY);
+		mat4 toWorldFrameFromOriginalRtkFrame = getSE3(originalRtkPosition, originalRtkOrientation);
+		mat4 toCurrentRtkFrameFromWorldFrame = getSE3Inverse(currentRtkPosition, currentRtkOrientation);
+		mat4 fullTransform = toCurrentRtkFrameFromWorldFrame*toWorldFrameFromOriginalRtkFrame*toOriginalRtkFrameFromVeloFrame; // Full transform from velodyne frame at time t_original to rtk frame at time t_current
 
+		correctedPosition = fullTransform * pointInVeloFrame; // Multiply the transformation matrix B by the origin to the get the position of the point in the current rtk frame
+		correctedPosition = applyRtk2VehicleExtrinsics(correctedPosition); // Apply Rtk 2 Vehicle Mesh Extrinsics
+		correctedPosition += vec4(offset, 0.0);	// Translate Point Cloud into center of bounding box for rendering
+	}
 	// Camera Transforms:
-	vec4 mvPosition = modelViewMatrix * correctedPosition;
+	mvPosition = modelViewMatrix * correctedPosition;
 	vViewPosition = mvPosition.xyz;
 	gl_Position = projectionMatrix * mvPosition;
 
