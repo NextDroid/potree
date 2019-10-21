@@ -46,7 +46,7 @@
 	<script src="../common/draggable-overlay.js"></script>
 	<script type="module" src="../common/custom-sidebar.js"></script>
 	<script src="../demo/animationEngine.js"></script>
-	<script src="../demo/RtkTrajectory.js"></script>
+	<script src="./RtkTrajectory.js"></script>
 
 
 
@@ -425,8 +425,6 @@
 					streamer.DataLoader.postMessage({msg:"rtkLookup", rtkLookup: rtkLookupOutput});
 					streamer.DataLoader.postMessage({msg:"rtkTrajectory", posesVec3: path, orientationsVec3: orientations, timestamps: timestamps, samplingFreq});
 
-					debugger; // path
-
 	 	      { // render the path
 						let geometry = new THREE.Geometry();
 						for (let ii = 0; ii < rtkTrajectory.numStates; ii++) {
@@ -553,12 +551,12 @@
 	 	      { // create Animation Path & make light follow it
 	 	        {// ANIMATION + SLIDER LOGIC:
 	 	          let slider = document.getElementById("myRange");
-	 	          let output = document.getElementById("demo");
+							let time_display = document.getElementById("time_display");
 	 						let tmin = document.getElementById("playbar_tmin");
 	 						let tmax = document.getElementById("playbar_tmax");
 							let playbackSpeed = document.getElementById("playback_speed");
 
-	 	          output.innerHTML = slider.value;
+	          	time_display.value = Math.round(10000*slider.value)/10000;
 
 	 	          // Playbar Button Functions:
 	 	          let playbutton = document.getElementById("playbutton");

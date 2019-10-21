@@ -1,7 +1,7 @@
 self.importScripts(
   "bower_components/cbuffer/cbuffer.js",
   "bufferFunctions.js",
-  "../demo/RtkTrajectory.js",
+  "./RtkTrajectory.js",
   "../libs/three.js/build/three.min.js"
 );
 
