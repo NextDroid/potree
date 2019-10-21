@@ -2,7 +2,7 @@
 //import { Flatbuffer } from "../schemas/VisualizationPrimitives_generated.js";
 
 
-export function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, callback) {
+export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, callback) {
   const tstart = performance.now();
   if (s3 && bucket && name) {
     (async () => {
@@ -22,7 +22,6 @@ export function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, call
                      } else {
                        const FlatbufferModule = await import(schemaUrl);
                        const gapGeometries = parseGaps(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
-                       console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
                        callback( gapGeometries );
                      }});
     })();
@@ -38,7 +37,6 @@ export function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, call
 
     xhr.onprogress = function(event) {
       t1 = performance.now();
-      console.log("Loaded ["+event.loaded+"] bytes in ["+(t1-t0)+"] ms")
       t0 = t1;
     }
 
@@ -54,7 +52,6 @@ export function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, call
 
       let bytesArray = new Uint8Array(response);
       const gapGeometries = parseGaps(bytesArray, shaderMaterial, FlatbufferModule, animationEngine);
-      console.log("Full Runtime: "+(performance.now()-tstart)+"ms");
       callback( gapGeometries );
     };
 
@@ -188,9 +185,9 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
   let allBoxes = new THREE.Geometry();
   let gapTimes = [];
   for(let ii=0, len=gaps.length; ii<len; ii++) {
-    if (ii > 1000) {
-      continue;
-    }
+    // if (ii > 1000) {
+    //   continue;
+    // }
 
     gap = gaps[ii];
 
@@ -243,6 +240,7 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
         se3.setPosition(delta); // Translation
 
         boxGeometry.applyMatrix( se3 );
+        debugger; // apply roll to boxGeometry, make buffer --> how many vertices?
         // TODO rotate boxGeometry.quaternion.setFromUnitVectors(axis, vector.clone().normalize());
         allBoxes.merge(boxGeometry);
 
