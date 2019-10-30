@@ -67,6 +67,12 @@ function loadRtk(filename, isODC, callback) {
     var t0_loop = performance.now();
     var rows = data.target.response.split('\n');
 
+    if (rows[0].includes("adjustedHeading")) {
+      yawcol = 17;
+      validCol = 23;
+    }
+
+
     var geometry = new THREE.BufferGeometry();
     var mpos = [];
     var positions = [];
@@ -76,6 +82,7 @@ function loadRtk(filename, isODC, callback) {
 
     let row, cols;
     let t_init = 0;
+    let pos_init, orientation_init;
     let t_range = 0;
     let firstTimestamp = true;
     let lastx, lasty, lastz;
@@ -181,7 +188,8 @@ function loadRtk(filename, isODC, callback) {
       roll: 0,
       pitch: 0,
       yaw: 1.6232
-    }
+    };
+
     callback(mpos, orientations, timestamps, t_init, t_range, numPoints, distance, rtkLookup, pos_init, orientation_init, rtk2vehicle);
   };
 

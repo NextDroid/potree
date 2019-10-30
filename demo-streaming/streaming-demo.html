@@ -46,7 +46,7 @@
 	<script src="../common/draggable-overlay.js"></script>
 	<script type="module" src="../common/custom-sidebar.js"></script>
 	<script src="../demo/animationEngine.js"></script>
-	<script src="../demo/RtkTrajectory.js"></script>
+	<script src="./RtkTrajectory.js"></script>
 
 
 
@@ -180,6 +180,7 @@
   <script type="module">
 		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
 		import { updateSidebar } from "../common/custom-sidebar.js";
+		// import { RtkTrajectory } from "../demo/RtkTrajectory.js";
 		import * as streamer from "./streamer.js";
 
 
@@ -553,12 +554,15 @@
 	 	      { // create Animation Path & make light follow it
 	 	        {// ANIMATION + SLIDER LOGIC:
 	 	          let slider = document.getElementById("myRange");
-	 	          let output = document.getElementById("demo");
+	 	          // let output = document.getElementById("demo");
+	 	          // output.innerHTML = slider.value;
+	          	  let time_display = document.getElementById("time_display");
+
 	 						let tmin = document.getElementById("playbar_tmin");
 	 						let tmax = document.getElementById("playbar_tmax");
 							let playbackSpeed = document.getElementById("playback_speed");
 
-	 	          output.innerHTML = slider.value;
+		          time_display.value = Math.round(10000*slider.value)/10000;
 
 	 	          // Playbar Button Functions:
 	 	          let playbutton = document.getElementById("playbutton");

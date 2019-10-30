@@ -5,7 +5,10 @@
   "description": "WebGL point cloud viewer",
   "dependencies": {
     "@material/slider": "^0.42.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
     "flatbuffers": "^1.10.2",
+    "fs-readstream-seek": "^1.1.1",
     "glob-watcher": "^5.0.1",
     "gulp": "^3.9.1",
     "gulp-concat": "^2.6.1",

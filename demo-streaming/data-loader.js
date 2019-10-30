@@ -1,9 +1,11 @@
 self.importScripts(
   "bower_components/cbuffer/cbuffer.js",
   "bufferFunctions.js",
-  "../demo/RtkTrajectory.js",
-  "../libs/three.js/build/three.min.js"
+  "../libs/three.js/build/three.min.js",
+  "../demo-streaming/RtkTrajectory.js"
 );
+// self.importScripts(
+// );
 
 // Data Loader Member Variables:
 self.tLifeStart = performance.now();
