@@ -1,6 +1,6 @@
 import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
-
+import { setLoadingScreenMessage, removeLoadingScreen } from "../common/overlay.js";
 
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   const tstart = performance.now();
@@ -32,6 +32,7 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
                    async (err, data) => {
                      if (err) {
                        console.log(err, err.stack);
+                       removeLoadingScreen();
                      } else {
                        const FlatbufferModule = await import(schemaUrl);
                        const laneGeometries = parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
@@ -211,6 +212,9 @@ function createLaneGeometries(vertexGroups, material) {
 
 function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
 
+  setLoadingScreenMessage("Processing Lanes (this might take some time)");
+
+
   let materialLeft, materialSpine, materialRight;
   switch (supplierNum) {
 
@@ -364,7 +368,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
 
 
 
-        let length = Math.max(p1.distanceTo(p2), 0.001); // Clamp distance to min value of 1mm 
+        let length = Math.max(p1.distanceTo(p2), 0.001); // Clamp distance to min value of 1mm
         let height = 0.01;
         let width = 0.1;
 

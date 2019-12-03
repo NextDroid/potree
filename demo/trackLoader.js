@@ -1,7 +1,4 @@
-// import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
-// import { Flatbuffer } from "http://localhost:1234/schemas/GroundTruth_generated.js";
-
-
+import { setLoadingScreenMessage, removeLoadingScreen } from "../common/overlay.js";
 
 export function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, callback) {
   const tstart = performance.now();
@@ -20,6 +17,7 @@ export function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, ca
                    async (err, data) => {
                      if (err) {
                        console.log(err, err.stack);
+                       removeLoadingScreen();
                      } else {
                        const FlatbufferModule = await import(schemaUrl);
                        const trackGeometries = parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
@@ -113,6 +111,8 @@ function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngi
 }
 
 function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
+
+  setLoadingScreenMessage("Processing Tracked Objects (this might take some time)");
 
   let lineMaterial = new THREE.LineBasicMaterial({
     color: 0x00ff00,

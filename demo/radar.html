@@ -151,7 +151,7 @@
 		import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js";
 		import { getLoadingBar } from "../common/overlay.js";
 		// import {  } from "../common/overlay.js";
-		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
+		import { setLoadingScreen, setLoadingScreenMessage, removeLoadingScreen } from "../common/overlay.js";
 		import { PointAttributeNames } from "../src/loader/PointAttributes.js";
 
 		// setLoadingScreen();
@@ -345,9 +345,11 @@
 			});
 
 
+			setLoadingScreen("Loading Vehicle Pose Data");
 
 			// Load Data Sources in loadRtkCallback:
-			loadRtkCallback(s3, bucket, name, () => {
+			loadRtkCallback(s3, bucket, name, async () => {
+
 
 				// Load Extrinsics:
 				window.extrinsics = {rtk2Vehicle: null, velo2Rtk: {}};
@@ -385,24 +387,27 @@
 
 				// Load Lanes:
 				try {
-					loadLanesCallback(s3, bucket, name);
+					await loadLanesCallback(s3, bucket, name);
 				} catch (e) {
 					console.error("Could not load Lanes: ", e);
+					removeLoadingScreen();
 				}
 
 				// Load Tracks:
 				try {
 					// TODO shaderMaterial
 					let trackShaderMaterial = shaderMaterial.clone();
-					loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine);
+					await loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine);
 				} catch (e) {
 					console.error("Could not load Tracks: ", e);
+					removeLoadingScreen();
 				}
 
 				try{
-					loadRemCallback(s3, bucket, name, animationEngine);
+					await loadRemCallback(s3, bucket, name, animationEngine);
 				} catch (e) {
 					console.error("No rem points: ", e);
+					removeLoadingScreen();
 				}
 
 				// Load Radar:
@@ -410,6 +415,7 @@
 					// await loadRadarCallback(s3, bucket, name);
 				} catch (e) {
 					console.error("Could not load Radar Detections: ", e);
+					removeLoadingScreen();
 				}
 
 				// Load Detections:
@@ -435,6 +441,8 @@
 		function loadRtkCallback(s3, bucket, name, callback) {
 			// loadRtk(s3, bucket, name, (pos, rot, timestamps, t_init, t_range) => {
 			loadRtkFlatbuffer(s3, bucket, name, (pos, rot, timestamps, t_init, t_range) => {
+
+				setLoadingScreen("Processing Vehicle Pose Data");
 				window.timeframe = {"tstart": t_init, "tend": t_init+t_range};
 
 				// TODO Move this into main loader function:
@@ -629,6 +637,8 @@
 	        }
 
 	      }
+
+	      removeLoadingScreen();
 	    });
 
 
@@ -644,7 +654,6 @@
 					let lastRtkPoint = vehicle.position.clone();
 					let lastRtkOrientation = vehicle.rotation.clone();
 					let lastTransform = vehicle.matrixWorld.clone();
-					// debugger; //vehicle
 					let state = vehicle.rtkTrajectory.getState(gpsTime);
 					let rtkPoint = state.pose.clone();
 					let vehicleOrientation = state.orient.clone();
@@ -719,7 +728,6 @@
 		{
 			// PointCloud:
 			animationEngine.tweenTargets.push((gpsTime) => {
-				// debugger; // account for pointcloud offset
 				let minGpsTime = gpsTime-animationEngine.activeWindow.backward;
 				let maxGpsTime = gpsTime+animationEngine.activeWindow.forward;
 				viewer.setFilterGPSTimeRange(minGpsTime, maxGpsTime);
@@ -795,9 +803,7 @@ $(document).ready(() => {
 
 			{
 				$("#loading-bar")[0].style.display = "none";
-				setLoadingScreen();
 				loadLanesCallback(s3, bucket, name, () => {
-					removeLoadingScreen();
 
 					// TOGGLE BUTTON TEXT
 					if (window.annotateLanesModeActive) {
@@ -809,7 +815,6 @@ $(document).ready(() => {
 					}
 
 					reloadLanesButton.disabled = false
-
 				});
 			}
 		}
@@ -820,6 +825,8 @@ $(document).ready(() => {
 // Load Lanes Code (start)
 		// Load Lanes Truth Data:
 		async function loadLanesCallback(s3, bucket, name, callback) {
+
+			setLoadingScreen("Loading Lanes");
 
 			let filename, tmpSupplierNum;
 			tmpSupplierNum = -1;
@@ -836,6 +843,9 @@ $(document).ready(() => {
 					"type": "truth_layer_added",
 					"truthLayer": lanesLayer
 				});
+
+				removeLoadingScreen();
+
 				if (callback) {
 					callback();
 				}
@@ -918,7 +928,7 @@ $(document).ready(() => {
 
 		if (!window.gapsLoaded) {
 			$("#loading-bar")[0].style.display = "none";
-			setLoadingScreen();
+			setLoadingScreen("Loading gap data");
 
 			let gapShaderMaterial = shaderMaterial.clone();
 			gapShaderMaterial.uniforms.color.value = new THREE.Color(0x0000ff);
@@ -988,7 +998,10 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 
 		async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine) {
 
+			setLoadingScreen("Loading Tracked Objects");
+
 			await loadTracks(s3, bucket, name, trackShaderMaterial, animationEngine, (trackGeometries) => {
+
 				let trackLayer = new THREE.Group();
 				trackLayer.name = "Tracked Objects";
 				for (let ii=0, len=trackGeometries.bbox.length; ii<len; ii++) {
@@ -1009,6 +1022,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 					trackShaderMaterial.uniforms.minGpsTime.value = currentTime - animationEngine.activeWindow.backward;
 					trackShaderMaterial.uniforms.maxGpsTime.value = currentTime + animationEngine.activeWindow.forward;
 				});
+				removeLoadingScreen();
 			});
 		}
 
@@ -1022,7 +1036,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 			loadDetectionsButton.addEventListener("mousedown", () => {
 				if (!window.detectionsLoaded) {
 					$("#loading-bar")[0].style.display = "none";
-					setLoadingScreen();
+					setLoadingScreen("Loading Object Detections");
 					let detectionShaderMaterial = shaderMaterial.clone();
 					detectionShaderMaterial.uniforms.color.value = new THREE.Color(0xFFA500);
 					loadDetections(s3, bucket, name, detectionShaderMaterial, animationEngine, (detectionGeometries) => {
@@ -1089,7 +1103,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 			loadRadarButton.addEventListener("mousedown", () => {
 				if (!window.radarLoaded) {
 					$("#loading-bar")[0].style.display = "none";
-					setLoadingScreen();
+					setLoadingScreen("Loading radar detections");
 
 					loadRadar(s3, bucket, name, (geometry,t_init, boxBufferGeometries) => {
 
@@ -1119,7 +1133,6 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 						var material = new THREE.PointsMaterial( {size:1.0} );
 						var mesh = new THREE.Points(geometry, shaderMaterial);
 						mesh.name = "radar";
-						// debugger; //radar tracks added?
 						viewer.scene.scene.add(mesh);
 						viewer.scene.dispatchEvent({"type": "sensor_layer_added", "sensorLayer": mesh });
 
@@ -1127,7 +1140,6 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 						// Create tween:
 						{
 							animationEngine.tweenTargets.push( (t) => {
-								// debugger;
 								let minGpsTime = t - animationEngine.activeWindow.backward;
 								let maxGpsTime = t + animationEngine.activeWindow.forward;
 								let radarOffset = t_init;
