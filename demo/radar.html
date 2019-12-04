@@ -856,6 +856,9 @@ $(document).ready(() => {
 			if (visualizationMode == "aptivLanes") {
 
 				async function loadLanesHelper(layerName, filename, s) {
+
+					setLoadingScreen("Loading Lanes");
+
 					try {
 						await loadLanes(s3, bucket, name, filename, s, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
 							let lanesLayer = new THREE.Group();
@@ -868,9 +871,11 @@ $(document).ready(() => {
 								"type": "map_provider_layer_added",
 								"mapLayer": lanesLayer
 							});
+							removeLoadingScreen();
 						});
 					} catch (e) {
 						console.log(`Couldn't load ${filename}: ${e}`);
+						removeLoadingScreen();
 					}
 				};
 

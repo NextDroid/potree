@@ -29,7 +29,6 @@ export function setLoadingScreen(message) {
   document.getElementById("loading-overlay-table").style.display = "table";
   document.getElementById("loading-text").style.display = "block";
   setLoadingScreenMessage(message);
-  debugger;
 }
 
 export function setLoadingScreenMessage(message) {
@@ -42,7 +41,6 @@ export function removeLoadingScreen() {
     window.loadingScreenUp = false;
     document.getElementById("loading-overlay-table").style.display = "none";
   }
-  debugger;
 }
 
 export function getLoadingBar() {
