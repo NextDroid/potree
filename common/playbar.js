@@ -9,41 +9,39 @@ $(document).ready(function () {
       </div>
       <div id="spacer"></div>
 
-      <div id="value">
-        <div class="center_column">
+      <div id="value" class="playbar_row">
+        <div id="play_pause_container" class="value_column">
           <button class="play_pause_button" class="play" id="playbutton"><i class="material-icons">play_arrow</i></button>
           <button class="play_pause_button" class="pause" id="pausebutton" style="display: none"><i class="material-icons">pause</i></button>
         </div>
-        <div class="center_column">
-          <span id='time_display_span'>Time (s): <input type="number" id="time_display" class="playbar_text_field" min=0 value=0 step="0.0001" /> (<input type="number" id="full_time_display" class="playbar_text_field" min=0 value=0 step="0.0001" readonly/> global)</span>
+        
+        <div id="time_display_container" class="value_column">
+          <div class="time_display_section">Time (region): <input type="number" id="time_display" class="playbar_text_field" min=0 value=0 step="0.0001" /> (s)</div>
+          <div class="time_display_section">Time (global): <input type="number" id="full_time_display" class="playbar_text_field" min=0 value=0 step="0.0001" readonly/> (s)</div>
         </div>
 
-        <table id="windows" class="center_column">
+        <table id="windows" class="value_column">
           <tr>
-            <td class="window_header">Time:</td>
+            <td class="align_right">Time Window:</td>
             <td class="window">[<input type="number" id="playbar_tmin" class="playbar_text_field" value=-0.05 max=0 step="0.01">, <input type="number" id="playbar_tmax" class="playbar_text_field" value=0.05 min=0 step="0.01">]</td>
             <td>(s)</td>
           </tr>
           <tr>
-            <td class="window_header">Elevation:</td>
+            <td class="align_right">Elevation Window:</td>
             <td class="window">[<input type="number" id="elevation_min" class="playbar_text_field" value=-0.5 max=0 step="0.01">, <input type="number" id="elevation_max" class="playbar_text_field" value=0.5 min=0 step="0.01">]</td>
             <td>(m)</td>
           </tr>
         </table>
+      </div>
 
-        <div class="button_column">
-          <button class="fill_button" name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
-          <button class="fill_button" name="toggle_hideshow" id="toggle_hideshow">Toggle Pointcloud Highlight Mode</button>
-        </div>
-        <div class="button_column">
-          <button class="fill_button" name="load_detections_button" id="load_detections_button">Load Detections</button>
-          <button class="fill_button" name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
-          <button class="fill_button" name="load_radar_button" id="load_radar_button">Load Radar</button>
-        </div>
-        <div class="button_column">
-          <button class="fill_button" name="download_lanes_button" id="download_lanes_button">Download Lanes</button>
-          <button class="fill_button" name="reload_lanes_button" id="reload_lanes_button">Annotate Lanes</button>
-        </div>
+      <div class="playbar_row">
+        <button class="box_button" name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
+        <button class="box_button" name="toggle_hideshow" id="toggle_hideshow">Toggle Pointcloud Highlight Mode</button>
+        <button class="box_button" name="load_detections_button" id="load_detections_button">Load Detections</button>
+        <button class="box_button" name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
+        <button class="box_button" name="load_radar_button" id="load_radar_button">Load Radar</button>
+        <button class="box_button" name="download_lanes_button" id="download_lanes_button">Download Lanes</button>
+        <button class="box_button" name="reload_lanes_button" id="reload_lanes_button">Annotate Lanes</button>
       </div>
     </div>
     `);
