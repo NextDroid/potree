@@ -168,6 +168,9 @@
 			}
 		}
 
+		const minAnimationStepDigits = 5
+		const minAnimationStep = Math.pow(10, -minAnimationStepDigits)
+
 		// setLoadingScreen();
 
 		const runForLocalDevelopment = location.search === "" &&
@@ -184,8 +187,6 @@
 		const downloadLanesAvailable = annotateLanesAvailable
 		const calibrationModeAvailable = params.get("calibrate") == "Calibrate" ||
 				runForLocalDevelopment
-		let customTimeInterval = decanonicalizeTimeInterval(
-				[params.get("start"), params.get("end")])
 		const accessKeyId = params.get("key1")
 		const secretAccessKey = params.get("key2")
 		const sessionToken = params.get("key3")
@@ -195,6 +196,9 @@
 		if (names) {
 			comparisonDatasets = names.filter(element => element !== name)
 		}
+		let customLocalInterval = decanonicalizeTimeInterval(
+				[params.get("start"), params.get("end")])
+		let animationInterval = null
 
 		if (fonts) {
 			const head = document.head
@@ -260,8 +264,6 @@
 				viewer.setCameraMode(Potree.CameraMode.ORTHOGRAPHIC);
 				viewer.scene.view.maxPitch = -Math.PI/2;
 
-				document.getElementById("playback_speed").style.display = "none";
-				document.getElementById("toggleslider").style.display = "none";
 				document.getElementById("toggle_calibration_panels").style.display = "none";
 				document.getElementById("load_detections_button").style.display = "none";
 				document.getElementById("load_radar_button").style.display = "none";
@@ -310,8 +312,6 @@
 
 		})
 
-		let isShiftKeyDown = false
-
 		// Playbar Configuration:
 		$(document).ready(() => {
 			document.getElementById("playbar_tmax").disabled = false
@@ -327,9 +327,6 @@
 			div.style.opacity = 0
 
 			window.addEventListener('keydown', (e) => {
-				if (e.shiftKey) {
-					isShiftKeyDown = true
-				}
 				if (window.annotateLanesModeActive) {
 					if (e.code == "KeyA") {
 						window.truthAnnotationMode = 2
@@ -358,9 +355,6 @@
 			});
 
 			window.addEventListener("keyup", (e) => {
-				if (e.shiftKey) {
-					isShiftKeyDown = false
-				}
 				if (window.annotateLanesModeActive) {
 					window.truthAnnotationMode = 0
 					let div = document.getElementById("annotationScreen")
@@ -450,26 +444,99 @@
 
 		}); // END $(document).ready()
 
-		window.addEventListener("message", ({data}) => {
-			if (data.type === "updateTimeInterval") {
-				customTimeInterval = decanonicalizeTimeInterval(data.timeInterval)
-				relaunchAnimationWithNewInterval()
+		window.addEventListener("message", ({origin, data}) => {
+			if (data.type === "updateTimeInterval" && origin !== window.origin) {
+				animationInterval = decanonicalizeTimeInterval(data.timeInterval)
+				relaunchWithNewInterval()
 			}
 		}, false)
 
+		function updateTimeDisplay(newTime) {
+			document.getElementById("time_display").value =
+					(newTime - animationInterval.start).toFixed(minAnimationStepDigits)
+			document.getElementById("full_time_display").value =
+					(newTime - window.fullTimeInterval.start).toFixed(
+							minAnimationStepDigits)
+		}
+
+		function setAnimationTime(newTime) {
+			animationEngine.stop()
+			animationEngine.timeline.t = newTime
+			animationEngine.updateTimeForAll()
+		}
+
+		function setAnimationInterval(newAnimationInterval) {
+			animationInterval = newAnimationInterval
+
+			const timeSlider = $("#timeSlider")
+			timeSlider.slider("option", "min", animationInterval.start)
+			timeSlider.slider("option", "max", animationInterval.end)
+
+			if (animationEngine.timeline.t < animationInterval.start ||
+					animationEngine.timeline.t > animationInterval.end) {
+				relaunchWithNewInterval() // also calls animationEngine.stop()
+			} else {
+				animationEngine.stop()
+				timeSlider.slider("value", animationEngine.timeline.t)
+				updateTimeDisplay(animationEngine.timeline.t)
+			}
+
+			window.parent.postMessage({
+				type: "updateTimeInterval",
+				timeInterval: canonicalizeTimeInterval(animationInterval)
+			}, "*")
+		}
+
+		// Called when we get the full animation interval to set up sliders and other stuff
+		function setupFullTimeInterval(fullTimeInterval) {
+			window.fullTimeInterval = fullTimeInterval
+
+			animationInterval = {
+				start: customLocalInterval ?
+						(fullTimeInterval.start + customLocalInterval.start) :
+						fullTimeInterval.start,
+				end: customLocalInterval ?
+						(fullTimeInterval.start + customLocalInterval.end) :
+						fullTimeInterval.end
+			}
+
+			$("#intervalSlider").slider({
+				range: true,
+				min: fullTimeInterval.start,
+				max: fullTimeInterval.end,
+				values: [animationInterval.start, animationInterval.end],
+				step: minAnimationStep,
+				slide: (event, ui) => {
+					setAnimationInterval({start: ui.values[0], end: ui.values[1]})
+				}
+			})
+
+			$("#timeSlider").slider({
+				min: animationInterval.start,
+				max: animationInterval.end,
+				value: animationInterval.start,
+				step: minAnimationStep,
+				slide: (event, ui) => {
+					setAnimationTime(ui.value)
+				}
+			})
+
+			updateTimeDisplay(animationInterval.start)
+		}
+
 		function launchAnimationWithNewInterval() {
-			const tstart = customTimeInterval ?
-					(window.fullTimeInterval.start + customTimeInterval.start) :
-					window.fullTimeInterval.start
-			const tend = customTimeInterval ?
-					(window.fullTimeInterval.start + customTimeInterval.end) :
-					window.fullTimeInterval.end
 			const playbackRate = 1.0
-			animationEngine.configure(tstart, tend, playbackRate)
+			animationEngine.configure(animationInterval.start, animationInterval.end,
+					playbackRate)
 			animationEngine.launch()
 		}
 
-		function relaunchAnimationWithNewInterval() {
+		function updateIntervalSlider() {
+			$("#intervalSlider")
+					.slider("values", animationInterval.start, animationInterval.end)
+		}
+
+		function relaunchWithNewInterval() {
 			launchAnimationWithNewInterval()
 			animationEngine.updateTimeForAll()
 		}
@@ -479,9 +546,7 @@
 			// loadRtk(s3, bucket, name, (pos, rot, timestamps, t_init, t_range) => {
 			loadRtkFlatbuffer(s3, bucket, name,
 					(pos, rot, timestamps, t_init, t_range) => {
-						window.fullTimeInterval = {
-							start: t_init, end: t_init + t_range
-						}
+						setupFullTimeInterval({start: t_init, end: t_init + t_range})
 
 						// TODO Move this into main loader function:
 						launchAnimationWithNewInterval()
@@ -632,98 +697,51 @@
 										viewer.setFilterGPSTimeRange(0, 0) // Size 0 Time Window at start of timeline
 										removeLoadingScreen()
 									}, onProgress, onError)
-	      }
-
-	      // ANIMATION:
-	      { // create Animation Path & make light follow it
-	        {// ANIMATION + SLIDER LOGIC:
-	          let slider = document.getElementById("myRange");
-	          let time_display = document.getElementById("time_display");
-						let tmin = document.getElementById("playbar_tmin");
-						let tmax = document.getElementById("playbar_tmax");
-						let zmin = document.getElementById("elevation_min");
-						let zmax = document.getElementById("elevation_max");
-	          time_display.value = Math.round(10000*slider.value)/10000;
-
-	          // Playbar Button Functions:
-	          let playbutton = document.getElementById("playbutton");
-	          let pausebutton = document.getElementById("pausebutton");
-	          pausebutton.addEventListener("mousedown", () => {
-							animationEngine.stop();
-	          });
-	          playbutton.addEventListener("mousedown", () => {
-							animationEngine.start();
-	          });
-
-						time_display.addEventListener('keyup', function onEvent(e) {
-					    if (e.keyCode === 13) {
-					        console.log('Enter')
-									animationEngine.stop();
-									let val = parseFloat(time_display.value);
-									val = Math.max(0, val);
-									val = Math.min(animationEngine.timeRange-.001, val);
-									animationEngine.timeline.t = val + animationEngine.tstart;
-									animationEngine.updateTimeForAll();
-					    }
-						});
-
-						slider.addEventListener("input", () => {
-							animationEngine.stop();
-							var val = slider.value/100.0;
-							animationEngine.timeline.t = val*animationEngine.timeRange + animationEngine.tstart;
-							animationEngine.updateTimeForAll();
-						});
-
-						slider.addEventListener("wheel", () => {
-							animationEngine.stop()
-							var val = slider.value / 100.0
-							animationEngine.timeline.t =
-									val * animationEngine.timeRange + animationEngine.tstart
-							animationEngine.updateTimeForAll()
-						});
-
-						zmin.addEventListener("input", () => {
-							window.elevationWindow.min = Math.abs(Number(zmin.value))
-							window.elevationWindow.max = Math.abs(Number(zmax.value))
-							animationEngine.updateTimeForAll()
-						})
-
-						zmax.addEventListener("input", () => {
-							window.elevationWindow.min = Math.abs(Number(zmin.value))
-							window.elevationWindow.max = Math.abs(Number(zmax.value))
-							animationEngine.updateTimeForAll()
-						})
-
-						// Adjust time interval by shift-clicking and dragging a range
-						function getSliderTimeForInterval() {
-							return (slider.value / 100.0 * animationEngine.timeRange) +
-									animationEngine.tstart - window.fullTimeInterval.start
 						}
 
-						let newTimeIntervalStart = null
+						// ANIMATION:
+						{ // create Animation Path & make light follow it
+							{// ANIMATION + SLIDER LOGIC:
+								let time_display = document.getElementById("time_display")
+								let tmin = document.getElementById("playbar_tmin")
+								let tmax = document.getElementById("playbar_tmax")
+								let zmin = document.getElementById("elevation_min")
+								let zmax = document.getElementById("elevation_max")
 
-						slider.addEventListener("mousedown", () => {
-							if (isShiftKeyDown) {
-								newTimeIntervalStart = getSliderTimeForInterval()
+								// Playbar Button Functions:
+								let playbutton = document.getElementById("playbutton")
+								let pausebutton = document.getElementById("pausebutton")
+								pausebutton.addEventListener("mousedown", () => {
+									animationEngine.stop()
+								})
+								playbutton.addEventListener("mousedown", () => {
+									animationEngine.start()
+								})
+
+								time_display.addEventListener('keyup', function onEvent(e) {
+									if (e.keyCode === 13) {
+										animationEngine.stop()
+										const newValue = parseFloat(time_display.value)
+										if (newValue) {
+											const newTime = Math.min(animationEngine.timeRange,
+													Math.max(0, newValue)) + animationInterval.start
+											setAnimationTime(newTime)
+										}
+									}
+								})
+
+								zmin.addEventListener("input", () => {
+									window.elevationWindow.min = Math.abs(Number(zmin.value))
+									window.elevationWindow.max = Math.abs(Number(zmax.value))
+									animationEngine.updateTimeForAll()
+								})
+
+								zmax.addEventListener("input", () => {
+									window.elevationWindow.min = Math.abs(Number(zmin.value))
+									window.elevationWindow.max = Math.abs(Number(zmax.value))
+									animationEngine.updateTimeForAll()
+								})
 							}
-						})
-
-						slider.addEventListener("mouseup", () => {
-							if (isShiftKeyDown && newTimeIntervalStart) {
-								const newTimeIntervalEnd = getSliderTimeForInterval()
-								customTimeInterval =
-										{start: newTimeIntervalStart, end: newTimeIntervalEnd}
-								window.parent.postMessage({
-									type: "updateTimeInterval",
-									timeInterval: canonicalizeTimeInterval(customTimeInterval)
-								}, "*")
-								relaunchAnimationWithNewInterval()
-							} else {
-								newTimeIntervalStart = null
-							}
-						})
-					}
-
 	      }
 	    });
 
@@ -779,9 +797,9 @@
 
 					// Save Current RTK Pose in Uniforms:
 					for (let ii = 0, numClouds = clouds.length; ii < numClouds; ii++) {
-						let material = clouds[ii].material;
-						material.uniforms.currentRtkPosition.value = state.pose.clone();
-						material.uniforms.currentRtkOrientation.value = state.orient.toVector3().clone();
+						let material = clouds[ii].material
+						material.uniforms.currentRtkPosition.value = state.pose.clone()
+						material.uniforms.currentRtkOrientation.value = state.orient.clone()
 					}
 				} catch (e) {
 					console.error("Caught error: ",e);
@@ -824,17 +842,8 @@
 
 			// Playbar:
 			animationEngine.tweenTargets.push((gpsTime) => {
-				let slider = document.getElementById("myRange");
-				let time_display = document.getElementById("time_display");
-				let tmin = document.getElementById("playbar_tmin");
-				let tmax = document.getElementById("playbar_tmax");
-				let toggleplay = document.getElementById("toggleplay");
-				// TODO add playbackSpeed
-				time_display.value = Math.round(10000*slider.value)/10000;
-
-				let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
-				slider.value = 100*t;
-				time_display.value = Math.round(10000*(gpsTime - animationEngine.tstart))/10000; // Centered to zero
+				$("#timeSlider").slider("value", gpsTime)
+				updateTimeDisplay(gpsTime)
 			});
 
 			// // Camera:

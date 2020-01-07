@@ -4,46 +4,45 @@ $(document).ready(function () {
   var playbarhtml = $(`
     <div class="overlay">
       <div class="slidecontainer">
-        <input type="range" min="0" max="100" value=0 step="any" class="slider" id="myRange">
-        <div id="spacer">
+        <div class="slider" id="timeSlider"></div>
+        <div class="slider" id="intervalSlider"></div>
+      </div>
+      <div id="spacer"></div>
 
-          <div id="value" class="inline">
+      <div id="value">
+        <div class="center_column">
+          <button class="play_pause_button" class="play" id="playbutton"><i class="material-icons">play_arrow</i></button>
+          <button class="play_pause_button" class="pause" id="pausebutton" style="display: none"><i class="material-icons">pause</i></button>
+        </div>
+        <div class="center_column">
+          <span id='time_display_span'>Time (s): <input type="number" id="time_display" class="playbar_text_field" min=0 value=0 step="0.0001" /> (<input type="number" id="full_time_display" class="playbar_text_field" min=0 value=0 step="0.0001" readonly/> global)</span>
+        </div>
 
-            <table id='play_pause_table'>
-              <tr>
-                <td><input type="checkbox" id="toggleplay">
-                <button class="button" class="play" id="playbutton" class="inline"><i class="material-icons">play_arrow</i></button>
-                <button class="button" class="pause" id="pausebutton"><i class="material-icons">pause</i></button></td>
-                <td><span id='time_display_span'> Time (seconds): <input type="number" id="time_display" min=0 value=0 step="0.0001"> </span></td>
-              </tr>
-            </table>
+        <table id="windows" class="center_column">
+          <tr>
+            <td class="window_header">Time:</td>
+            <td class="window">[<input type="number" id="playbar_tmin" class="playbar_text_field" value=-0.05 max=0 step="0.01">, <input type="number" id="playbar_tmax" class="playbar_text_field" value=0.05 min=0 step="0.01">]</td>
+            <td>(s)</td>
+          </tr>
+          <tr>
+            <td class="window_header">Elevation:</td>
+            <td class="window">[<input type="number" id="elevation_min" class="playbar_text_field" value=-0.5 max=0 step="0.01">, <input type="number" id="elevation_max" class="playbar_text_field" value=0.5 min=0 step="0.01">]</td>
+            <td>(m)</td>
+          </tr>
+        </table>
 
-            <table id="windows">
-              <tr>
-                <td style="text-align:right">Time Window:</td>
-                <td>[<input type="number" id="playbar_tmin" value=-0.05 max=0 step="0.01">, <input type="number" id="playbar_tmax" value=0.05 min=0 step="0.01">]</td>
-                <td>(s)</td>
-              </tr>
-              <tr>
-                <td style="text-align:right">Elevation Window:</td>
-                <td>[<input type="number" id="elevation_min" value=-0.5 max=0 step="0.01">, <input type="number" id="elevation_max" value=0.5 min=0 step="0.01">]</td>
-                <td>(m)</td>
-              </tr>
-            </table>
-
-            <label class="switch">
-              <input type="checkbox" >
-              <span class="toggleslider" id="toggleslider"></span>
-            </label>
-            <input type="range" name="playback_speed" id="playback_speed" min="1" max="8" value="4" step="any">
-            <button name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
-            <button name="toggle_hideshow" id="toggle_hideshow">Toggle Pointcloud Highlight Mode</button>
-            <button name="load_detections_button" id="load_detections_button">Load Detections</button>
-            <button name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
-            <button name="load_radar_button" id="load_radar_button">Load Radar</button>
-            <button name="download_lanes_button" id="download_lanes_button">Download Lanes</button>
-            <button name="reload_lanes_button" id="reload_lanes_button">Annotate Lanes</button>
-          </div>
+        <div class="button_column">
+          <button class="fill_button" name="toggle_calibration_panels" id="toggle_calibration_panels">Toggle Calibration Panels</button>
+          <button class="fill_button" name="toggle_hideshow" id="toggle_hideshow">Toggle Pointcloud Highlight Mode</button>
+        </div>
+        <div class="button_column">
+          <button class="fill_button" name="load_detections_button" id="load_detections_button">Load Detections</button>
+          <button class="fill_button" name="load_gaps_button" id="load_gaps_button">Load Gaps</button>
+          <button class="fill_button" name="load_radar_button" id="load_radar_button">Load Radar</button>
+        </div>
+        <div class="button_column">
+          <button class="fill_button" name="download_lanes_button" id="download_lanes_button">Download Lanes</button>
+          <button class="fill_button" name="reload_lanes_button" id="reload_lanes_button">Annotate Lanes</button>
         </div>
       </div>
     </div>
@@ -65,23 +64,22 @@ $(document).ready(function () {
         $( "#playbar_tmax" ).prop( "disabled", true ); //Disable
 
       } else {
-        $( "#playbar_tmin" ).prop( "disabled", false ); //Enable
-        $( "#playbar_tmax" ).prop( "disabled", false ); //Enable
+        $("#playbar_tmin").prop("disabled", false) //Enable
+        $("#playbar_tmax").prop("disabled", false) //Enable
 
-        var sliderVal = $("#myRange").val() / 100.;
-        var t = sliderVal * lidarRange + lidarOffset;
-        $("#demo").html((t-lidarOffset).toFixed(4));
+        var t = $("#timeSlider").val()
+        $("#demo").html((t - lidarOffset).toFixed(4))
 
         // var dtMin = Number($("#playbar_tmin").val());
         // var dtMax = Number($("#playbar_tmax").val());
 
-        const dtMin = window.animationEngine.activeWindow.backward;
-        const dtMax = window.animationEngine.activeWindow.forward;
+        const dtMin = window.animationEngine.activeWindow.backward
+        const dtMax = window.animationEngine.activeWindow.forward
 
-        tmin = t - dtMin;
-        tmax = t + dtMax;
+        tmin = t - dtMin
+        tmax = t + dtMax
 
-        window.viewer.setFilterGPSTimeRange(tmin, tmax);
+        window.viewer.setFilterGPSTimeRange(tmin, tmax)
       }
     }
 
@@ -89,116 +87,71 @@ $(document).ready(function () {
     function updateSlider(slideval=null) {
 
       if (slideval) {
-        var slider = playbarhtml.find("#myRange");
-        slider.val(slideval);
+        var slider = playbarhtml.find("#timeSlider")
+        slider.val(slideval)
       }
 
-      updateClip();
+      updateClip()
 
     }
 
-    playbarhtml.find("#playbar_tmin").on('input', function() {
-      const tmin = playbarhtml.find("#playbar_tmin");
-      window.animationEngine.activeWindow.backward = Math.abs(Number(tmin.val()));
-      updateClip();
-      window.animationEngine.updateTimeForAll();
-    });
+  playbarhtml.find("#playbar_tmin").on('input', function () {
+    const tmin = playbarhtml.find("#playbar_tmin")
+    window.animationEngine.activeWindow.backward = Math.abs(Number(tmin.val()))
+    updateClip()
+    window.animationEngine.updateTimeForAll()
+  })
 
-    playbarhtml.find("#playbar_tmax").on('input', function() {
-      const tmax = playbarhtml.find("#playbar_tmax");
-      window.animationEngine.activeWindow.forward = Math.abs(Number(tmax.val()));
-      updateClip();
-      window.animationEngine.updateTimeForAll();
-    });
+  playbarhtml.find("#playbar_tmax").on('input', function () {
+    const tmax = playbarhtml.find("#playbar_tmax")
+    window.animationEngine.activeWindow.forward = Math.abs(Number(tmax.val()))
+    updateClip()
+    window.animationEngine.updateTimeForAll()
+  })
 
-    playbarhtml.find("#elevation_max").on('input', function() {
-      const elevationMax = playbarhtml.find("#elevation_max");
-      window.elevationWindow[1] = Math.abs(Number(elevationMax.val()));
-    });
+  playbarhtml.find("#elevation_max").on('input', function () {
+    const elevationMax = playbarhtml.find("#elevation_max")
+    window.elevationWindow[1] = Math.abs(Number(elevationMax.val()))
+  })
 
-    playbarhtml.find("#elevation_min").on('input', function() {
-      const elevationMin = playbarhtml.find("#elevation_min");
-      window.elevationWindow[0] = Math.abs(Number(elevationMin.val()));
-    });
+  playbarhtml.find("#elevation_min").on('input', function () {
+    const elevationMin = playbarhtml.find("#elevation_min")
+    window.elevationWindow[0] = Math.abs(Number(elevationMin.val()))
+  })
 
-    playbarhtml.find("#myRange").on('input', function() {
-      updateSlider();
-    });
+  playbarhtml.find("#playbar_toggle").click(function () {
+    updateClip(disable = this.checked)
+  })
+  playbarhtml.find("#playbar_toggle").trigger('click')
 
-    playbarhtml.find("#myRange").on('wheel', function(e) {
-      var slider = playbarhtml.find("#myRange");
-      // var tmin = playbarhtml.find("#playbar_tmin");
-      // var tmax = playbarhtml.find("#playbar_tmax");
-      var slideval = Number(slider.val());
-      var dy = e.originalEvent.deltaY;
+  playbarhtml.find("#playbutton").mousedown(function () {
+    playbarhtml.find("#playbutton").hide()
+    playbarhtml.find("#pausebutton").show()
 
-      const tmin = window.animationEngine.activeWindow.backward;
-      const tmax = window.animationEngine.activeWindow.forward;
+  })
 
-      var scalefactor = 1;
-      if (e.originalEvent.shiftKey) {
-        scalefactor = 100;
+  playbarhtml.find("#pausebutton").mousedown(function () {
+    playbarhtml.find("#playbutton").show()
+    playbarhtml.find("#pausebutton").hide()
+
+  })
+
+  playbarhtml.find("#toggle_calibration_panels").mouseup(function () {
+
+    // Find Calibration Panels:
+    let panels = $(".draggable-overlay")
+    for (ii = 0, len = panels.length; ii < len; ii++) {
+
+      let panel = panels[ii]
+
+      // Check is visible and toggle:
+      if (panel.style.display == "none" || panel.style.display == "") {
+        panel.style.display = "block"
+      } else {
+        panel.style.display = "none"
       }
 
-      var lidarRange = 1;
-      try {
-       // lidarRange = window.viewer.scene.pointclouds[0].pcoGeometry.nodes.r.gpsTime.range;
-       lidarRange = window.animationEngine.timeRange;
-     } catch (e) {
-     }
-      var stepY = 0;
-      if (dy < 0) {
-        // dt = Number(tmax.val());
-        dt = tmax;
-      } else if (dy > 0) {
-        // dt = Number(tmin.val());
-        dt = -tmin;
-      }
-      dt = dt*scalefactor;
-      var sliderange = Number(slider.attr("max")) - Number(slider.attr("min"));
-      var stepY = sliderange*dt/lidarRange;
-
-      slideval += stepY;
-
-      updateSlider(slideval);
-    });
-    playbarhtml.find("#myRange").on("scroll", function(e) {
-      console.log(e);
-    });
-
-    playbarhtml.find("#playbar_toggle").click(function() {
-      updateClip(disable=this.checked);
-    });
-    playbarhtml.find("#playbar_toggle").trigger('click');
-
-    playbarhtml.find("#playbutton").mousedown(function() {
-      playbarhtml.find("#playbutton").hide();
-      playbarhtml.find("#pausebutton").show();
-
-    });
-
-    playbarhtml.find("#pausebutton").mousedown(function() {
-      playbarhtml.find("#playbutton").show();
-      playbarhtml.find("#pausebutton").hide();
-
-    });
-
-    playbarhtml.find("#toggle_calibration_panels").mouseup(function() {
-
-      // Find Calibration Panels:
-      let panels = $(".draggable-overlay");
-      for(ii=0, len=panels.length; ii<len; ii++) {
-
-        let panel = panels[ii];
-
-        // Check is visible and toggle:
-        if (panel.style.display == "none" || panel.style.display == "") {
-          panel.style.display = "block";
-        } else {
-          panel.style.display = "none"
-        }
-
-      }
+    }
 
     });
 
@@ -283,8 +236,6 @@ $(document).ready(function () {
     // document.getElementById("playbar_tmax").style.display = "none";
     // document.getElementById("elevation_max").style.display = "none";
     // document.getElementById("elevation_min").style.display = "none";
-    document.getElementById("playback_speed").style.display = "none";
-    document.getElementById("toggleslider").style.display = "none";
     // document.getElementById("toggle_calibration_panels").style.display = "none";
     document.getElementById("load_detections_button").style.display = "none";
     document.getElementById("load_gaps_button").style.display = "none";
