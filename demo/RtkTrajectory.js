@@ -69,7 +69,7 @@ class RtkTrajectory {
     this.orientations = orientationsVec3 || []; // Array of THREE.Vector3
     this.timestamps = timestamps || []; // Array of double
     this.tstart = timestamps[0] || 0;
-    this.tend = timestamps[timestamps.length-1] || 0;
+    this.tend = timestamps[timestamps.length - 1] || 0;
     this.timeRange = this.tend - this.tstart;
 
     // Construct States:
@@ -83,7 +83,7 @@ class RtkTrajectory {
 
       // Create new state:
       const state = new RtkState(tt, posesVec3[ii], orientationsVec3[ii]);
-      const closestTickTime = Math.round((tt-timestamps[0])*samplingFreq) / samplingFreq + timestamps[0];
+      const closestTickTime = Math.round((tt - timestamps[0]) * samplingFreq) / samplingFreq + timestamps[0];
 
       if (ii == 0) { // First state
         this.states.push(state);
@@ -93,14 +93,14 @@ class RtkTrajectory {
 
         continue; // skip this state
 
-      } else if (Math.abs(tt-closestTickTime) >= epsilon) { // timestamp is not on a tick mark
+      } else if (Math.abs(tt - closestTickTime) >= epsilon) { // timestamp is not on a tick mark
 
         // TODO assuming for now that all points are within epsilon of a tick mark
         debugger; // This is an unhandled case in the RtkTrajectory constructor
         console.error("This is an unhandled case in the RtkTrajectory constructor");
         continue;
 
-      } else if (Math.abs(1/(tt - lastT) - samplingFreq) < epsilon) { // timestamp is on the next sampling 'tick'
+      } else if (Math.abs(1 / (tt - lastT) - samplingFreq) < epsilon) { // timestamp is on the next sampling 'tick'
 
         this.states.push(state);
         lastT = tt;
@@ -108,11 +108,11 @@ class RtkTrajectory {
       } else { // timestamp falls on a later tick (missed at least 1 tick)
 
         // Get lastState and current state
-        const lastState = this.states[this.states.length-1];
+        const lastState = this.states[this.states.length - 1];
         const nextState = state;
 
         // Interpolate between lastState and nextState to get currentState
-        const numMissed = Math.round( (tt - lastT)*samplingFreq );
+        const numMissed = Math.round( (tt - lastT) * samplingFreq );
         for (let jj = 1; jj < numMissed; jj++) {
           let currentTimestamp = lastState.t + jj * samplingFreq;
           const interpolatedState = RtkTrajectory.interpolateStates(currentTimestamp, lastState, nextState);
@@ -140,8 +140,8 @@ class RtkTrajectory {
     }
 
     const tt = timestamp - this.tstart;
-    const tickIdxBefore = Math.floor(tt*this.samplingFreq);
-    const tickIdxAfter = Math.ceil(tt*this.samplingFreq);
+    const tickIdxBefore = Math.floor(tt * this.samplingFreq);
+    const tickIdxAfter = Math.ceil(tt * this.samplingFreq);
 
     const state1 = this.states[tickIdxBefore];
     const state2 = this.states[tickIdxAfter];
@@ -172,9 +172,9 @@ class RtkTrajectory {
     const alpha = (timestamp - state1.t) / deltaT;
 
     // Interpolate Poses (Constant Velocity):
-    const x = (1-alpha) * state1.pose.x + (alpha) * state2.pose.x;
-    const y = (1-alpha) * state1.pose.y + (alpha) * state2.pose.y;
-    const z = (1-alpha) * state1.pose.z + (alpha) * state2.pose.z;
+    const x = (1 - alpha) * state1.pose.x + (alpha) * state2.pose.x;
+    const y = (1 - alpha) * state1.pose.y + (alpha) * state2.pose.y;
+    const z = (1 - alpha) * state1.pose.z + (alpha) * state2.pose.z;
     const pose = new THREE.Vector3(x, y, z);
 
     // Interpolate Orientations (Constant Angular Velocity):
@@ -187,4 +187,4 @@ class RtkTrajectory {
   }
 }
 
-export { RtkTrajectory, RtkState }
+export { RtkTrajectory, RtkState };

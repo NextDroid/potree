@@ -24,7 +24,8 @@ export async function loadDetections(s3, bucket, name, shaderMaterial, animation
                        const FlatbufferModule = await import(schemaUrl);
                        const detectionGeometries = parseDetections(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
                        callback(detectionGeometries, );
-                     }});
+                     }
+});
     })();
 
   } else {
@@ -39,7 +40,7 @@ export async function loadDetections(s3, bucket, name, shaderMaterial, animation
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -76,7 +77,7 @@ function parseDetections(bytesArray, shaderMaterial, FlatbufferModule, animation
 
     // Get Flatbuffer Detection Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let detection = FlatbufferModule.Flatbuffer.GroundTruth.Detections.getRootAsDetections(fbuffer);
 
@@ -114,10 +115,10 @@ function createDetectionGeometries(shaderMaterial, detections, animationEngine) 
   let boxGeometry2;
   let detectTimes = [];
   let all = [];
-  for (let ss=0, numDetections=detections.length; ss<numDetections; ss++) {
+  for (let ss = 0, numDetections = detections.length; ss < numDetections; ss++) {
     let detection = detections[ss];
 
-    for (let ii=0, len=detection.detectionsLength(); ii<len; ii++) {
+    for (let ii = 0, len = detection.detectionsLength(); ii < len; ii++) {
 
       // Assign Current Detection:
       detect = detection.detections(ii);
@@ -151,11 +152,11 @@ function createDetectionGeometries(shaderMaterial, detections, animationEngine) 
       boxMesh.rotateOnAxis(zAxis, yaw);
 
       // debugger; // lhw yaw/rotation
-      detectTimes.push(detect.timestamp()-animationEngine.tstart);
+      detectTimes.push(detect.timestamp() - animationEngine.tstart);
 
 
       let se3 = new THREE.Matrix4();
-      let quaternion = new THREE.Quaternion().setFromAxisAngle(zAxis,yaw);
+      let quaternion = new THREE.Quaternion().setFromAxisAngle(zAxis, yaw);
       se3.makeRotationFromQuaternion(quaternion); // Rotation
       se3.setPosition(delta); // Translation
       // debugger; // se3
@@ -164,12 +165,12 @@ function createDetectionGeometries(shaderMaterial, detections, animationEngine) 
       // TODO rotate boxGeometry.quaternion.setFromUnitVectors(axis, vector.clone().normalize());
       allBoxes.merge(boxGeometry2);
 
-      if ((ss%1000)==0 || ss==(numDetections-1)) {
+      if ((ss % 1000) == 0 || ss == (numDetections - 1)) {
         let bufferBoxGeometry = new THREE.BufferGeometry().fromGeometry(allBoxes);
         let edges = new THREE.EdgesGeometry( bufferBoxGeometry ); // or WireframeGeometry( geometry )
         let timestamps = [];
-        for (let tt=0, numTimes=detectTimes.length; tt<numTimes; tt++) {
-          for (let kk=0, numVerticesPerBox=24; kk<numVerticesPerBox; kk++) {  // NOTE: 24 vertices per edgesBox
+        for (let tt = 0, numTimes = detectTimes.length; tt < numTimes; tt++) {
+          for (let kk = 0, numVerticesPerBox = 24; kk < numVerticesPerBox; kk++) { // NOTE: 24 vertices per edgesBox
             timestamps.push(detectTimes[tt]);
           }
         }
@@ -192,7 +193,7 @@ function createDetectionGeometries(shaderMaterial, detections, animationEngine) 
     x0: x0,
     y0: y0,
     z0: z0
-  }
+  };
 
   return output;
 }

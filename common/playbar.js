@@ -53,14 +53,14 @@ $(document).ready(function () {
     $("#potree_render_area").append(playbarhtml);
 
     // Define function to update clip range:
-    function updateClip(disable=false) {
+    function updateClip(disable = false) {
 
       const lidarOffset = window.animationEngine.tstart;
       const lidarRange = window.animationEngine.timeRange;
 
       if (disable) {
         // NOTE: is there a better way of disabling the gps clip range filter?
-        window.viewer.setFilterGPSTimeRange(lidarOffset-1, lidarOffset+lidarRange+1);
+        window.viewer.setFilterGPSTimeRange(lidarOffset - 1, lidarOffset + lidarRange + 1);
         $( "#playbar_tmin" ).prop( "disabled", true ); //Disable
         $( "#playbar_tmax" ).prop( "disabled", true ); //Disable
 
@@ -68,9 +68,9 @@ $(document).ready(function () {
         $( "#playbar_tmin" ).prop( "disabled", false ); //Enable
         $( "#playbar_tmax" ).prop( "disabled", false ); //Enable
 
-        var sliderVal = $("#myRange").val() / 100.;
+        var sliderVal = $("#myRange").val() / 100.0;
         var t = sliderVal * lidarRange + lidarOffset;
-        $("#demo").html((t-lidarOffset).toFixed(4));
+        $("#demo").html((t - lidarOffset).toFixed(4));
 
         // var dtMin = Number($("#playbar_tmin").val());
         // var dtMax = Number($("#playbar_tmax").val());
@@ -86,7 +86,7 @@ $(document).ready(function () {
     }
 
     // Function to update slider:
-    function updateSlider(slideval=null) {
+    function updateSlider(slideval = null) {
 
       if (slideval) {
         var slider = playbarhtml.find("#myRange");
@@ -154,9 +154,9 @@ $(document).ready(function () {
         // dt = Number(tmin.val());
         dt = -tmin;
       }
-      dt = dt*scalefactor;
+      dt = dt * scalefactor;
       var sliderange = Number(slider.attr("max")) - Number(slider.attr("min"));
-      var stepY = sliderange*dt/lidarRange;
+      var stepY = sliderange * dt / lidarRange;
 
       slideval += stepY;
 
@@ -167,7 +167,7 @@ $(document).ready(function () {
     });
 
     playbarhtml.find("#playbar_toggle").click(function() {
-      updateClip(disable=this.checked);
+      updateClip(disable = this.checked);
     });
     playbarhtml.find("#playbar_toggle").trigger('click');
 
@@ -187,7 +187,7 @@ $(document).ready(function () {
 
       // Find Calibration Panels:
       let panels = $(".draggable-overlay");
-      for(ii=0, len=panels.length; ii<len; ii++) {
+      for(ii = 0, len = panels.length; ii < len; ii++) {
 
         let panel = panels[ii];
 
@@ -195,7 +195,7 @@ $(document).ready(function () {
         if (panel.style.display == "none" || panel.style.display == "") {
           panel.style.display = "block";
         } else {
-          panel.style.display = "none"
+          panel.style.display = "none";
         }
 
       }
@@ -208,12 +208,12 @@ $(document).ready(function () {
 
         let blob = new Blob([text], {
           type: "data:text/plain;charset=utf-8"
-        })
+        });
 
-        let fileUrl = URL.createObjectURL(blob)
+        let fileUrl = URL.createObjectURL(blob);
 
         var element = document.createElement('a');
-        element.setAttribute('href', fileUrl)
+        element.setAttribute('href', fileUrl);
         element.setAttribute('download', filename);
 
         element.style.display = 'none';
@@ -266,7 +266,7 @@ $(document).ready(function () {
 
     window.addEventListener("message", e => {
      if (e.data === 'pause') {
-       animationEngine.stop()
+       animationEngine.stop();
      }
     });
 

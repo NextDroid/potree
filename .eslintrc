@@ -37,7 +37,7 @@
 		"indent": "off",
 		"no-trailing-spaces": "off",
 		"keyword-spacing": "off",
-		"no-multiple-empty-lines" : "off",
+		"no-multiple-empty-lines": "off",
 		"key-spacing": "off",
 		"spaced-comment": "off",
 		"quotes": "off",
@@ -47,7 +47,7 @@
 		"object-property-newline": "off",
 		"eol-last": "off"
 	},
-	"parserOptions": { 
-		"ecmaVersion": 6 
+	"parserOptions": {
+		"ecmaVersion": 2020
 	}
 }
