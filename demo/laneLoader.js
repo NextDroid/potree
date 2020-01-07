@@ -1,5 +1,5 @@
 import { Measure } from "../src/utils/Measure.js";
-import { LaneSegments } from "./LaneSegments.js"
+import { LaneSegments } from "./LaneSegments.js";
 
 
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
@@ -36,7 +36,8 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
                        const FlatbufferModule = await import(schemaUrl);
                        const laneGeometries = parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
                        callback( laneGeometries );
-                     }});
+                     } 
+});
     })();
 
   } else {
@@ -51,7 +52,7 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -90,7 +91,7 @@ function parseLanes(bytesArray, FlatbufferModule, supplierNum, annotationMode, v
 
     // Get Flatbuffer Lane Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let lane = FlatbufferModule.Flatbuffer.GroundTruth.Lane.getRootAsLane(fbuffer);
 
@@ -108,26 +109,26 @@ function splitLaneVertices(lanes) {
   let spineVertices = [];
 
   let lane, vtx, laneVertices;
-  for (let ii=0, numLanes=lanes.length; ii<numLanes; ii++) {
+  for (let ii = 0, numLanes = lanes.length; ii < numLanes; ii++) {
 
     lane = lanes[ii];
 
     laneVertices = [];
-    for (let jj=0, numLeftVtx=lane.leftLength(); jj<numLeftVtx; jj++) {
+    for (let jj = 0, numLeftVtx = lane.leftLength(); jj < numLeftVtx; jj++) {
       vtx = lane.left(jj);
       laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
     }
     leftVertices.push(laneVertices);
 
     laneVertices = [];
-    for (let jj=0, numRightVtx=lane.rightLength(); jj<numRightVtx; jj++) {
+    for (let jj = 0, numRightVtx = lane.rightLength(); jj < numRightVtx; jj++) {
       vtx = lane.right(jj);
       laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
     }
     rightVertices.push(laneVertices);
 
     laneVertices = [];
-    for (let jj=0, numSpineVtx=lane.spineLength(); jj<numSpineVtx; jj++) {
+    for (let jj = 0, numSpineVtx = lane.spineLength(); jj < numSpineVtx; jj++) {
       vtx = lane.spine(jj);
       spineVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
     }
@@ -138,7 +139,7 @@ function splitLaneVertices(lanes) {
     leftGroups: leftVertices,
     rightGroups: rightVertices,
     spineGroups: spineVertices
-  }
+  };
 
   return output;
 }
@@ -156,13 +157,13 @@ function createLaneGeometries(vertexGroups, material) {
   let center, firstCenter, delta;
   let boxGeometry, se3, quaternion;
   debugger; // vertexGroups.length
-  for (let ii=0, len=vertexGroups.length; ii<len; ii++) {
+  for (let ii = 0, len = vertexGroups.length; ii < len; ii++) {
 
     vertexGroup = vertexGroups[ii];
 
-    for (let jj=1, numVertices=vertexGroup.length; jj<numVertices; jj++) {
+    for (let jj = 1, numVertices = vertexGroup.length; jj < numVertices; jj++) {
 
-      v1 = vertexGroup[jj-1];
+      v1 = vertexGroup[jj - 1];
       v2 = vertexGroup[jj];
 
       length = v1.distanceTo(v2);
@@ -192,7 +193,7 @@ function createLaneGeometries(vertexGroups, material) {
       boxGeometry.applyMatrix( se3 );
       allBoxes.merge(boxGeometry);
 
-      if ((ii%10000)==0 || ii==(len-1)) {
+      if ((ii % 10000) == 0 || ii == (len - 1)) {
         // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
         let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
         mesh.position.copy(firstCenter);
@@ -253,7 +254,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
   let rightLaneSegments = new LaneSegments(); rightLaneSegments.name = "Right Lane Segments";
 
   let clonedBoxes = [];
-  for (let vi=0, vlen=volumes.length; vi<vlen; vi++) {
+  for (let vi = 0, vlen = volumes.length; vi < vlen; vi++) {
     if (volumes[vi].clip) {
       let clonedBbox = volumes[vi].boundingBox.clone();
       clonedBbox.applyMatrix4(volumes[vi].matrixWorld);
@@ -267,7 +268,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
   let spines = [];
   let all = [];
   let allBoxes = new THREE.Geometry();
-  for(let ii=0, len=lanes.length; ii<len; ii++) {
+  for(let ii = 0, len = lanes.length; ii < len; ii++) {
     lane = lanes[ii];
 
     var geometryLeft = new THREE.Geometry();
@@ -276,7 +277,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
 
     let left, right, spine;
     let isContains = false;
-    for(let jj=0, numVertices=lane.leftLength(); jj<numVertices; jj++) {
+    for(let jj = 0, numVertices = lane.leftLength(); jj < numVertices; jj++) {
       left = lane.left(jj);
 
       if (annotationMode) {
@@ -292,15 +293,14 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
     }
 
     isContains = false;
-    for(let jj=0, numVertices=lane.rightLength(); jj<numVertices; jj++) {
+    for(let jj = 0, numVertices = lane.rightLength(); jj < numVertices; jj++) {
       right = lane.right(jj);
 
       if (annotationMode) {
 
         if (volumes.length == 0) {
           laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()));
-        }
-        else {
+        } else {
           isContains = updateSegments(rightLaneSegments, clonedBoxes, isContains, right, jj, numVertices);
         }
       } else {
@@ -308,7 +308,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
       }
     }
 
-    for(let jj=0, numVertices=lane.spineLength(); jj<numVertices; jj++) {
+    for(let jj = 0, numVertices = lane.spineLength(); jj < numVertices; jj++) {
       spine = lane.spine(jj);
 
       if (annotationMode) {
@@ -354,8 +354,8 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
     createBoxes(geometryRight.vertices, materialRight);
 
     function createBoxes(vertices, material) {
-      for (let ii=1, len=vertices.length; ii<len; ii++) {
-        tmp1 = vertices[ii-1];
+      for (let ii = 1, len = vertices.length; ii < len; ii++) {
+        tmp1 = vertices[ii - 1];
         tmp2 = vertices[ii];
 
         p1 = new THREE.Vector3(tmp1.x, tmp1.y, tmp1.z);
@@ -395,7 +395,7 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
         // TODO rotate boxGeometry.quaternion.setFromUnitVectors(axis, vector.clone().normalize());
         allBoxes.merge(boxGeometry);
 
-        if ((ii%100000)==0 || ii==(len-1)) {
+        if ((ii % 100000) == 0 || ii == (len - 1)) {
           // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
           let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
           mesh.position.copy(firstCenter);
@@ -429,14 +429,14 @@ function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
 
   let output = {
     all: all
-  }
+  };
   return output;
 }
 
 function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index, lengthArray) {
 
   let newIsContains = false;
-  for (let bbi=0, bbLen=clonedBoxes.length; bbi<bbLen; bbi++) {
+  for (let bbi = 0, bbLen = clonedBoxes.length; bbi < bbLen; bbi++) {
     let isContains = clonedBoxes[bbi].containsPoint(new THREE.Vector3(point.x(), point.y(), point.z()));
     if (isContains) {
       newIsContains = isContains;
@@ -456,9 +456,9 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
   }
 
   // edge case if a segment exists at the end
-  if (newIsContains && index == lengthArray-1) {
+  if (newIsContains && index == lengthArray - 1) {
     laneSegments.finalizeSegment();
   }
 
-  return newIsContains
+  return newIsContains;
 }

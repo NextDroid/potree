@@ -16,7 +16,8 @@ export async function loadRadar(s3, bucket, name, callback) {
                      const string = new TextDecoder().decode(data.Body);
                      const {geometry, t_init} = parseRadar(string);
                      callback(geometry, t_init);
-                   }});
+                   }
+});
   } else {
     const filename = "csv/radar_tracks_demo.csv";
     const xhr = new XMLHttpRequest();
@@ -49,7 +50,7 @@ function parseRadar(radarString) {
     let row, cols;
     let t_init = 0;
     let firstTimestamp = true;
-    for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
+    for (let ii = 0, len = rows.length; ii < len - 1; ++ii) {
       row = rows[ii];
       cols = row.split(',');
 
@@ -72,7 +73,7 @@ function parseRadar(radarString) {
         }
 
         // timestamps.push(t);
-        timestamps.push(t-t_init);
+        timestamps.push(t - t_init);
         positions.push(x);
         positions.push(y);
         positions.push(z);
@@ -85,7 +86,7 @@ function parseRadar(radarString) {
         let boxGeometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize); // TODO REMOVE
         boxGeometry.translate(x, y, z); // TODO REMOVE
         boxGeometries.merge(boxGeometry); // TODO REMOVE
-        boxPositions.push( new THREE.Vector3(x, y, z) );  // TODO REMOVE
+        boxPositions.push( new THREE.Vector3(x, y, z) ); // TODO REMOVE
       }
     }
     // debugger; // timestamp

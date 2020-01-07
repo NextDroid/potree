@@ -22,7 +22,7 @@ export function updateSidebar(vizConfiguration) {
     }
 
     return nodeID;
-  }
+  };
 
   const vehicleTree = tree.jstree('create_node', "#", { "text": "<b>Vehicle</b>", "id": "vehicleViz"}, "first", false, false);
   tree.jstree("check_node", vehicleTree);

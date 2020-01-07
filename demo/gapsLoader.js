@@ -23,7 +23,8 @@ export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine
                        const FlatbufferModule = await import(schemaUrl);
                        const gapGeometries = parseGaps(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
                        callback( gapGeometries );
-                     }});
+                     } 
+});
     })();
 
   } else {
@@ -38,7 +39,7 @@ export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -76,7 +77,7 @@ function parseGaps(bytesArray, shaderMaterial, FlatbufferModule, animationEngine
 
     // Get Flatbuffer Gap Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let gap = FlatbufferModule.Flatbuffer.Primitives.PolyLine3D.getRootAsPolyLine3D(fbuffer);
 
@@ -91,11 +92,11 @@ function splitGapVertices(gaps) {
 
   let gapVertices = [];
   let gapLength, vtx, gapPoints;
-  for (let ii=0, gapLength=gaps.length; ii<gapLength; ii++) {
+  for (let ii = 0, gapLength = gaps.length; ii < gapLength; ii++) {
     gap = gaps[ii];
 
     gapVertices = [];
-    for (let jj=0, numGapVtx=gap.gapLength; jj<numGapVtx; jj++) {
+    for (let jj = 0, numGapVtx = gap.gapLength; jj < numGapVtx; jj++) {
       vtx = gap.vertices(jj);
       gapVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
     }
@@ -106,7 +107,7 @@ function splitGapVertices(gaps) {
 
   let output = {
       gapGroups: gapVertices,
-  }
+  };
 
   return output;
 }
@@ -123,13 +124,13 @@ function createGapGeometries(vertexGroups, material) {
   let center, firstCenter, delta;
   let boxGeometry, se3, quaternion;
   debugger; // vertexGroups.length
-  for (let ii=0, len=vertexGroups.length; ii<len; ii++) {
+  for (let ii = 0, len = vertexGroups.length; ii < len; ii++) {
 
     vertexGroup = vertexGroups[ii];
 
-    for (let jj=1, numVertices=vertexGroup.length; jj<numVertices; jj++) {
+    for (let jj = 1, numVertices = vertexGroup.length; jj < numVertices; jj++) {
 
-      v1 = vertexGroup[jj-1];
+      v1 = vertexGroup[jj - 1];
       v2 = vertexGroup[jj];
 
       length = v1.distanceTo(v2);
@@ -159,7 +160,7 @@ function createGapGeometries(vertexGroups, material) {
       boxGeometry.applyMatrix( se3 );
       allBoxes.merge(boxGeometry);
 
-      if ((ii%10000)==0 || ii==(len-1)) {
+      if ((ii % 10000) == 0 || ii == (len - 1)) {
         // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
         let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
         mesh.position.copy(firstCenter);
@@ -184,17 +185,17 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
   let all = [];
   let allBoxes = new THREE.Geometry();
   let gapTimes = [];
-  for(let ii=0, len=gaps.length; ii<len; ii++) {
+  for(let ii = 0, len = gaps.length; ii < len; ii++) {
     // if (ii > 1000) {
     //   continue;
     // }
 
     gap = gaps[ii];
 
-    var geometryLeft = new THREE.Geometry();  // TODO this is just a temporary variable to get an array of vertices later, do this in a better way
+    var geometryLeft = new THREE.Geometry(); // TODO this is just a temporary variable to get an array of vertices later, do this in a better way
 
     let left;
-    for(let jj=0, numVertices=gap.verticesLength(); jj<numVertices; jj++) {
+    for(let jj = 0, numVertices = gap.verticesLength(); jj < numVertices; jj++) {
       left = gap.vertices(jj);
       geometryLeft.vertices.push( new THREE.Vector3(left.x(), left.y(), left.z()));
     }
@@ -208,8 +209,8 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
     createBoxes(geometryLeft.vertices, shaderMaterial);
 
     function createBoxes(vertices, material) {
-      for (let ii=1, len=vertices.length; ii<len; ii++) {
-        tmp1 = vertices[ii-1];
+      for (let ii = 1, len = vertices.length; ii < len; ii++) {
+        tmp1 = vertices[ii - 1];
         tmp2 = vertices[ii];
 
         p1 = new THREE.Vector3(tmp1.x, tmp1.y, tmp1.z);
@@ -260,14 +261,14 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
              .value() - animationEngine.tstart
         );
 
-        if ((ii%100000)==0 || ii==(len-1)) {
+        if ((ii % 100000) == 0 || ii == (len - 1)) {
           // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
           let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
           mesh.name = "Gaps";
           mesh.position.copy(firstCenter);
           let timestamps = [];
-          for (let tt=0, numTimes=gapTimes.length; tt<numTimes; tt++) {
-            for (let kk=0, numVerticesPerBox=36; kk<numVerticesPerBox; kk++) {  // NOTE: 24 vertices per edgesBox
+          for (let tt = 0, numTimes = gapTimes.length; tt < numTimes; tt++) {
+            for (let kk = 0, numVerticesPerBox = 36; kk < numVerticesPerBox; kk++) { // NOTE: 24 vertices per edgesBox
               timestamps.push(gapTimes[tt]);
             }
           }
@@ -284,6 +285,6 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
 
   const output = {
     left: all
-  }
+  };
   return output;
 }

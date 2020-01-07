@@ -2,13 +2,13 @@ import { Measure } from "../src/utils/Measure.js";
 
 export class LaneSegments extends THREE.Object3D {
 	constructor() {
-		super()
+		super();
 
 		this.offsets = [];
-		this.offsets.push(0)
+		this.offsets.push(0);
 		this.segments = [];
 		this.outPoints = [];
-		this.outPoints.push([])
+		this.outPoints.push([]);
 	}
 
 	initializeSegment(subName) { // have to be a callback?
@@ -26,18 +26,18 @@ export class LaneSegments extends THREE.Object3D {
 
 	finalizeSegment() {
 		// add geometry object to this class (each measure object)
-		this.add(this.segments[this.segments.length-1]);
+		this.add(this.segments[this.segments.length - 1]);
 	};
 
 	incrementOffset(point) {
 		// increment latest offset and add point to latest outPoints
-		this.offsets[this.offsets.length-1] = this.offsets[this.offsets.length-1]+1;
-		this.outPoints[this.outPoints.length-1].push({position: point});
+		this.offsets[this.offsets.length - 1] = this.offsets[this.offsets.length - 1] + 1;
+		this.outPoints[this.outPoints.length - 1].push({position: point});
 	};
 
 	addSegmentMarker(point) {
 		// call addMarker for latest measure object
-		this.segments[this.segments.length-1].addMarker(point);
+		this.segments[this.segments.length - 1].addMarker(point);
 	};
 
 	getFinalPoints() {
@@ -45,9 +45,9 @@ export class LaneSegments extends THREE.Object3D {
 
 		finalPoints = finalPoints.concat(this.outPoints[0]);
 
-		for (let si=0, sLen=this.segments.length; si<sLen; si++) {
+		for (let si = 0, sLen = this.segments.length; si < sLen; si++) {
 			finalPoints = finalPoints.concat(this.segments[si].points);
-			finalPoints = finalPoints.concat(this.outPoints[si+1]);
+			finalPoints = finalPoints.concat(this.outPoints[si + 1]);
 		}
 
 		return finalPoints;

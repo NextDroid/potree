@@ -121,31 +121,31 @@ $(document).ready(function () {
               //     Range: <input type="number" step='any'/> m
               //     <button type="button">update</button>
               //   </span>
-              // </p>
-
-
+  // </p>
 
   // Add to DOM:
   $('body').prepend(draggableOverlays);
 
   // Make the DIV element draggable:
   // dragElement($(".draggable-overlay"));
-  dragElement(document.getElementById("calibration-overlay-velo2rtk"));
-  dragElement(document.getElementById("calibration-overlay-rtk2vehicle"));
-  $("#download_cals_button").click = function() {downloadCals();};
+  dragElement(document.getElementById('calibration-overlay-velo2rtk'));
+  dragElement(document.getElementById('calibration-overlay-rtk2vehicle'));
+  $('#download_cals_button').click = function () { downloadCals(); };
 
-
-  function dragElement(elmnt) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    if (document.getElementById(elmnt.id + "-header")) { // TODO make jquery
+  function dragElement (elmnt) {
+    let pos1 = 0;
+    let pos2 = 0;
+    let pos3 = 0;
+    let pos4 = 0;
+    if (document.getElementById(elmnt.id + '-header')) { // TODO make jquery
       // if present, the header is where you move the DIV from:
-      document.getElementById(elmnt.id + "-header").onmousedown = dragMouseDown;
+      document.getElementById(elmnt.id + '-header').onmousedown = dragMouseDown;
     } else {
       // otherwise, move the DIV from anywhere inside the DIV:
       elmnt.onmousedown = dragMouseDown;
     }
 
-    function dragMouseDown(e) {
+    function dragMouseDown (e) {
       e = e || window.event;
       e.preventDefault();
       // get the mouse cursor position at startup:
@@ -178,51 +178,53 @@ $(document).ready(function () {
 
   // Set scale slider:
   const calibrationPanels = $(".draggable-overlay");
-  for (let ii = 0, len=calibrationPanels.length; ii < len; ii++) {
+  for (let ii = 0, len = calibrationPanels.length; ii < len; ii++) {
     const calibrationPanel = calibrationPanels[ii];
 
-    const pElements = calibrationPanel.getElementsByTagName("p");
-    for (let jj = 0, len2=pElements.length; jj < len2; jj++) {
+    const pElements = calibrationPanel.getElementsByTagName('p');
+    for (let jj = 0, len2 = pElements.length; jj < len2; jj++) {
       const span = pElements[jj].children[0];
 
-      const value = span.querySelector(".calibration-value");
-      const setpoint = span.querySelector(".calibration-setpoint");
-      const stepsize = span.querySelector(".calibration-step");
-      const slider = span.querySelector(".calibration-slider");
-      const reset = span.querySelector(".calibration-reset");
+      const value = span.querySelector('.calibration-value');
+      const setpoint = span.querySelector('.calibration-setpoint');
+      const stepsize = span.querySelector('.calibration-step');
+      const slider = span.querySelector('.calibration-slider');
+      const reset = span.querySelector('.calibration-reset');
 
-      slider.oninput = function() {
+      slider.oninput = function () {
         // TODO Validate output of Number() below
         const sliderVal = Number(slider.value);
         const setpointVal = Number(setpoint.value);
         const stepsizeVal = Number(stepsize.value);
-        const val = setpointVal+stepsizeVal*sliderVal;
+        const val = setpointVal + stepsizeVal * sliderVal;
 
         value.textContent = val.toFixed(4);
 
         const idComponents = value.id.split('-');
         const id = idComponents[0];
-        const dim = idComponents[idComponents.length-1];
+        const dim = idComponents[idComponents.length - 1];
 
-        const event = new CustomEvent("update-calibration-panel", {detail:{id:id, dim:dim, val:val}});
+        const event = new CustomEvent('update-calibration-panel',
+          { detail: { id: id, dim: dim, val: val } });
         window.dispatchEvent(event);
-      }
+      };
 
       reset.onmouseup = function() {
         // setpoint.value = 0;
         stepsize.value = 1;
         slider.value = 0;
-        const val = Number(setpoint.value)+stepsize.value*slider.value;
+        const val = Number(setpoint.value) + stepsize.value * slider.value;
 
         value.textContent = val.toFixed(4);
 
         const idComponents = value.id.split('-');
         const id = idComponents[0];
-        const dim = idComponents[idComponents.length-1];
+        const dim = idComponents[idComponents.length - 1];
 
-        const event = new CustomEvent("update-calibration-panel", {detail:{id:id, dim:dim, val:val}});
+        const event = new CustomEvent('update-calibration-panel',
+          { detail: { id: id, dim: dim, val: val } });
         window.dispatchEvent(event);
-      }
+      };
 
     }
   }
@@ -231,26 +233,26 @@ $(document).ready(function () {
 
 function getRtk2Vehicle() {
   const rtk2vehicle = {
-    x: Number($("#rtk2vehicle-x").text()),
-    y: Number($("#rtk2vehicle-y").text()),
-    z: Number($("#rtk2vehicle-z").text()),
-    roll: Number($("#rtk2vehicle-roll").text()),
-    pitch: Number($("#rtk2vehicle-pitch").text()),
-    yaw: Number($("#rtk2vehicle-yaw").text())
-  }
+    x: Number($('#rtk2vehicle-x').text()),
+    y: Number($('#rtk2vehicle-y').text()),
+    z: Number($('#rtk2vehicle-z').text()),
+    roll: Number($('#rtk2vehicle-roll').text()),
+    pitch: Number($('#rtk2vehicle-pitch').text()),
+    yaw: Number($('#rtk2vehicle-yaw').text())
+  };
   // debugger; // return
   return rtk2vehicle;
 }
 
 function getVelo2Rtk() {
   const velo2rtk = {
-    x: Number($("#velo2rtk-x").text()),
-    y: Number($("#velo2rtk-y").text()),
-    z: Number($("#velo2rtk-z").text()),
-    roll: Number($("#velo2rtk-roll").text()),
-    pitch: Number($("#velo2rtk-pitch").text()),
-    yaw: Number($("#velo2rtk-yaw").text())
-  }
+    x: Number($('#velo2rtk-x').text()),
+    y: Number($('#velo2rtk-y').text()),
+    z: Number($('#velo2rtk-z').text()),
+    roll: Number($('#velo2rtk-roll').text()),
+    pitch: Number($('#velo2rtk-pitch').text()),
+    yaw: Number($('#velo2rtk-yaw').text())
+  };
   // debugger; // return
   return velo2rtk;
 }
@@ -283,21 +285,21 @@ function download(filename, text) {
 }
 
 function downloadCals() {
-  const x =  $("#velo2rtk-x").text()
-  const y =  $("#velo2rtk-y").text()
-  const z =  $("#velo2rtk-z").text()
-  const roll =  $("#velo2rtk-roll").text()
-  const pitch =  $("#velo2rtk-pitch").text()
-  const yaw =  $("#velo2rtk-yaw").text()
+  const x = $('#velo2rtk-x').text();
+  const y = $('#velo2rtk-y').text();
+  const z = $('#velo2rtk-z').text();
+  const roll = $('#velo2rtk-roll').text();
+  const pitch = $('#velo2rtk-pitch').text();
+  const yaw = $('#velo2rtk-yaw').text();
 
   const version = window.usingAdjustedHeading ? '2.0' : '1.0';
 
   const text = `${x}, ${y}, ${z}\n${roll}, ${pitch}, ${yaw}\nversion: ${version}`;
 
   const date = new Date();
-  const year = `${date.getYear() + 1900}`.padStart(4, '0')
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate() + 0}`.padStart(2, '0')
+  const year = `${date.getYear() + 1900}`.padStart(4, '0');
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate() + 0}`.padStart(2, '0');
   download(`EXTRINSICS_UNKNOWN_${year}${month}${day}_N001.txt`, text);
 }
 

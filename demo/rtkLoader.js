@@ -7,11 +7,11 @@ function isNan(n) {
 }
 
 function minAngle(theta) {
-  if (theta < - Math.PI) {
-    theta += 2*Math.PI;
+  if (theta < -Math.PI) {
+    theta += 2 * Math.PI;
   }
   if (theta > Math.PI) {
-    theta -= 2*Math.PI;
+    theta -= 2 * Math.PI;
   }
   return theta;
 }
@@ -29,10 +29,11 @@ export async function loadRtk(s3, bucket, name, callback) {
                      const string = new TextDecoder().decode(data.Body);
                      const {mpos, orientations, timestamps, t_init, t_range} = parseRTK(string);
                      callback(mpos, orientations, timestamps, t_init, t_range);
-                   }});
+                   } 
+});
     request.on("httpDownloadProgress", (e) => {
       let loadingBar = getLoadingBar();
-      let val = 100*(e.loaded/e.total);
+      let val = 100 * (e.loaded / e.total);
       val = Math.max(lastLoaded, val);
       loadingBar.set(val);
       lastLoaded = val;
@@ -50,7 +51,7 @@ export async function loadRtk(s3, bucket, name, callback) {
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = function(data) {
       const {mpos, orientations, timestamps, t_init, t_range} = parseRTK(data.target.response);
@@ -69,24 +70,24 @@ function parseRTK(RTKstring) {
   let tcol, xcol, ycol, zcol, yawcol, pitchcol, rollcol, validCol;
 
   if (isODC) {
-    tcol = 1;       // GPS_TIME
+    tcol = 1; // GPS_TIME
     // tcol = 3;       // SYSTEM_TIME
-    xcol = 12;      // RTK_EASTING_M
-    ycol = 13;      // RTK_NORTHING_M
-    zcol = 14;      // RTK_ALT_M
-    yawcol = 15;    // ADJUSTED_HEADING_RAD
-    pitchcol = 16;  // PITCH_RAD
-    rollcol = 17;   // ROLL_RAD
+    xcol = 12; // RTK_EASTING_M
+    ycol = 13; // RTK_NORTHING_M
+    zcol = 14; // RTK_ALT_M
+    yawcol = 15; // ADJUSTED_HEADING_RAD
+    pitchcol = 16; // PITCH_RAD
+    rollcol = 17; // ROLL_RAD
     validCol = tcol; // not in ODC data
   } else {
-    tcol = 0;       // timestamp
-    xcol = 3;       // easting
-    ycol = 4;       // northing
-    zcol = 5;       // altitude
-    yawcol = 14;    // heading
-    pitchcol = 15;  // pitch
-    rollcol = 16;   // roll
-    validCol = 20;  // isValid
+    tcol = 0; // timestamp
+    xcol = 3; // easting
+    ycol = 4; // northing
+    zcol = 5; // altitude
+    yawcol = 14; // heading
+    pitchcol = 15; // pitch
+    rollcol = 16; // roll
+    validCol = 20; // isValid
   }
 
   if (rows[0].includes("adjustedHeading")) {
@@ -108,7 +109,7 @@ function parseRTK(RTKstring) {
   let t_range = 0;
   let firstTimestamp = true;
   let lastRoll, lastPitch, lastYaw, lastOrientation;
-  for (let ii = 0, len = rows.length; ii < len-1; ++ii) {
+  for (let ii = 0, len = rows.length; ii < len - 1; ++ii) {
     const row = rows[ii];
     const cols = row.split(' ');
     if (cols.length > 0) {
@@ -142,13 +143,13 @@ function parseRTK(RTKstring) {
       colors.push( Math.random() * 0xffffff );
       colors.push( Math.random() * 0xffffff );
       colors.push( Math.random() * 0xffffff );
-      mpos.push([x,y,z]);
+      mpos.push([x, y, z]);
       timestamps.push(t);
 
       orientations.push([
-        lastRoll + minAngle(roll-lastRoll),
-        lastPitch + minAngle(pitch-lastPitch),
-        lastYaw + minAngle(yaw-lastYaw)
+        lastRoll + minAngle(roll - lastRoll),
+        lastPitch + minAngle(pitch - lastPitch),
+        lastYaw + minAngle(yaw - lastYaw)
       ]);
     }
   }
@@ -157,7 +158,7 @@ function parseRTK(RTKstring) {
 
 
 export function applyRotation(obj, roll, pitch, yaw) {
-  if ( typeof(obj.initialRotation) != "undefined") {
+  if ( typeof (obj.initialRotation) !== "undefined") {
     roll += obj.initialRotation.x;
     pitch += obj.initialRotation.y;
     yaw += obj.initialRotation.z;
@@ -173,11 +174,11 @@ export function applyRotation(obj, roll, pitch, yaw) {
   const cy = Math.cos(yaw);
 
   const rotMat = new THREE.Matrix4().set(
-    cy*cp,  cy*sp*sr - sy*cr,   cy*sp*cr + sy*sr, 0,
-    sy*cp,  sy*sp*sr + cy*cr,   sy*sp*cr - cy*sr, 0,
-    -sp,    cp*sr,              cp*cr,            0,
-    0,      0,                  0,                1,
-  )
+    cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr, 0,
+    sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr, 0,
+    -sp, cp * sr, cp * cr, 0,
+    0, 0, 0, 1,
+  );
 
   // obj.rotation.set(roll, pitch, yaw);
   obj.rotation.setFromRotationMatrix(rotMat);

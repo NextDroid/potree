@@ -23,10 +23,11 @@ export async function loadRtkFlatbuffer(s3, bucket, name, callback) {
                      const FlatbufferModule = await import(schemaUrl);
                      const {mpos, orientations, timestamps, t_init, t_range} = parseRTK(data.Body, FlatbufferModule);
                      callback(mpos, orientations, timestamps, t_init, t_range);
-                   }});
+                   } 
+});
     request.on("httpDownloadProgress", (e) => {
       let loadingBar = getLoadingBar();
-      let val = 100*(e.loaded/e.total);
+      let val = 100 * (e.loaded / e.total);
       val = Math.max(lastLoaded, val);
       loadingBar.set(val);
       lastLoaded = val;
@@ -46,7 +47,7 @@ export async function loadRtkFlatbuffer(s3, bucket, name, callback) {
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -86,7 +87,7 @@ function parseRTK(bytesArray, FlatbufferModule) {
 
     // Get Flatbuffer RTK Pose Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let rtkPosesFB = FlatbufferModule.Flatbuffer.RTK.Poses.getRootAsPoses(fbuffer);
 
@@ -99,7 +100,7 @@ function parseRTK(bytesArray, FlatbufferModule) {
         continue;
       }
 
-      if (count == 0)  {
+      if (count == 0) {
         t_init = pose.timestamp();
       }
       t_range = pose.timestamp() - t_init;

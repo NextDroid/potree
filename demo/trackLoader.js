@@ -15,16 +15,18 @@ export function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, ca
         Key: schemaFile
       });
 
-      s3.getObject({Bucket: bucket,
-                    Key: objectName},
-                   async (err, data) => {
-                     if (err) {
-                       console.log(err, err.stack);
-                     } else {
-                       const FlatbufferModule = await import(schemaUrl);
-                       const trackGeometries = parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
-                       callback(trackGeometries, );
-                     }});
+      s3.getObject({
+        Bucket: bucket, Key: objectName
+      }, async (err, data) => {
+        if (err) {
+          console.log(err, err.stack);
+        } else {
+          const FlatbufferModule = await import(schemaUrl);
+          const trackGeometries = parseTracks(data.Body, shaderMaterial, FlatbufferModule,
+            animationEngine);
+          callback(trackGeometries);
+        }
+      });
     })();
 
   } else {
@@ -36,10 +38,10 @@ export function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, ca
     xhr.open("GET", filename);
     xhr.responseType = "arraybuffer";
 
-    xhr.onprogress = function(event) {
+    xhr.onprogress = function (event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -99,7 +101,7 @@ function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngi
 
     // Get Flatbuffer Track Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
     // debugger;
@@ -136,38 +138,80 @@ function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
   let allBoxes = new THREE.Geometry();
   let stateTimes = [];
   let all = [];
-  for (let ss=0, numTracks=tracks.length; ss<numTracks; ss++) {
+  for (let ss = 0, numTracks = tracks.length; ss < numTracks; ss++) {
     let track = tracks[ss];
 
-    for (let ii=0, len=track.statesLength(); ii<len; ii++) {
+    for (let ii = 0, len = track.statesLength(); ii < len; ii++) {
 
       // Assign Current Track State:
       state = track.states(ii);
 
-      function getBoundingBoxGeometry(t0, state, material) {
+      function getBoundingBoxGeometry (t0, state, material) {
 
         // Initializations:
         let centroidLocation;
-        let sumX = 0, sumY=0, sumZ=0;
-        for (let jj=0; jj<8;jj++) {
+        let sumX = 0;
+        let sumY = 0;
+        let sumZ = 0;
+        for (let jj = 0; jj < 8; jj++) {
           bbox = state.bbox(jj);
           // vertices.push( new THREE.Vector3(bbox.x(), bbox.y(), bbox.z()));
           sumX += bbox.x();
           sumY += bbox.y();
           sumZ += bbox.z();
         }
-        centroidLocation = new THREE.Vector3( sumX/8.0, sumY/8.0, sumZ/8.0 );
-        if (firstCentroid == undefined) {
+        centroidLocation = new THREE.Vector3(sumX / 8.0, sumY / 8.0, sumZ / 8.0);
+        if (!firstCentroid) {
           firstCentroid = centroidLocation;
         }
         // debugger; // delta
         delta = centroidLocation.clone().sub(firstCentroid);
 
-        let p0 = new THREE.Vector3(state.bbox(0).x(), state.bbox(0).y(), state.bbox(0).z()); // Front Left Bottom Point (near front left tire on vehicle e.g.)
-        let p1 = new THREE.Vector3(state.bbox(1).x(), state.bbox(1).y(), state.bbox(1).z()); // Front Right Bottom Point (near front right tire on vehicle e.g.)
-        let p2 = new THREE.Vector3(state.bbox(2).x(), state.bbox(2).y(), state.bbox(2).z()); // Back Right Bottom Point (near back right tire on vehicle e.g.)
+        let p0 = new THREE.Vector3(state.bbox(0).x(), state.bbox(0).y(), state.bbox(0).z()); // Front
+                                                                                             // Left
+                                                                                             // Bottom
+                                                                                             // Point
+                                                                                             // (near
+                                                                                             // front
+                                                                                             // left
+                                                                                             // tire
+                                                                                             // on
+                                                                                             // vehicle
+                                                                                             // e.g.)
+        let p1 = new THREE.Vector3(state.bbox(1).x(), state.bbox(1).y(), state.bbox(1).z()); // Front
+                                                                                             // Right
+                                                                                             // Bottom
+                                                                                             // Point
+                                                                                             // (near
+                                                                                             // front
+                                                                                             // right
+                                                                                             // tire
+                                                                                             // on
+                                                                                             // vehicle
+                                                                                             // e.g.)
+        let p2 = new THREE.Vector3(state.bbox(2).x(), state.bbox(2).y(), state.bbox(2).z()); // Back
+                                                                                             // Right
+                                                                                             // Bottom
+                                                                                             // Point
+                                                                                             // (near
+                                                                                             // back
+                                                                                             // right
+                                                                                             // tire
+                                                                                             // on
+                                                                                             // vehicle
+                                                                                             // e.g.)
         let p3 = new THREE.Vector3(state.bbox(3).x(), state.bbox(3).y(), state.bbox(3).z());
-        let p4 = new THREE.Vector3(state.bbox(4).x(), state.bbox(4).y(), state.bbox(4).z()); // Front Left Top Point (above front left tire at height of roof of a vehicle e.g.)
+        let p4 = new THREE.Vector3(state.bbox(4).x(), state.bbox(4).y(), state.bbox(4).z()); // Front
+                                                                                             // Left
+                                                                                             // Top
+                                                                                             // Point
+                                                                                             // (above
+                                                                                             // front
+                                                                                             // left
+                                                                                             // tire
+                                                                                             // at
+                                                                                             // height
+                                                                                             // of roof of a vehicle e.g.)
         let p5 = new THREE.Vector3(state.bbox(5).x(), state.bbox(5).y(), state.bbox(5).z());
         let p6 = new THREE.Vector3(state.bbox(6).x(), state.bbox(6).y(), state.bbox(6).z());
         let p7 = new THREE.Vector3(state.bbox(7).x(), state.bbox(7).y(), state.bbox(7).z());
@@ -200,59 +244,61 @@ function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
         boxMesh.rotateOnAxis(zAxis, yaw);
 
         // debugger; // lhw yaw/rotation
-        if (t0 == -1) {
+        if (t0 === -1) {
           t0 = state.timestamps();
         }
         // x0.push(centroidLocation.x); // TODO Not needed?
         // y0.push(centroidLocation.y); // TODO Not needed?
         // z0.push(centroidLocation.z); // TODO Not needed?
         // let timestamps = [];
-        // for (let kk=0, numVertices=boxMesh.geometry.attributes.position.count; kk<numVertices; kk++) {
-        //   timestamps.push(state.timestamps()-t0+16.8); // HACK -- 16.8 is a hack to get the tracked box timestamps to lineup with the rest of the animation
-        // }
-        // boxMesh.geometry.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps, 1));
+        // for (let kk=0, numVertices=boxMesh.geometry.attributes.position.count; kk<numVertices;
+        // kk++) { timestamps.push(state.timestamps()-t0+16.8); // HACK -- 16.8 is a hack to get
+        // the tracked box timestamps to lineup with the rest of the animation }
+        // boxMesh.geometry.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps,
+        // 1));
 
-        stateTimes.push(state.timestamps()-animationEngine.tstart); // HACK -- 16.8 is a hack to get the tracked box timestamps to lineup with the rest of the animation
-
+        stateTimes.push(state.timestamps() - animationEngine.tstart); // HACK -- 16.8 is a hack to
+                                                                      // get the tracked box
+                                                                      // timestamps to lineup with
+                                                                      // the rest of the animation
 
         let se3 = new THREE.Matrix4();
-        let quaternion = new THREE.Quaternion().setFromAxisAngle(zAxis,yaw);
+        let quaternion = new THREE.Quaternion().setFromAxisAngle(zAxis, yaw);
         se3.makeRotationFromQuaternion(quaternion); // Rotation
         se3.setPosition(delta); // Translation
         // debugger; // se3
 
-        boxGeometry2.applyMatrix( se3 );
+        boxGeometry2.applyMatrix(se3);
         // TODO rotate boxGeometry.quaternion.setFromUnitVectors(axis, vector.clone().normalize());
         allBoxes.merge(boxGeometry2);
 
-        if ((ii%10000)==0 || ii==(len-1)) {
+        if ((ii % 10000) === 0 || ii === (len - 1)) {
           let bufferBoxGeometry = new THREE.BufferGeometry().fromGeometry(allBoxes);
-          let edges = new THREE.EdgesGeometry( bufferBoxGeometry ); // or WireframeGeometry( geometry )
+          let edges = new THREE.EdgesGeometry(bufferBoxGeometry); // or WireframeGeometry( geometry
+                                                                  // )
           // debugger; //edges, stateTimes
           let timestamps = [];
-          for (let tt=0, numTimes=stateTimes.length; tt<numTimes; tt++) {
-            for (let kk=0, numVerticesPerBox=24; kk<numVerticesPerBox; kk++) {  // NOTE: 24 vertices per edgesBox
+          for (let tt = 0, numTimes = stateTimes.length; tt < numTimes; tt++) {
+            for (let kk = 0, numVerticesPerBox = 24; kk < numVerticesPerBox; kk++) { // NOTE: 24 vertices per edgesBox
               timestamps.push(stateTimes[tt]);
             }
           }
           edges.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps, 1));
 
           // let bufferBoxGeometry = allBoxes;
-          let wireframe = new THREE.LineSegments( edges, material ); // NOTE don't clone material to assign to multiple meshes
+          let wireframe = new THREE.LineSegments(edges, material); // NOTE don't clone material to
+                                                                   // assign to multiple meshes
           let mesh = wireframe;
           mesh.position.copy(firstCentroid);
-          bboxs.push( mesh );
+          bboxs.push(mesh);
           allBoxes = new THREE.Geometry();
           firstCentroid = centroidLocation.clone();
           stateTimes = [];
         }
 
-
         const output = {
-          t0: t0,
-          boxMesh: boxMesh,
-          boxGeometry: boxGeometry2
-        }
+          t0: t0, boxMesh: boxMesh, boxGeometry: boxGeometry2
+        };
         return output;
       }
 
@@ -278,15 +324,9 @@ function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
     }
   }
 
-
-
   const output = {
-    bbox: bboxs,
-    t0: t0,
-    x0: x0,
-    y0: y0,
-    z0: z0
-  }
+    bbox: bboxs, t0: t0, x0: x0, y0: y0, z0: z0
+  };
 
   return output;
 }

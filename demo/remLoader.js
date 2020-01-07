@@ -3,7 +3,7 @@ export async function loadRem(s3, bucket, name, remShaderMaterial, animationEngi
   //is name here the dataset name? We should be more careful about that....
   if (s3 && bucket && name) {
     (async () => {
-      const objectName = `${name}/3_Assessments/control_point_3_rtk_relative.fb`//`${name}/3_Assessments/gaps.fb`;//fb schema from s3
+      const objectName = `${name}/3_Assessments/control_point_3_rtk_relative.fb`;//`${name}/3_Assessments/gaps.fb`;//fb schema from s3
       //s3://veritas-aptiv-2019-02-11/Data/REM-Lane1-Run1_2019-08-01¶002/3_Assessments/control_point_3_rem_relative.fb
       const schemaFile = `${name}/5_Schemas/VisualizationPrimitives_generated.js`;//remschemafile from s3
 
@@ -21,7 +21,8 @@ export async function loadRem(s3, bucket, name, remShaderMaterial, animationEngi
                        const FlatbufferModule = await import(schemaUrl);
                        const remSphereMeshes = parseControlPoints(data.Body, remShaderMaterial, FlatbufferModule, animationEngine);
                        callback( remSphereMeshes );
-                     }});
+                     }
+});
     })();
 
   } else {
@@ -36,7 +37,7 @@ export async function loadRem(s3, bucket, name, remShaderMaterial, animationEngi
     xhr.onprogress = function(event) {
       t1 = performance.now();
       t0 = t1;
-    }
+    };
 
     xhr.onload = async function(data) {
 
@@ -74,7 +75,7 @@ function parseControlPoints(bytesArray, remShaderMaterial, FlatbufferModule, ani
 
     // Get Flatbuffer Gap Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset + segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let point = FlatbufferModule.Flatbuffer.Primitives.Sphere3D.getRootAsSphere3D(fbuffer);
 
@@ -91,7 +92,7 @@ function createControlMeshes(controlPoints, remShaderMaterial, FlatbufferModule,
 
   let allSpheres = [];
   let controlTimes = [];
-  for(let ii=0, len=controlPoints.length; ii<len; ii++) {
+  for(let ii = 0, len = controlPoints.length; ii < len; ii++) {
 
     point = controlPoints[ii];
 
@@ -104,7 +105,7 @@ function createControlMeshes(controlPoints, remShaderMaterial, FlatbufferModule,
 
     var timestampArray = [];
     for (let ii = 0; ii < 63; ii++) {
-      timestampArray.push(timestamp)
+      timestampArray.push(timestamp);
     }
 
     var sphereGeo = new THREE.SphereBufferGeometry(radius);
