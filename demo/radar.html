@@ -12,18 +12,19 @@
 	<link rel="stylesheet" type="text/css"
 		href="../libs/jquery-ui/jquery-ui.min.css">
 	<link rel="stylesheet" type="text/css"
-		href="../libs/perfect-scrollbar/css/perfect-scrollbar.css">
+				href="../libs/perfect-scrollbar/css/perfect-scrollbar.css">
 	<link rel="stylesheet" type="text/css" href="../libs/openlayers3/ol.css">
 	<link rel="stylesheet" type="text/css" href="../libs/spectrum/spectrum.css">
 	<link rel="stylesheet" type="text/css"
-		href="../libs/jstree/themes/mixed/style.css">
+				href="../libs/jstree/themes/mixed/style.css">
 	<link rel="stylesheet" href="../common/overlay.css" type="text/css">
 	<link rel="stylesheet" href="../common/calibration-panels.css"
-		type="text/css">
+				type="text/css">
 	<link rel="stylesheet" href="../common/loading-bar.css" type="text/css">
 	<!-- <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> -->
-	<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-		rel="stylesheet">
+	<link
+			href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
+			rel="stylesheet">
 	<script src="../node_modules/flatbuffers/js/flatbuffers.js"></script>
 	<!-- <script type="module" src="../readers/polyline3D.js"></script>
 	<script type="module" src="../schemas/GroundTruth_generated_tmp.js"></script> -->
@@ -36,6 +37,7 @@
 	<script type="module" src="remLoader.js"></script>
 	<script type="module" src="calibrationManager.js"></script>
 	<link rel="stylesheet" type="text/css" href="../common/playbar.css">
+	<link rel="stylesheet" type="text/css" href="../veritas/cameraHud.css">
 </head>
 
 <body>
@@ -125,7 +127,16 @@
 
       }
 
-  </script>
+
+
+
+
+
+
+
+
+	</script>
+	<script type="module" src="../veritas/cameraHud.js"></script>
 	<script type="module">
 		"use strict"
 		import { loadLanes } from "../demo/laneLoader.js"
@@ -140,75 +151,80 @@
 		import {
 			loadVelo2Rtk, loadRtk2Vehicle, storeCalibration
 		} from "../demo/calibrationManager.js"
-		import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js"
-		import { getLoadingBar } from "../common/overlay.js"
-		// import {  } from "../common/overlay.js";
-		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
-		import { PointAttributeNames } from "../src/loader/PointAttributes.js"
+		import { setupCameraHud } from "../veritas/cameraHud.js"
+		import {
+			updateSidebar, togglePointClass
+		} from '../common/custom-sidebar.js';
+		import { getLoadingBar } from '../common/overlay.js';
+		import {
+			setLoadingScreen, removeLoadingScreen
+		} from '../common/overlay.js';
+		import { PointAttributeNames } from '../src/loader/PointAttributes.js';
 
-		function canonicalizeTimeInterval({ start, end }) {
-			return [String(start), String(end)]
+		function canonicalizeTimeInterval ({ start, end }) {
+			return [String(start), String(end)];
 		}
 
-		function decanonicalizeTimeInterval([start, end]) {
-			if (start === "" && end === "") {
-				return null
+		function decanonicalizeTimeInterval ([start, end]) {
+			if (start === '' && end === '') {
+				return null;
 			} else {
-				return { start: Number(start), end: Number(end) }
+				return { start: Number(start), end: Number(end) };
 			}
 		}
 
-		function shiftTimeInterval({ start, end }, offset) {
-			return { start: start + offset, end: end + offset }
+		function shiftTimeInterval ({ start, end }, offset) {
+			return { start: start + offset, end: end + offset };
 		}
 
-		const minAnimationStepDigits = 5
-		const minAnimationStep = Math.pow(10, -minAnimationStepDigits)
+		const minAnimationStepDigits = 5;
+		const minAnimationStep = Math.pow(10, -minAnimationStepDigits);
 
 		// setLoadingScreen();
 
-		const runForLocalDevelopment = location.search === "" &&
-			(window.location.hostname === 'localhost' ||
-				window.location.hostname === '127.0.0.1')
+		const runForLocalDevelopment = location.search === '' &&
+				(window.location.hostname === 'localhost' ||
+						window.location.hostname === '127.0.0.1');
 
-		const params = new URLSearchParams(location.search)
-		const bucket = params.get("bucket")
-		const region = params.get("region")
-		const names = JSON.parse(params.get("names"))
-		const name = params.get("clicked")
-		const visualizationMode = params.get("mode")
-		const annotateLanesAvailable = params.get('annotate') == 'Annotate'
-		const downloadLanesAvailable = annotateLanesAvailable
-		const calibrationModeAvailable = params.get("calibrate") == "Calibrate" ||
-			runForLocalDevelopment
-		const accessKeyId = params.get("key1")
-		const secretAccessKey = params.get("key2")
-		const sessionToken = params.get("key3")
-		const fonts = JSON.parse(params.get("fonts"))
-		const theme = JSON.parse(params.get("theme")) // material-ui theme
-		let comparisonDatasets = []
+		const params = new URLSearchParams(location.search);
+		const bucket = params.get('bucket');
+		const region = params.get('region');
+		const names = JSON.parse(params.get('names'));
+		const name = params.get('clicked');
+		const cameraFiles = JSON.parse(params.get('cameraFiles'));
+		const visualizationMode = params.get('mode');
+		const annotateLanesAvailable = params.get('annotate') == 'Annotate';
+		const downloadLanesAvailable = annotateLanesAvailable;
+		const calibrationModeAvailable = params.get('calibrate') == 'Calibrate' ||
+				runForLocalDevelopment;
+		const accessKeyId = params.get('key1');
+		const secretAccessKey = params.get('key2');
+		const sessionToken = params.get('key3');
+		const fonts = JSON.parse(params.get('fonts'));
+		const theme = JSON.parse(params.get('theme')); // material-ui theme
+		let comparisonDatasets = [];
 		if (names) {
-			comparisonDatasets = names.filter(element => element !== name)
+			comparisonDatasets = names.filter(element => element !== name);
 		}
 		let customLocalInterval = decanonicalizeTimeInterval(
-			[params.get("start"), params.get("end")])
-		let animationInterval = null
+				[params.get('start'), params.get('end')]);
+		let animationInterval = null;
 
 		if (fonts) {
-			const head = document.head
+			const head = document.head;
 			fonts.forEach(font => {
-				const link = document.createElement('link')
-				link.rel = 'stylesheet'
-				link.href = font
-				head.appendChild(link)
-			})
+				const link = document.createElement('link');
+				link.rel = 'stylesheet';
+				link.href = font;
+				head.appendChild(link);
+			});
 
 			// Override fonts specified.
-			const { typography } = theme
-			const style = document.createElement('style')
+			const { typography } = theme;
+			const style = document.createElement('style');
 			style.innerHTML =
-				`#value {font-family: ${typography.fontFamily} !important;} #sidebar_root {font-family: ${typography.fontFamily} !important;} #potree_languages {font-family: ${typography.fontFamily} !important;}`
-			head.appendChild(style)
+					`#value {font-family: ${typography.fontFamily} !important;} #sidebar_root {font-family: ${typography.fontFamily} !important;} #potree_languages {font-family: ${typography.fontFamily} !important;}`;
+			head.appendChild(style);
 		}
 
 		const s3 = bucket && region && name && accessKeyId && secretAccessKey &&
@@ -1179,68 +1195,74 @@
 		//   viewer.scene.scene.add(mesh);
 		// });
 
+		// Load camera HUD
+		$(document).ready(() => setupCameraHud(cameraFiles));
+
 		// Load Radar Code (Start)
 		window.radarLoaded = false;
 		$(document).ready(() => {
 			// Configure Playbar
-			$("#load_radar_button")[0].style.display = "block"
-			let loadRadarButton = $("#load_radar_button")[0];
-			loadRadarButton.addEventListener("mousedown", () => {
+			$('#load_radar_button')[0].style.display = 'block';
+			let loadRadarButton = $('#load_radar_button')[0];
+			loadRadarButton.addEventListener('mousedown', () => {
 				if (!window.radarLoaded) {
-					$("#loading-bar")[0].style.display = "none";
+					$('#loading-bar')[0].style.display = 'none';
 					setLoadingScreen();
 
-					loadRadar(s3, bucket, name, (geometry, t_init, boxBufferGeometries) => {
+					loadRadar(s3, bucket, name,
+							(geometry, t_init, boxBufferGeometries) => {
 
-						let boxMesh = new THREE.Mesh(boxBufferGeometries, new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-						boxMesh.name = "radar_boxes";
-						// viewer.scene.scene.add(boxMesh);
+								let boxMesh = new THREE.Mesh(boxBufferGeometries,
+										new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+								boxMesh.name = 'radar_boxes';
+								// viewer.scene.scene.add(boxMesh);
 
+								// uniforms
+								let uniforms = {
+									color: { value: new THREE.Color(0xffff00) },
+									minGpsTime: { value: 0.0 },
+									maxGpsTime: { value: 110.0 },
+									initialTime: { value: t_init }
+								};
 
-						// uniforms
-						let uniforms = {
-							color: { value: new THREE.Color(0xffff00) },
-							minGpsTime: { value: 0.0 },
-							maxGpsTime: { value: 110.0 },
-							initialTime: { value: t_init }
-						};
+								// point cloud material
+								var shaderMaterial = new THREE.ShaderMaterial({
 
-						// point cloud material
-						var shaderMaterial = new THREE.ShaderMaterial({
+									uniforms: uniforms,
+									vertexShader: document.getElementById(
+											'vertexshader').textContent,
+									fragmentShader: document.getElementById(
+											'fragmentshader').textContent,
+									transparent: true
 
-							uniforms: uniforms,
-							vertexShader: document.getElementById('vertexshader').textContent,
-							fragmentShader: document.getElementById('fragmentshader').textContent,
-							transparent: true
+								});
 
-						});
+								var material = new THREE.PointsMaterial({ size: 1.0 });
+								var mesh = new THREE.Points(geometry, shaderMaterial);
+								mesh.name = 'radar';
+								// debugger; //radar tracks added?
+								viewer.scene.scene.add(mesh);
+								viewer.scene.dispatchEvent(
+										{ 'type': 'sensor_layer_added', 'sensorLayer': mesh });
 
-						var material = new THREE.PointsMaterial({ size: 1.0 });
-						var mesh = new THREE.Points(geometry, shaderMaterial);
-						mesh.name = "radar";
-						// debugger; //radar tracks added?
-						viewer.scene.scene.add(mesh);
-						viewer.scene.dispatchEvent({ "type": "sensor_layer_added", "sensorLayer": mesh });
-
-
-						// Create tween:
-						{
-							animationEngine.tweenTargets.push((t) => {
-								// debugger;
-								let minGpsTime = t - animationEngine.activeWindow.backward;
-								let maxGpsTime = t + animationEngine.activeWindow.forward;
-								let radarOffset = t_init;
-								let minRadarTime = minGpsTime - radarOffset;
-								let maxRadarTime = maxGpsTime - radarOffset;
-								let radar = viewer.scene.scene.getObjectByName("radar")
-								radar.material.uniforms.minGpsTime.value = minRadarTime;
-								radar.material.uniforms.maxGpsTime.value = maxRadarTime;
+								// Create tween:
+								{
+									animationEngine.tweenTargets.push((t) => {
+										// debugger;
+										let minGpsTime = t - animationEngine.activeWindow.backward;
+										let maxGpsTime = t + animationEngine.activeWindow.forward;
+										let radarOffset = t_init;
+										let minRadarTime = minGpsTime - radarOffset;
+										let maxRadarTime = maxGpsTime - radarOffset;
+										let radar = viewer.scene.scene.getObjectByName('radar');
+										radar.material.uniforms.minGpsTime.value = minRadarTime;
+										radar.material.uniforms.maxGpsTime.value = maxRadarTime;
+									});
+								}
+								window.radarLoaded = true;
+								loadRadarButton.disabled = true;
+								removeLoadingScreen();
 							});
-						}
-						window.radarLoaded = true;
-						loadRadarButton.disabled = true;
-						removeLoadingScreen();
-					});
 				}
 			});
 		});

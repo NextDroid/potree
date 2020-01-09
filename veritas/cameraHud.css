@@ -1,0 +1,43 @@
+#camera_hud_toggle_button {
+  position: absolute;
+  right: 0;
+  margin: 8px 8px;
+  background: none;
+  border: solid white 2px;
+  color: white;
+  border-radius: 8px;
+  width: 2.5em;
+  height: 2.5em;
+  z-index: 100;
+  cursor: pointer;
+}
+
+#camera_hud_toggle_button:hover {
+  color: black;
+  background-color: white;
+}
+
+#camera_hud_toggle_button > i {
+  font-size: 2.5em;
+}
+
+#camera_hud_overlay {
+  width: 25vw;
+  height: 25vh;
+  top: 0;
+  left: 0;
+  position: absolute;
+  z-index: 99;
+  opacity: 0.5;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 0;
+}
+
+#camera_hud_overlay:hover {
+  opacity: 1;
+}
+
+.camera {
+  background-color: white;
+}
