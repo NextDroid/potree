@@ -135,23 +135,29 @@
 
 
 
+
+
+
+
+
 	</script>
+	<script src="../veritas/sequencePlayer.js"></script>
 	<script type="module" src="../veritas/cameraHud.js"></script>
 	<script type="module">
-		"use strict"
-		import { loadLanes } from "../demo/laneLoader.js"
-		import { loadTracks } from "../demo/trackLoader.js"
-		import { loadDetections } from "../demo/detectionLoader.js"
-		import { loadRtk, applyRotation } from "../demo/rtkLoader.js"
-		import { loadRtkFlatbuffer } from "../demo/rtkLoaderFlatbuffer.js"
-		import { RtkTrajectory } from "../demo/RtkTrajectory.js"
-		import { loadRadar } from "../demo/radarLoader.js"
-		import { loadGaps } from "../demo/gapsLoader.js"
-		import { loadRem } from "../demo/remLoader.js"
+		'use strict';
+		import { loadLanes } from '../demo/laneLoader.js';
+		import { loadTracks } from '../demo/trackLoader.js';
+		import { loadDetections } from '../demo/detectionLoader.js';
+		import { loadRtk, applyRotation } from '../demo/rtkLoader.js';
+		import { loadRtkFlatbuffer } from '../demo/rtkLoaderFlatbuffer.js';
+		import { RtkTrajectory } from '../demo/RtkTrajectory.js';
+		import { loadRadar } from '../demo/radarLoader.js';
+		import { loadGaps } from '../demo/gapsLoader.js';
+		import { loadRem } from '../demo/remLoader.js';
 		import {
 			loadVelo2Rtk, loadRtk2Vehicle, storeCalibration
-		} from "../demo/calibrationManager.js"
-		import { setupCameraHud } from "../veritas/cameraHud.js"
+		} from '../demo/calibrationManager.js';
+		import { CameraHud } from '../veritas/cameraHud.js';
 		import {
 			updateSidebar, togglePointClass
 		} from '../common/custom-sidebar.js';
@@ -191,7 +197,8 @@
 		const region = params.get('region');
 		const names = JSON.parse(params.get('names'));
 		const name = params.get('clicked');
-		const cameraFiles = JSON.parse(params.get('cameraFiles'));
+		const cameraImageSequenceConfig = JSON.parse(
+				params.get('cameraImageSequenceConfig'));
 		const visualizationMode = params.get('mode');
 		const annotateLanesAvailable = params.get('annotate') == 'Annotate';
 		const downloadLanesAvailable = annotateLanesAvailable;
@@ -209,6 +216,7 @@
 		let customLocalInterval = decanonicalizeTimeInterval(
 				[params.get('start'), params.get('end')]);
 		let animationInterval = null;
+		let cameraHud = null;
 
 		if (fonts) {
 			const head = document.head;
@@ -455,40 +463,43 @@
 
 		}); // END $(document).ready()
 
-		window.addEventListener("message", ({ origin, data }) => {
-			if (data.type === "updateTimeInterval" && origin !== window.origin) {
-				setAnimationInterval(shiftTimeInterval(decanonicalizeTimeInterval(data.timeInterval), window.fullTimeInterval.start))
+		window.addEventListener('message', ({ origin, data }) => {
+			if (data.type === 'updateTimeInterval' && origin !== window.origin) {
+				setAnimationInterval(
+						shiftTimeInterval(decanonicalizeTimeInterval(data.timeInterval),
+								window.fullTimeInterval.start));
+				updateIntervalSlider();
 			}
-		}, false)
+		}, false);
 
-		function updateTimeDisplay(newTime) {
-			document.getElementById("time_display").value =
-				(newTime - animationInterval.start).toFixed(minAnimationStepDigits)
-			document.getElementById("full_time_display").value =
-				(newTime - window.fullTimeInterval.start).toFixed(
-					minAnimationStepDigits)
+		function updateTimeDisplay (newTime) {
+			document.getElementById('time_display').value =
+					(newTime - animationInterval.start).toFixed(minAnimationStepDigits);
+			document.getElementById('full_time_display').value =
+					(newTime - window.fullTimeInterval.start).toFixed(
+							minAnimationStepDigits);
 		}
 
-		function setAnimationTime(newTime) {
-			animationEngine.stop()
-			animationEngine.timeline.t = newTime
-			animationEngine.updateTimeForAll()
+		function setAnimationTime (newTime) {
+			animationEngine.stop();
+			animationEngine.timeline.t = newTime;
+			animationEngine.updateTimeForAll();
 		}
 
-		function setAnimationInterval(newAnimationInterval) {
-			animationInterval = newAnimationInterval
+		function setAnimationInterval (newAnimationInterval) {
+			animationInterval = newAnimationInterval;
 
-			const timeSlider = $("#timeSlider")
-			timeSlider.slider("option", "min", animationInterval.start)
-			timeSlider.slider("option", "max", animationInterval.end)
+			const timeSlider = $('#timeSlider');
+			timeSlider.slider('option', 'min', animationInterval.start);
+			timeSlider.slider('option', 'max', animationInterval.end);
 
 			if (animationEngine.timeline.t < animationInterval.start ||
-				animationEngine.timeline.t > animationInterval.end) {
-				relaunchWithNewInterval() // also calls animationEngine.stop()
+					animationEngine.timeline.t > animationInterval.end) {
+				relaunchWithNewInterval(); // also calls animationEngine.stop()
 			} else {
-				animationEngine.stop()
-				timeSlider.slider("value", animationEngine.timeline.t)
-				updateTimeDisplay(animationEngine.timeline.t)
+				animationEngine.stop();
+				timeSlider.slider('value', animationEngine.timeline.t);
+				updateTimeDisplay(animationEngine.timeline.t);
 			}
 
 			window.parent.postMessage({
@@ -499,27 +510,36 @@
 
 		// Called when we get the full animation interval to set up sliders and other stuff
 		function setupFullTimeInterval(fullTimeInterval) {
-			window.fullTimeInterval = fullTimeInterval
+			window.fullTimeInterval = fullTimeInterval;
 
 			animationInterval = {
-				start: customLocalInterval ?
-					(fullTimeInterval.start + customLocalInterval.start) :
-					fullTimeInterval.start,
-				end: customLocalInterval ?
-					(fullTimeInterval.start + customLocalInterval.end) :
-					fullTimeInterval.end
+				start: customLocalInterval ? (fullTimeInterval.start +
+						customLocalInterval.start) : fullTimeInterval.start,
+				end: customLocalInterval ? (fullTimeInterval.start +
+						customLocalInterval.end) : fullTimeInterval.end
+			};
+
+			if (s3 && bucket && cameraImageSequenceConfig) {
+				const cameraHudConfig = {
+					s3,
+					bucket,
+					startTime: fullTimeInterval.start, ...cameraImageSequenceConfig
+				};
+				cameraHud = new CameraHud(cameraHudConfig);
+				cameraHud.setCurrentTime(window.fullTimeInterval.start);
+				cameraHud.addToDom();
 			}
 
-			$("#intervalSlider").slider({
+			$('#intervalSlider').slider({
 				range: true,
 				min: fullTimeInterval.start,
 				max: fullTimeInterval.end,
 				values: [animationInterval.start, animationInterval.end],
 				step: minAnimationStep,
 				slide: (event, ui) => {
-					setAnimationInterval({ start: ui.values[0], end: ui.values[1] })
+					setAnimationInterval({ start: ui.values[0], end: ui.values[1] });
 				}
-			})
+			});
 
 			$("#timeSlider").slider({
 				min: animationInterval.start,
@@ -725,7 +745,7 @@
 								animationEngine.stop()
 							})
 							playbutton.addEventListener("mousedown", () => {
-								animationEngine.start()
+								animationEngine.start();
 							})
 
 							time_display.addEventListener('keyup', function onEvent(e) {
@@ -826,13 +846,13 @@
 
 			animationEngine.preStartCallback = function () {
 				if (!animationEngine.isPlaying) {
-					$("#playbutton").trigger("mousedown");
+					$('#playbutton').trigger('mousedown');
 				}
 			}
 
 			animationEngine.preStopCallback = function () {
 				if (animationEngine.isPlaying) {
-					$("#pausebutton").trigger("mousedown");
+					$('#pausebutton').trigger('mousedown');
 				}
 			}
 
@@ -847,30 +867,26 @@
 				let minGpsTime = gpsTime - animationEngine.activeWindow.backward;
 				let maxGpsTime = gpsTime + animationEngine.activeWindow.forward;
 				viewer.setFilterGPSTimeRange(minGpsTime, maxGpsTime);
-				viewer.setFilterGPSTimeExtent(minGpsTime - 1.5 * animationEngine.activeWindow.backward, maxGpsTime + 1.5 * animationEngine.activeWindow.forward);
+				viewer.setFilterGPSTimeExtent(
+						minGpsTime - 1.5 * animationEngine.activeWindow.backward,
+						maxGpsTime + 1.5 * animationEngine.activeWindow.forward);
 			});
 
 			// Playbar:
 			animationEngine.tweenTargets.push((gpsTime) => {
-				$("#timeSlider").slider("value", gpsTime)
-				updateTimeDisplay(gpsTime)
+				$('#timeSlider').slider('value', gpsTime);
+				updateTimeDisplay(gpsTime);
 			});
 
-			// // Camera:
-			// let updateCamera = false;
-			// let lag = 1.01; // seconds
-			// let camPointZOffset = 10; // meters
-			// window.camControlInitialized = false;
-			// window.camPointNeedsToBeComputed = true;
-			// window.camControlInUse = false;
-			// window.camDeltaTransform = {camStart: new THREE.Matrix4(), vehicleStart: new THREE.Vector3(), camEnd: new THREE.Matrix4(), vehicleEnd: new THREE.Vector3()};
-			// window.camPointLocalFrame = {position: new THREE.Vector3(-10,0,10)};
-			// window.camTargetLocalFrame = {position: new THREE.Vector3(0, 0, 0)};
+			// Camera HUD:
+			animationEngine.tweenTargets.push(
+					gpsTime => cameraHud && cameraHud.setCurrentTime(gpsTime));
 
-
-			viewer.renderArea.addEventListener("keypress", (e) => {
-				if (e.key == "r") {
-					let box = new THREE.Box3().setFromObject(viewer.scene.scene.getObjectByName("Vehicle").getObjectByName("Vehicle Mesh"));
+			viewer.renderArea.addEventListener('keypress', (e) => {
+				if (e.key == 'r') {
+					let box = new THREE.Box3().setFromObject(
+							viewer.scene.scene.getObjectByName('Vehicle')
+									.getObjectByName('Vehicle Mesh'));
 					let node = new THREE.Object3D();
 					node.boundingBox = box;
 					viewer.zoomTo(node, 5, 500);
@@ -1194,9 +1210,6 @@
 		//   // debugger; //radar tracks added?
 		//   viewer.scene.scene.add(mesh);
 		// });
-
-		// Load camera HUD
-		$(document).ready(() => setupCameraHud(cameraFiles));
 
 		// Load Radar Code (Start)
 		window.radarLoaded = false;

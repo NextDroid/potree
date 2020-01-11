@@ -1,35 +1,71 @@
-export function setupCameraHud (cameraFiles) {
-  // Create HTML elements
-  const cameraHudToggleButton = $(
-    `<div id="camera_hud_toggle_button"><i class="material-icons-outlined">videocam</i></div>`);
-  cameraHudToggleButton.click(toggleCameraHud);
+const { DirectFileSequence, ProcessFileSequence, SequencePlayer } = window.sequencePlayer;
 
-  const cameraHtmls = cameraFiles.map(({ number, url }) => {
-    $(`<video class="camera" src="${url.escape()}" title="Camera ${number}" controls />`);
-  });
-
-  const cameraHudHtml = $(`<div id="camera_hud_overlay"></div>`);
-  for (const cameraHtml of cameraHtmls) {
-    cameraHudHtml.appendChild(cameraHtml);
+const sequencePlayerFps = 30;
+const sequencePlayerConfigBase = {
+  fps: sequencePlayerFps, preload: {
+    backward: sequencePlayerFps * 1,
+    forward: sequencePlayerFps * 5,
+    concurrentLoadsInEachDirection: 10
   }
-  cameraHudHtml.hide();
+};
 
-  let showCameraHud = false;
+export class CameraHud {
+  constructor ({ s3, bucket, startTime, from, to }) {
+    // Create HTML elements
+    const cameraHudIcon = document.createElement('i');
+    cameraHudIcon.classList.add('material-icons-outlined');
+    cameraHudIcon.innerText = 'videocam';
 
-  function setShowCameraHud (newShowCamera) {
-    showCameraHud = newShowCamera;
-    if (newShowCamera) {
-      cameraHudHtml.show();
-    } else {
-      cameraHudHtml.hide();
-    }
+    this.cameraHudToggleButton = document.createElement('div');
+    this.cameraHudToggleButton.id = 'camera_hud_toggle_button';
+    this.cameraHudToggleButton.appendChild(cameraHudIcon);
+    this.cameraHudToggleButton.addEventListener('click', () => this.toggleCameraHud());
+
+    this.cameraHudCanvas = document.createElement('canvas');
+    this.cameraHudCanvas.id = 'camera_hud';
+    this.cameraHudCanvas.hidden = true;
+
+    // Create sequence video
+    const fileSequence = new ProcessFileSequence({
+      wrapped: new DirectFileSequence({ from, to }),
+      processPath: key => new Promise((resolve, reject) => {
+        s3.getSignedUrl('getObject', {
+          Bucket: bucket, Key: key
+        }, (error, url) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(url);
+          }
+        });
+      })
+    });
+    const sequencePlayerConfig = {
+      startTime, fileSequence, canvas: this.cameraHudCanvas, ...sequencePlayerConfigBase
+    };
+    this.sequencePlayer = new SequencePlayer(sequencePlayerConfig);
   }
 
-  function toggleCameraHud () {
-    setShowCameraHud(!showCameraHud);
+  getShowCameraHud () {
+    return this.cameraHudCanvas.hidden;
   }
 
-  // Add to DOM:
-  $('#potree_render_area').append(cameraHudToggleButton);
-  $('#potree_render_area').append(cameraHudHtml);
+  setShowCameraHud (newShowCamera) {
+    this.cameraHudCanvas.hidden = newShowCamera;
+  }
+
+  toggleCameraHud () {
+    this.setShowCameraHud(!this.getShowCameraHud());
+  }
+
+  addToDom () {
+    // Add to DOM:
+    const container = document.getElementById('potree_render_area');
+    container.appendChild(this.cameraHudToggleButton);
+    container.appendChild(this.cameraHudCanvas);
+  }
+
+  setCurrentTime (currentTime) {
+    this.sequencePlayer.setCurrentTime(currentTime);
+  }
 }

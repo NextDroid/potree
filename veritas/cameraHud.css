@@ -12,7 +12,11 @@
   cursor: pointer;
 }
 
-#camera_hud_toggle_button:hover {
+#camera_hud_toggle_button.disabled {
+  opacity: 0.5;
+}
+
+#camera_hud_toggle_button:not(.disabled):hover {
   color: black;
   background-color: white;
 }
@@ -21,14 +25,14 @@
   font-size: 2.5em;
 }
 
-#camera_hud_overlay {
-  width: 25vw;
-  height: 25vh;
+#camera_hud {
+  width: 50vw;
+  height: auto;
   top: 0;
-  left: 0;
+  right: 0;
   position: absolute;
   z-index: 99;
-  opacity: 0.5;
+  opacity: 0.75;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-gap: 0;
@@ -40,4 +44,5 @@
 
 .camera {
   background-color: white;
+  width: 100%;
 }
