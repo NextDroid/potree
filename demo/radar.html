@@ -236,38 +236,46 @@
 		}
 
 		const s3 = bucket && region && name && accessKeyId && secretAccessKey &&
-			new AWS.S3({
-				region: region,
-				accessKeyId: accessKeyId,
-				secretAccessKey: secretAccessKey,
-				sessionToken: sessionToken,
-			});
+				new AWS.S3({
+					region: region,
+					accessKeyId: accessKeyId,
+					secretAccessKey: secretAccessKey,
+					sessionToken: sessionToken
+				});
 
-		if (!(s3 || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) { window.history.back() };
+		if (!(s3 || window.location.hostname === 'localhost' ||
+				window.location.hostname === '127.0.0.1')) { window.history.back(); }
+		;
 		// We really want this, but it doesn't work in the browser. Only on a server.
 		// const stream = s3.getObject({Bucket: bucket,
 		//                              Key: name}).createReadStream();
 
-		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+		if (s3 && bucket && cameraImageSequenceConfig) {
+			cameraHud = new CameraHud({ s3, bucket, cameraImageSequenceConfig });
+			cameraHud.setCurrentTime(0);
+		}
+
+		window.viewer =
+				new Potree.Viewer(document.getElementById('potree_render_area'));
 
 		viewer.setEDLEnabled(true);
 		viewer.setFOV(60);
 		viewer.setPointBudget(1 * 1000 * 1000);
-		document.title = "";
+		document.title = '';
 		viewer.setEDLEnabled(false);
-		viewer.setBackground("gradient"); // ["skybox", "gradient", "black", "white"];
+		viewer.setBackground('gradient'); // ["skybox", "gradient", "black", "white"];
 		viewer.setDescription(``);
 		viewer.loadSettingsFromURL();
 
 		viewer.loadGUI(() => {
 			// Override Sidebar Potree Branding Panel:
-			document.getElementById("potree_branding").style.display = "none";
-			document.getElementById("menu_about").style.display = "none";
+			document.getElementById('potree_branding').style.display = 'none';
+			document.getElementById('menu_about').style.display = 'none';
 
 			viewer.setLanguage('en');
-			$("#menu_appearance").next().show();
-			$("#menu_tools").next().show();
-			$("#menu_scene").next().show();
+			$('#menu_appearance').next().show();
+			$('#menu_tools').next().show();
+			$('#menu_scene').next().show();
 			// viewer.toggleSidebar();
 			// viewer.setNavigationMode(EarthControls); // TODO Hack: changed default in viewer.js line 234
 			// $('#show_bounding_box').trigger("click");
@@ -277,7 +285,8 @@
 			updateSidebar(visualizationMode);
 
 			window.calibrationModeAvailable = calibrationModeAvailable;
-			document.getElementById("toggle_calibration_panels").style.display = window.calibrationModeAvailable ? "block" : "none";
+			document.getElementById('toggle_calibration_panels').style.display =
+					window.calibrationModeAvailable ? 'block' : 'none';
 
 			if (visualizationMode == "aptivLanes") {
 				viewer.setCameraMode(Potree.CameraMode.ORTHOGRAPHIC);
@@ -520,13 +529,6 @@
 			};
 
 			if (s3 && bucket && cameraImageSequenceConfig) {
-				const cameraHudConfig = {
-					s3,
-					bucket,
-					startTime: fullTimeInterval.start, ...cameraImageSequenceConfig
-				};
-				cameraHud = new CameraHud(cameraHudConfig);
-				cameraHud.setCurrentTime(window.fullTimeInterval.start);
 				cameraHud.addToDom();
 			}
 
@@ -880,7 +882,7 @@
 
 			// Camera HUD:
 			animationEngine.tweenTargets.push(
-					gpsTime => cameraHud && cameraHud.setCurrentTime(gpsTime));
+					gpsTime => cameraHud && cameraHud.setCurrentTime(gpsTime - window.fullTimeInterval.start));
 
 			viewer.renderArea.addEventListener('keypress', (e) => {
 				if (e.key == 'r') {

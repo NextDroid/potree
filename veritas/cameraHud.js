@@ -1,16 +1,9 @@
 const { DirectFileSequence, ProcessFileSequence, SequencePlayer } = window.sequencePlayer;
 
-const sequencePlayerFps = 30;
-const sequencePlayerConfigBase = {
-  fps: sequencePlayerFps, preload: {
-    backward: sequencePlayerFps * 1,
-    forward: sequencePlayerFps * 5,
-    concurrentLoadsInEachDirection: 10
-  }
-};
+const sequenceFps = 30;
 
 export class CameraHud {
-  constructor ({ s3, bucket, startTime, from, to }) {
+  constructor ({ s3, bucket, cameraImageSequenceConfig }) {
     // Create HTML elements
     const cameraHudIcon = document.createElement('i');
     cameraHudIcon.classList.add('material-icons-outlined');
@@ -27,7 +20,7 @@ export class CameraHud {
 
     // Create sequence video
     const fileSequence = new ProcessFileSequence({
-      wrapped: new DirectFileSequence({ from, to }),
+      wrapped: new DirectFileSequence(cameraImageSequenceConfig),
       processPath: key => new Promise((resolve, reject) => {
         s3.getSignedUrl('getObject', {
           Bucket: bucket, Key: key
@@ -40,10 +33,11 @@ export class CameraHud {
         });
       })
     });
-    const sequencePlayerConfig = {
-      startTime, fileSequence, canvas: this.cameraHudCanvas, ...sequencePlayerConfigBase
-    };
-    this.sequencePlayer = new SequencePlayer(sequencePlayerConfig);
+    this.sequencePlayer = new SequencePlayer({
+      inputStream: {
+        fps: sequenceFps, fileSequence
+      }, canvas: this.cameraHudCanvas
+    });
   }
 
   getShowCameraHud () {
