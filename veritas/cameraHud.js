@@ -34,7 +34,7 @@ export class CameraHud {
       })
     });
     this.sequencePlayer = new SequencePlayer({
-      inputStream: {
+      imageStream: {
         fps: sequenceFps, fileSequence
       }, canvas: this.cameraHudCanvas
     });

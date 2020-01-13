@@ -252,7 +252,6 @@
 
 		if (s3 && bucket && cameraImageSequenceConfig) {
 			cameraHud = new CameraHud({ s3, bucket, cameraImageSequenceConfig });
-			cameraHud.setCurrentTime(0);
 		}
 
 		window.viewer =
@@ -530,6 +529,8 @@
 
 			if (s3 && bucket && cameraImageSequenceConfig) {
 				cameraHud.addToDom();
+				cameraHud.setCurrentTime(
+						animationInterval.start - fullTimeInterval.start);
 			}
 
 			$('#intervalSlider').slider({
