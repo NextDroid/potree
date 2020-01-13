@@ -16,7 +16,7 @@ export class CameraHud {
 
     this.cameraHudCanvas = document.createElement('canvas');
     this.cameraHudCanvas.id = 'camera_hud';
-    this.cameraHudCanvas.hidden = true;
+    this.cameraHudCanvas.style.display = 'none';
 
     // Create sequence video
     const fileSequence = new ProcessFileSequence({
@@ -38,18 +38,17 @@ export class CameraHud {
         fps: sequenceFps, fileSequence
       }, canvas: this.cameraHudCanvas
     });
+
+    this.isShowingCameraHud = false
   }
 
-  getShowCameraHud () {
-    return this.cameraHudCanvas.hidden;
-  }
-
-  setShowCameraHud (newShowCamera) {
-    this.cameraHudCanvas.hidden = newShowCamera;
+  setShowingCameraHud (newShowCamera) {
+    this.isShowingCameraHud = newShowCamera
+    this.cameraHudCanvas.style.display = newShowCamera ? 'block' : 'none';
   }
 
   toggleCameraHud () {
-    this.setShowCameraHud(!this.getShowCameraHud());
+    this.setShowingCameraHud(!this.isShowingCameraHud);
   }
 
   addToDom () {
