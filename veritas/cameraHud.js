@@ -1,6 +1,6 @@
 const { DirectFileSequence, ProcessFileSequence, SequencePlayer } = window.sequencePlayer;
 
-const sequenceFps = 30;
+const sequenceFps = 40;
 
 export class CameraHud {
   constructor ({ s3, bucket, cameraImageSequenceConfig }) {
