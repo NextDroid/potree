@@ -140,59 +140,62 @@
 		import {
 			loadVelo2Rtk, loadRtk2Vehicle, storeCalibration
 		} from "../demo/calibrationManager.js"
-		import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js"
-		import { getLoadingBar } from "../common/overlay.js"
+		import {
+			updateSidebar,
+			togglePointClass
+		} from '../common/custom-sidebar.js';
+		import { getLoadingBar } from '../common/overlay.js';
 		// import {  } from "../common/overlay.js";
-		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
-		import { PointAttributeNames } from "../src/loader/PointAttributes.js"
+		import { setLoadingScreen, removeLoadingScreen } from '../common/overlay.js';
+		import { PointAttributeNames } from '../src/loader/PointAttributes.js';
 
-		function canonicalizeTimeInterval({ start, end }) {
-			return [String(start), String(end)]
+		function canonicalizeTimeInterval ({ start, end }) {
+			return [String(start), String(end)];
 		}
 
-		function decanonicalizeTimeInterval([start, end]) {
-			if (start === "" && end === "") {
-				return null
+		function decanonicalizeTimeInterval ([start, end]) {
+			if (start === '' && end === '') {
+				return null;
 			} else {
-				return { start: Number(start), end: Number(end) }
+				return { start: Number(start), end: Number(end) };
 			}
 		}
 
-		function shiftTimeInterval({ start, end }, offset) {
-			return { start: start + offset, end: end + offset }
+		function shiftTimeInterval ({ start, end }, offset) {
+			return { start: start + offset, end: end + offset };
 		}
 
-		const minAnimationStepDigits = 5
-		const minAnimationStep = Math.pow(10, -minAnimationStepDigits)
+		const minAnimationStepDigits = 3;
+		const minAnimationStep = Math.pow(10, -minAnimationStepDigits);
 
 		// setLoadingScreen();
 
-		const runForLocalDevelopment = location.search === "" &&
-			(window.location.hostname === 'localhost' ||
-				window.location.hostname === '127.0.0.1')
+		const runForLocalDevelopment = location.search === '' &&
+				(window.location.hostname === 'localhost' ||
+						window.location.hostname === '127.0.0.1');
 
-		const params = new URLSearchParams(location.search)
-		const bucket = params.get("bucket")
-		const region = params.get("region")
-		const names = JSON.parse(params.get("names"))
-		const name = params.get("clicked")
-		const visualizationMode = params.get("mode")
-		const annotateLanesAvailable = params.get('annotate') == 'Annotate'
-		const downloadLanesAvailable = annotateLanesAvailable
-		const calibrationModeAvailable = params.get("calibrate") == "Calibrate" ||
-			runForLocalDevelopment
-		const accessKeyId = params.get("key1")
-		const secretAccessKey = params.get("key2")
-		const sessionToken = params.get("key3")
-		const fonts = JSON.parse(params.get("fonts"))
-		const theme = JSON.parse(params.get("theme")) // material-ui theme
-		let comparisonDatasets = []
+		const params = new URLSearchParams(location.search);
+		const bucket = params.get('bucket');
+		const region = params.get('region');
+		const names = JSON.parse(params.get('names'));
+		const name = params.get('clicked');
+		const visualizationMode = params.get('mode');
+		const annotateLanesAvailable = params.get('annotate') == 'Annotate';
+		const downloadLanesAvailable = annotateLanesAvailable;
+		const calibrationModeAvailable = params.get('calibrate') == 'Calibrate' ||
+				runForLocalDevelopment;
+		const accessKeyId = params.get('key1');
+		const secretAccessKey = params.get('key2');
+		const sessionToken = params.get('key3');
+		const fonts = JSON.parse(params.get('fonts'));
+		const theme = JSON.parse(params.get('theme')); // material-ui theme
+		let comparisonDatasets = [];
 		if (names) {
-			comparisonDatasets = names.filter(element => element !== name)
+			comparisonDatasets = names.filter(element => element !== name);
 		}
 		let customLocalInterval = decanonicalizeTimeInterval(
-			[params.get("start"), params.get("end")])
-		let animationInterval = null
+				[params.get('start'), params.get('end')]);
+		let animationInterval = null;
 
 		if (fonts) {
 			const head = document.head
@@ -441,7 +444,11 @@
 
 		window.addEventListener("message", ({ origin, data }) => {
 			if (data.type === "updateTimeInterval" && origin !== window.origin) {
-				setAnimationInterval(shiftTimeInterval(decanonicalizeTimeInterval(data.timeInterval), window.fullTimeInterval.start))
+				setAnimationInterval(
+						shiftTimeInterval(decanonicalizeTimeInterval(data.timeInterval),
+								window.fullTimeInterval.start));
+				$('#intervalSlider')
+						.slider('values', animationInterval.start, animationInterval.end);
 			}
 		}, false)
 
