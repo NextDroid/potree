@@ -157,34 +157,13 @@
 		// TODO: remove imports that are not needed from param loader
 		import { runForLocalDevelopment, params, bucket, region, names, name, visualizationMode,
 			annotateLanesAvailable, downloadLanesAvailable, calibrationModeAvailable, accessKeyId,
-			secretAccessKey, sessionToken, fonts, theme, comparisonDatasets, s3} from "../demo/paramLoader.js"
+			secretAccessKey, sessionToken, fonts, theme, comparisonDatasets, s3, getShaderMaterial} from "../demo/paramLoader.js"
 		import { loadPotree } from "../demo/loadController.js"
 
 		// setLoadingScreen();
 
 		//TODO: eventually make this function occur upon window being ready
 		loadPotree();
-
-		// Create AnimationEngine:
-		window.animationEngine = new AnimationEngine();
-
-		// TODO put these material definitions somewhere better
-		let uniforms = {
-					color: { value: new THREE.Color( 0x00ff00 ) },
-					minGpsTime: {value: 0.0 },
-					maxGpsTime: {value: 0.5 },
-					initialTime: {value: 0}, // TODO not used
-					// offset: {value: new THREE.Vector3(0,0,0)}
-			};
-		let shaderMaterial = new THREE.ShaderMaterial( {
-
-				 uniforms:       uniforms,
-				 vertexShader:   document.getElementById( 'vertexshader' ).textContent,
-				 fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-				 transparent:    true,
-				 depthWrite: 		 false
-
-		 });
 
 		// Playbar Configuration:
 		$(document).ready(() => {
@@ -289,6 +268,7 @@
 				// Load Tracks:
 				try {
 					// TODO shaderMaterial
+					let shaderMaterial = getShaderMaterial();
 					let trackShaderMaterial = shaderMaterial.clone();
 					loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine);
 				} catch (e) {
@@ -818,6 +798,7 @@ $(document).ready(() => {
 			$("#loading-bar")[0].style.display = "none";
 			setLoadingScreen();
 
+			let shaderMaterial = getShaderMaterial();
 			let gapShaderMaterial = shaderMaterial.clone();
 			gapShaderMaterial.uniforms.color.value = new THREE.Color(0x0000ff);
 			gapShaderMaterial.depthWrite = false;
@@ -852,6 +833,7 @@ $(document).ready(() => {
 // TODO Move this somewhere else
 
 async function loadRemCallback(s3, bucket, name, animationEngine) {
+	let shaderMaterial = getShaderMaterial();
 	let remShaderMaterial = shaderMaterial.clone();
 
 	await loadRem(s3, bucket, name, remShaderMaterial, animationEngine, (sphereMeshes) => {
@@ -882,6 +864,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 
 // Load Tracks Code (Start)
 		// TODO Move this somewhere else
+		let shaderMaterial = getShaderMaterial();
 		let trackShaderMaterial = shaderMaterial.clone();
 
 		async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine) {
@@ -921,6 +904,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 				if (!window.detectionsLoaded) {
 					$("#loading-bar")[0].style.display = "none";
 					setLoadingScreen();
+					let shaderMaterial = getShaderMaterial();
 					let detectionShaderMaterial = shaderMaterial.clone();
 					detectionShaderMaterial.uniforms.color.value = new THREE.Color(0xFFA500);
 					loadDetections(s3, bucket, name, detectionShaderMaterial, animationEngine, (detectionGeometries) => {
@@ -1005,15 +989,7 @@ async function loadRemCallback(s3, bucket, name, animationEngine) {
 						};
 
 						// point cloud material
-						var shaderMaterial = new THREE.ShaderMaterial( {
-
-								uniforms:       uniforms,
-								vertexShader:   document.getElementById( 'vertexshader' ).textContent,
-								fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-								transparent:    true
-
-						});
-
+						let shaderMaterial = getShaderMaterial()
 						var material = new THREE.PointsMaterial( {size:1.0} );
 						var mesh = new THREE.Points(geometry, shaderMaterial);
 						mesh.name = "radar";
