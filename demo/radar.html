@@ -57,8 +57,8 @@
 	<script src="animationEngine.js"></script>
 	<script type="module" src="RtkTrajectory.js"></script>
 	<script type="module" src="../src/loader/PointAttributes.js"></script>
-	<script type='module' src="paramLoader.js"></script> <!-- Puts all constants into global space -->
-	<script type='module' src="viewer.js"></script>
+	<script type='module' src="paramLoader.js"></script>
+	<script type='module' src="loadController.js"></script>
 
 	<!-- TODO REMOVE BELOW -->
 	<script src="tweenTest.js"></script>
@@ -158,11 +158,12 @@
 		import { runForLocalDevelopment, params, bucket, region, names, name, visualizationMode,
 			annotateLanesAvailable, downloadLanesAvailable, calibrationModeAvailable, accessKeyId,
 			secretAccessKey, sessionToken, fonts, theme, comparisonDatasets, s3} from "../demo/paramLoader.js"
-		import { createViewer } from "../demo/viewer.js" 
+		import { loadPotree } from "../demo/loadController.js"
 
 		// setLoadingScreen();
 
-		createViewer();
+		//TODO: eventually make this function occur upon window being ready
+		loadPotree();
 
 		// Create AnimationEngine:
 		window.animationEngine = new AnimationEngine();

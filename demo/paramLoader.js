@@ -1,4 +1,4 @@
-// This file contains params generated from the url
+// This file contains common params generated from the url
 export const runForLocalDevelopment = location.search === "" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const params = new URLSearchParams(location.search);
 export const bucket = params.get("bucket");
