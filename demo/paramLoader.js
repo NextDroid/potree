@@ -1,20 +1,20 @@
-// This file loads all constant params into global space
-const runForLocalDevelopment = location.search === "" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const params = new URLSearchParams(location.search);
-const bucket = params.get("bucket");
-const region = params.get("region");
-const names = JSON.parse(params.get("names"));
-const name = params.get("clicked");
-const visualizationMode = params.get("mode");
-const annotateLanesAvailable = params.get('annotate') == 'Annotate';
-const downloadLanesAvailable = annotateLanesAvailable;
-const calibrationModeAvailable = params.get("calibrate") == "Calibrate" || runForLocalDevelopment;
-const accessKeyId = params.get("key1");
-const secretAccessKey = params.get("key2");
-const sessionToken = params.get("key3");
-const fonts = JSON.parse(params.get("fonts"));
-const theme = JSON.parse(params.get("theme")); // material-ui theme
-let comparisonDatasets = [];
+// This file contains params generated from the url
+export const runForLocalDevelopment = location.search === "" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const params = new URLSearchParams(location.search);
+export const bucket = params.get("bucket");
+export const region = params.get("region");
+export const names = JSON.parse(params.get("names"));
+export const name = params.get("clicked");
+export const visualizationMode = params.get("mode");
+export const annotateLanesAvailable = params.get('annotate') == 'Annotate';
+export const downloadLanesAvailable = annotateLanesAvailable;
+export const calibrationModeAvailable = params.get("calibrate") == "Calibrate" || runForLocalDevelopment;
+export const accessKeyId = params.get("key1");
+export const secretAccessKey = params.get("key2");
+export const sessionToken = params.get("key3");
+export const fonts = JSON.parse(params.get("fonts"));
+export const theme = JSON.parse(params.get("theme")); // material-ui theme
+export let comparisonDatasets = [];
 if (names) {
 	comparisonDatasets = names.filter(element => element !== name);
 }
@@ -36,7 +36,7 @@ if (fonts) {
 	head.appendChild(style);
 }
 
-const s3 = bucket && region && name && accessKeyId && secretAccessKey &&
+export const s3 = bucket && region && name && accessKeyId && secretAccessKey &&
 			new AWS.S3({region: region,
 							accessKeyId: accessKeyId,
 							secretAccessKey: secretAccessKey,
