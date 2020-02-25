@@ -205,12 +205,6 @@ export function addCalibrationButton() {
 			}
 
 			$("#playbutton").click();
-
-			try {
-				togglePointClass(pointcloud);
-			} catch (e) {
-				console.log("Pointcloud loaded before sidebar initialized: ", e);
-			}
 		});
 	}
 }

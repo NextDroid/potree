@@ -57,13 +57,5 @@ export function createViewer() {
 				reloadLanesButton.parentNode.removeChild(reloadLanesButton);
 			}
 		}
-
-		// Check if Classification Attribute is exists in PointCloud:
-		try {
-			let pointcloud = viewer.scene.pointclouds[0];
-			togglePointClass(pointcloud);
-		} catch (e) {
-			console.log("Sidebar initialized pointcloud loaded: ", e);
-		}
 	});
 }
