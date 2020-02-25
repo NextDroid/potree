@@ -1,6 +1,6 @@
 import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
-import { visualizationMode, comparisonDatasets } from "../demo/paramLoader.js"
+import { visualizationMode, comparisonDatasets, s3, bucket, name } from "../demo/paramLoader.js"
 import { setLoadingScreen, removeLoadingScreen} from "../common/overlay.js"
 
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
