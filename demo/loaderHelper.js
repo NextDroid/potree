@@ -10,7 +10,7 @@ import { AnimationEngine } from "../demo/animationEngine.js"
 import { createPlaybar, addPlaybarListeners } from "../common/playbar.js"
 import { loadRtkCallback } from "../demo/rtkLoaderFlatbuffer.js"
 import { loadVelo2Rtk, loadRtk2Vehicle, storeCalibration } from "../demo/calibrationManager.js"
-import { loadLanesCallback } from "../demo/laneLoader.js"
+import { loadLanesCallback, addReloadLanesButton } from "../demo/laneLoader.js"
 import { loadTracksCallback } from "../demo/trackLoader.js"
 import { loadRemCallback } from "../demo/remLoader.js"
 
@@ -26,6 +26,7 @@ export function loadPotree() {
 
 		// create event listeners that animate the playbar
 		addPlaybarListeners();
+		addReloadLanesButton();
 
 		// load in actual data & configure playbar along the way
 		loadDataIntoDocument();
