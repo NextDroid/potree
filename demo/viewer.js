@@ -1,4 +1,5 @@
 // this file handles the creation of the potree viewer
+"use strict"
 import { visualizationMode, annotateLanesAvailable, downloadLanesAvailable, 
 	calibrationModeAvailable} from "../demo/paramLoader.js"
 import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js"

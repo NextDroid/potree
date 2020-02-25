@@ -1,3 +1,4 @@
+"use strict"
 import { getLoadingBar } from "../common/overlay.js";
 import { visualizationMode } from "../demo/paramLoader.js";
 

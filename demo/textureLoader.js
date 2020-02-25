@@ -1,3 +1,4 @@
+"use strict"
 import { applyRotation } from "../demo/rtkLoader.js";
 import { removeLoadingScreen } from "../common/overlay.js";
 

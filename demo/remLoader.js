@@ -1,3 +1,4 @@
+"use strict"
 import { getShaderMaterial } from "../demo/paramLoader.js"
 
 export async function loadRem(s3, bucket, name, remShaderMaterial, animationEngine, callback) {

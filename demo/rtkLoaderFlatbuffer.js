@@ -1,3 +1,4 @@
+"use strict"
 import { getLoadingBar, removeLoadingScreen } from "../common/overlay.js";
 import { RtkTrajectory } from "../demo/RtkTrajectory.js";
 import { animateRTK } from "../demo/rtkLoader.js";

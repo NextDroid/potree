@@ -1,3 +1,4 @@
+"use strict"
 import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
 import { visualizationMode, comparisonDatasets, s3, bucket, name } from "../demo/paramLoader.js"

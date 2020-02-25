@@ -1,3 +1,4 @@
+"use strict"
 import { getLoadingBar } from "../common/overlay.js";
 import { s3, bucket, name, getShaderMaterial } from "../demo/paramLoader.js"
 import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
