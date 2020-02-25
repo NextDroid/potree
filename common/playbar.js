@@ -353,7 +353,7 @@ function createPlaybarListeners(playbarhtml) {
 
 
 // adds event listeners to animate the viewer and playbar's slider and play/pause button
-export function createSliderListeners() {
+export function addPlaybarListeners() {
     // create Animation Path & make light follow it
     // ANIMATION + SLIDER LOGIC:
     let slider = document.getElementById("myRange");
@@ -363,6 +363,7 @@ export function createSliderListeners() {
     let zmin = document.getElementById("elevation_min");
     let zmax = document.getElementById("elevation_max");
     let animationEngine = window.animationEngine;
+	let toggleplay = document.getElementById("toggleplay");
     time_display.value = Math.round(10000 * slider.value) / 10000;
 
     // Playbar Button Functions:
@@ -375,6 +376,47 @@ export function createSliderListeners() {
         animationEngine.start();
     });
 
+	// Pre-Start/Stop Callbacks
+	animationEngine.preStartCallback = function () {
+		if (!animationEngine.isPlaying) {
+			$("#playbutton").trigger("mousedown");
+		}
+	}
+
+	animationEngine.preStopCallback = function () {
+		if (animationEngine.isPlaying) {
+			$("#pausebutton").trigger("mousedown");
+		}
+	}
+
+	// Playbar:
+	animationEngine.tweenTargets.push((gpsTime) => {
+		// TODO add playbackSpeed
+		time_display.value = Math.round(10000*slider.value)/10000;
+
+		let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
+		slider.value = 100*t;
+		time_display.value = Math.round(10000*(gpsTime - animationEngine.tstart))/10000; // Centered to zero
+	});
+
+	// Camera:
+	// let updateCamera = false;
+	// let lag = 1.01; // seconds
+	// let camPointZOffset = 10; // meters
+	// window.camControlInitialized = false;
+	// window.camPointNeedsToBeComputed = true;
+	// window.camControlInUse = false;
+	// window.camDeltaTransform = {camStart: new THREE.Matrix4(), vehicleStart: new THREE.Vector3(), camEnd: new THREE.Matrix4(), vehicleEnd: new THREE.Vector3()};
+	// window.camPointLocalFrame = {position: new THREE.Vector3(-10,0,10)};
+	// window.camTargetLocalFrame = {position: new THREE.Vector3(0, 0, 0)};
+	viewer.renderArea.addEventListener("keypress", (e) => {
+		if (e.key == "r") {
+			let box = new THREE.Box3().setFromObject(viewer.scene.scene.getObjectByName("Vehicle").getObjectByName("Vehicle Mesh"));
+			let node = new THREE.Object3D();
+			node.boundingBox = box;
+			viewer.zoomTo(node, 5, 500);
+		}
+	});
 
     time_display.addEventListener('keyup', function onEvent(e) {
         if (e.keyCode === 13) {
@@ -413,4 +455,13 @@ export function createSliderListeners() {
         window.elevationWindow.max = Math.abs(Number(zmax.value));
         animationEngine.updateTimeForAll();
     });
+
+	// PointCloud:
+	animationEngine.tweenTargets.push((gpsTime) => {
+		// debugger; // account for pointcloud offset
+		let minGpsTime = gpsTime-animationEngine.activeWindow.backward;
+		let maxGpsTime = gpsTime+animationEngine.activeWindow.forward;
+		viewer.setFilterGPSTimeRange(minGpsTime, maxGpsTime);
+		viewer.setFilterGPSTimeExtent(minGpsTime-1.5*animationEngine.activeWindow.backward, maxGpsTime+1.5*animationEngine.activeWindow.forward);
+	});
 }
