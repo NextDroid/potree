@@ -1,7 +1,7 @@
 import { applyRotation } from "../demo/rtkLoader.js";
 import { removeLoadingScreen } from "../common/overlay.js";
 
-export function loadTexture(rtkTrajectory, pos, rot) {
+export function loadTexturedCar(rtkTrajectory, pos, rot) {
     // CREATE VEHICLE OBJECT:
     // NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
     // NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
@@ -43,6 +43,7 @@ export function loadTexture(rtkTrajectory, pos, rot) {
 }
 
 // wrapped callback function to include varaibles in callback that are not in scope
+// once textured car object is loaded and setup, it is stored in viewer.scene.scene with name "Vehicle"
 function onLoadVehicleCallback(object, rtkTrajectory, texture, pos, rot) {
     // loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`,
     object.traverse(function (child) {
