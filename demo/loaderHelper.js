@@ -2,7 +2,8 @@
 
 import {} from "../demo/paramLoader.js"
 import { createViewer } from "../demo/viewer.js" 
-import "../common/playbar.js"
+import { AnimationEngine } from "../demo/animationEngine.js"
+import { createPlaybar } from "../common/playbar.js"
 
 // Call all function to load potree
 export function loadPotree() {

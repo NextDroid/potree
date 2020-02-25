@@ -1,5 +1,5 @@
 
-class AnimationEngine {
+export class AnimationEngine {
 
   constructor() {
 

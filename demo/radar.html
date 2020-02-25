@@ -49,12 +49,12 @@
 	<script src="../build/potree/potree.js"></script>
 	<script src="../libs/plasio/js/laslaz.js"></script>
   <script src="../libs/other/OBJLoader.js"></script>
-	<script src="../common/playbar.js"></script>
+	<script type="module" src="../common/playbar.js"></script>
 	<script src="../common/loading-bar.js"></script>
 	<script type="module" src="../common/overlay.js"></script>
 	<script src="../common/calibration-panels.js"></script>
 	<script src="../node_modules/three.meshline/src/THREE.MeshLine.js"></script>
-	<script src="animationEngine.js"></script>
+	<script type="module" src="animationEngine.js"></script>
 	<script type="module" src="RtkTrajectory.js"></script>
 	<script type="module" src="../src/loader/PointAttributes.js"></script>
 	<script type='module' src="paramLoader.js"></script>
@@ -141,7 +141,6 @@
 		import { loadLanes } from "../demo/laneLoader.js";
 		import { loadTracks } from "../demo/trackLoader.js";
 		import { loadDetections } from "../demo/detectionLoader.js";
-		import { loadRtk, applyRotation } from "../demo/rtkLoader.js";
 		import { loadRtkFlatbuffer, loadRtkCallback } from "../demo/rtkLoaderFlatbuffer.js";
 		import { loadRadar } from "../demo/radarLoader.js";
 		import { loadGaps } from "../demo/gapsLoader.js";

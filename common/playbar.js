@@ -1,6 +1,6 @@
 
 // sets up playbar in window
-function createPlaybar () {
+export function createPlaybar () {
 
   // Insert HTML for Playbar:
   var playbarhtml = $(`
@@ -349,4 +349,68 @@ function createPlaybarListeners(playbarhtml) {
 			label.innerHTML = "NONE";
 		}
 	});
+}
+
+
+// adds event listeners to animate the viewer and playbar's slider and play/pause button
+export function createSliderListeners() {
+    // create Animation Path & make light follow it
+    // ANIMATION + SLIDER LOGIC:
+    let slider = document.getElementById("myRange");
+    let time_display = document.getElementById("time_display");
+    let tmin = document.getElementById("playbar_tmin");
+    let tmax = document.getElementById("playbar_tmax");
+    let zmin = document.getElementById("elevation_min");
+    let zmax = document.getElementById("elevation_max");
+    let animationEngine = window.animationEngine;
+    time_display.value = Math.round(10000 * slider.value) / 10000;
+
+    // Playbar Button Functions:
+    let playbutton = document.getElementById("playbutton");
+    let pausebutton = document.getElementById("pausebutton");
+    pausebutton.addEventListener("mousedown", () => {
+        animationEngine.stop();
+    });
+    playbutton.addEventListener("mousedown", () => {
+        animationEngine.start();
+    });
+
+
+    time_display.addEventListener('keyup', function onEvent(e) {
+        if (e.keyCode === 13) {
+            console.log('Enter')
+            animationEngine.stop();
+            let val = parseFloat(time_display.value);
+            val = Math.max(0, val);
+            val = Math.min(animationEngine.timeRange - .001, val);
+            animationEngine.timeline.t = val + animationEngine.tstart;
+            animationEngine.updateTimeForAll();
+        }
+    });
+
+    slider.addEventListener("input", () => {
+        animationEngine.stop();
+        var val = slider.value / 100.0;
+        animationEngine.timeline.t = val * animationEngine.timeRange + animationEngine.tstart;
+        animationEngine.updateTimeForAll();
+    });
+
+    slider.addEventListener("wheel", () => {
+        animationEngine.stop();
+        var val = slider.value / 100.0;
+        animationEngine.timeline.t = val * animationEngine.timeRange + animationEngine.tstart;
+        animationEngine.updateTimeForAll();
+    });
+
+    zmin.addEventListener("input", () => {
+        window.elevationWindow.min = Math.abs(Number(zmin.value));
+        window.elevationWindow.max = Math.abs(Number(zmax.value));
+        animationEngine.updateTimeForAll();
+    });
+
+    zmax.addEventListener("input", () => {
+        window.elevationWindow.min = Math.abs(Number(zmin.value));
+        window.elevationWindow.max = Math.abs(Number(zmax.value));
+        animationEngine.updateTimeForAll();
+    });
 }

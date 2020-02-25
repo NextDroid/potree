@@ -2,6 +2,8 @@ import { getLoadingBar, removeLoadingScreen } from "../common/overlay.js";
 import { RtkTrajectory } from "../demo/RtkTrajectory.js";
 import { applyRotation } from "../demo/rtkLoader.js";
 import { visualizationMode } from  "../demo/paramLoader.js"; 
+import { loadTexture } from "../demo/textureLoader.js";
+import { createSliderListeners } from "../common/playbar.js"
 
 export async function loadRtkFlatbuffer(s3, bucket, name, callback) {
   let lastLoaded = 0;
@@ -160,183 +162,13 @@ export function loadRtkCallback(s3, bucket, name, callback) {
 		const orientations = rot.map(v => new THREE.Vector3(...v));
 		const samplingFreq = 100; // Hertz TODO hardcoded
 		const rtkTrajectory = new RtkTrajectory(path, orientations, timestamps, samplingFreq);
-		const closedPath = false;
 
-		// CREATE VEHICLE OBJECT:
-		// NOTE for Mustang: {texture: models/bodybkgd.JPG, mesh: models/1967-shelby-ford-mustang.obj}
-		// NOTE for Volt: {texture: models/Chevy_Volt_Segmented/Chevrolet_Volt_v1_exterior.png, mesh: resources/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj}
-		let manager = new THREE.LoadingManager();
-		manager.onProgress = function (item, loaded, total) {
-			console.log(item, loaded, total);
-		};
-		let textureLoader = new THREE.TextureLoader(manager);
-		let texture = textureLoader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/reflection_1.png`);
-		// let texture = textureLoader.load(`${Potree.resourcePath}/models/bodybkgd.JPG`);
-		let onProgress = function (xhr) {
-			if (xhr.lengthComputable) {
-				let percentComplete = xhr.loaded / xhr.total * 100;
-			}
-		};
-		texture.wrapS = THREE.RepeatWrapping;
-		texture.wrapT = THREE.RepeatWrapping;
+		// load the texture for car
+		loadTexture(rtkTrajectory, pos, rot);
 
-		let geometry = new THREE.SphereGeometry(2, 32, 32);
-		let material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide, opacity: 0.92, transparent: true });
-		let sphere = new THREE.Mesh(geometry, material);
-		sphere.position.copy(new THREE.Vector3(...pos[0]));
-		// viewer.scene.scene.add( sphere );
+		// create event listeners that animate the playbar
+		createSliderListeners();
 
-
-		{ // Load Textured vehicle from obj
-			let onError = function (xhr) { };
-			let loader = new THREE.OBJLoader(manager);
-			loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/volt_reduce.obj`,
-				// loader.load(`${Potree.resourcePath}/models/Chevy_Volt_Segmented/Chevy_Volt_2016.obj`,
-				function (object) {
-					object.traverse(function (child) {
-						if (child instanceof THREE.Mesh) {
-							child.material.map = texture;
-						}
-					});
-
-					const vehicleGroup = new THREE.Group();
-					vehicleGroup.name = "Vehicle";
-
-					{ // render the path
-						let geometry = new THREE.Geometry();
-						for (let ii = 0; ii < rtkTrajectory.numStates; ii++) {
-							geometry.vertices[ii] = rtkTrajectory.states[ii].pose.clone();
-						}
-						let material = new THREE.LineBasicMaterial({ color: new THREE.Color(0x00ff00) });
-						material.uniforms = { initialTime: { value: t_init } };
-						// material.opacity = 0.0;
-						// material.transparent = true;
-						let line = new THREE.Line(geometry, material, { closed: closedPath });
-						line.name = "RTK Trajectory";
-						line.visible = false;
-						viewer.scene.scene.add(line);
-						viewer.scene.dispatchEvent({ "type": "vehicle_layer_added", "vehicleLayer": line });
-					}
-
-					// Add Polar Grid Helper:
-					const gridRadius = 100; // meters
-					const gridSpacing = 5; // meters
-					const scaleFactor = 1; // HACK for now because attached to vehicle mesh which is 1/100th scale
-					const gridHelper = new THREE.GridHelper(scaleFactor * 2 * gridRadius, 2 * gridRadius / gridSpacing, 0x0000ff, 0x808080);
-					gridHelper.name = "Cartesian Grid";
-					gridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-					gridHelper.position.z -= 2;
-					gridHelper.visible = false;
-					viewer.scene.dispatchEvent({ "type": "vehicle_layer_added", "vehicleLayer": gridHelper });
-					const polarGridHelper = new THREE.PolarGridHelper(scaleFactor * gridRadius, 16, gridRadius / gridSpacing, 64, 0x0000ff, 0x808080);
-					polarGridHelper.name = "Polar Grid";
-					polarGridHelper.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
-					polarGridHelper.position.z -= 2;
-					polarGridHelper.visible = false;
-					viewer.scene.dispatchEvent({ "type": "vehicle_layer_added", "vehicleLayer": polarGridHelper });
-					const axesHelper = new THREE.AxesHelper(scaleFactor * gridSpacing);
-					axesHelper.name = "3D Axes";
-					axesHelper.position.z -= 2;
-					// axesHelper.rotateOnAxis(new THREE.Vector3(0,0,1), -Math.PI/2);
-					axesHelper.visible = false;
-					viewer.scene.dispatchEvent({ "type": "vehicle_layer_added", "vehicleLayer": axesHelper });
-
-
-					vehicleGroup.add(gridHelper);
-					vehicleGroup.add(polarGridHelper);
-					vehicleGroup.add(axesHelper);
-
-					// Apply RTK to Vehicle Mesh Extrinsics:
-					object.name = "Vehicle Mesh";
-					object.scale.multiplyScalar(.01);
-					object.rotation.set(0 * Math.PI / 2, 0 * Math.PI / 2., 1 * Math.PI / 2.0); // Chevy Volt
-					object.position.sub(new THREE.Vector3(0, 0, 2)); // Chevy Volt
-
-					// Initialize Vehicle Group:
-					vehicleGroup.position.set(...pos[0]);
-					applyRotation(vehicleGroup, rot[0][0], rot[0][1], rot[0][2]);
-					vehicleGroup.rotation.set(...rot[0]);
-					vehicleGroup.rtkTrajectory = rtkTrajectory;
-					vehicleGroup.add(object);
-
-					// TODO New Camera Initialization:
-					let box = new THREE.Box3().setFromObject(vehicleGroup);
-					let node = new THREE.Object3D();
-					node.boundingBox = box;
-					viewer.zoomTo(node, 0.1, 500);
-					// viewer.scene.view.lookAt(object.position);
-
-					// viewer.scene.scene.add( object );
-					viewer.scene.scene.add(vehicleGroup);
-					viewer.scene.dispatchEvent({ "type": "vehicle_layer_added", "vehicleLayer": object });
-
-					viewer.setFilterGPSTimeRange(0, 0); // Size 0 Time Window at start of timeline
-					removeLoadingScreen();
-				}, onProgress, onError);
-		}
-
-		// ANIMATION:
-		{ // create Animation Path & make light follow it
-			{// ANIMATION + SLIDER LOGIC:
-				let slider = document.getElementById("myRange");
-				let time_display = document.getElementById("time_display");
-				let tmin = document.getElementById("playbar_tmin");
-				let tmax = document.getElementById("playbar_tmax");
-				let zmin = document.getElementById("elevation_min");
-				let zmax = document.getElementById("elevation_max");
-				time_display.value = Math.round(10000 * slider.value) / 10000;
-
-				// Playbar Button Functions:
-				let playbutton = document.getElementById("playbutton");
-				let pausebutton = document.getElementById("pausebutton");
-				pausebutton.addEventListener("mousedown", () => {
-					animationEngine.stop();
-				});
-				playbutton.addEventListener("mousedown", () => {
-					animationEngine.start();
-				});
-
-
-				time_display.addEventListener('keyup', function onEvent(e) {
-					if (e.keyCode === 13) {
-						console.log('Enter')
-						animationEngine.stop();
-						let val = parseFloat(time_display.value);
-						val = Math.max(0, val);
-						val = Math.min(animationEngine.timeRange - .001, val);
-						animationEngine.timeline.t = val + animationEngine.tstart;
-						animationEngine.updateTimeForAll();
-					}
-				});
-
-				slider.addEventListener("input", () => {
-					animationEngine.stop();
-					var val = slider.value / 100.0;
-					animationEngine.timeline.t = val * animationEngine.timeRange + animationEngine.tstart;
-					animationEngine.updateTimeForAll();
-				});
-
-				slider.addEventListener("wheel", () => {
-					animationEngine.stop();
-					var val = slider.value / 100.0;
-					animationEngine.timeline.t = val * animationEngine.timeRange + animationEngine.tstart;
-					animationEngine.updateTimeForAll();
-				});
-
-				zmin.addEventListener("input", () => {
-					window.elevationWindow.min = Math.abs(Number(zmin.value));
-					window.elevationWindow.max = Math.abs(Number(zmax.value));
-					animationEngine.updateTimeForAll();
-				});
-
-				zmax.addEventListener("input", () => {
-					window.elevationWindow.min = Math.abs(Number(zmin.value));
-					window.elevationWindow.max = Math.abs(Number(zmax.value));
-					animationEngine.updateTimeForAll();
-				});
-			}
-
-		}
 	});
 
 
