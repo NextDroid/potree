@@ -160,3 +160,32 @@ export function addLoadRadarButton() {
 		}
 	});
 } // end of add radar button
+
+
+// // Load Radar Cubes:
+// loadRadar((geometry, t_init) => {
+	//
+//   // uniforms
+//   uniforms = {
+//       color: { value: new THREE.Color( 0xffff00 ) },
+//       minGpsTime: {value: 0.0 },
+//       maxGpsTime: {value: 110.0 },
+//       initialTime: {value: t_init}
+//   };
+	//
+//   // point cloud material
+//   var shaderMaterial = new THREE.ShaderMaterial( {
+	//
+//       uniforms:       uniforms,
+//       vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+//       fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+//       transparent:    true
+	//
+//   });
+	//
+//   var material = new THREE.PointsMaterial( {size:1.0} );
+//   var mesh = new THREE.Points(geometry, shaderMaterial);
+//   mesh.name = "radar";
+//   // debugger; //radar tracks added?
+//   viewer.scene.scene.add(mesh);
+// });
