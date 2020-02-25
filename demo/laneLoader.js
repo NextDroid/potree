@@ -1,6 +1,7 @@
 import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
 import { visualizationMode, comparisonDatasets } from "../demo/paramLoader.js"
+import { setLoadingScreen, removeLoadingScreen} from "../common/overlay.js"
 
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   const tstart = performance.now();
@@ -550,3 +551,56 @@ export async function loadLanesCallback(s3, bucket, name, callback) {
 	}
 
 } // end of loadLanesCallback
+
+// add an event listener for the reload lanes button
+export function addReloadLanesButton() {
+	window.annotateLanesModeActive = false; // starts off false
+
+	$("#reload_lanes_button")[0].style.display = "block"
+	let reloadLanesButton = $("#reload_lanes_button")[0];
+	reloadLanesButton.addEventListener("mousedown", () => {
+
+		let proceed = true;
+		if (window.annotateLanesModeActive) {
+			proceed = confirm("Proceed? Lanes will be reloaded, so ensure that annotations have been saved if you want to keep them.");
+		}
+
+		if (proceed) {
+			// REMOVE LANES
+			let removeLanes = viewer.scene.scene.getChildByName("Lanes");
+			while (removeLanes) {
+				viewer.scene.scene.remove(removeLanes);
+				removeLanes = viewer.scene.scene.getChildByName("Lanes");
+			}
+
+			// Pause animation:
+			animationEngine.stop();
+
+			// TOGGLE window.annotateLanesModeActive
+			window.annotateLanesModeActive = !window.annotateLanesModeActive;
+
+			// Disable Button:
+			reloadLanesButton.disabled = true;
+
+			{
+				$("#loading-bar")[0].style.display = "none";
+				setLoadingScreen();
+				loadLanesCallback(s3, bucket, name, () => {
+					removeLoadingScreen();
+
+					// TOGGLE BUTTON TEXT
+					if (window.annotateLanesModeActive) {
+						reload_lanes_button.innerText = "View Truth Lanes";
+						document.getElementById("download_lanes_button").style.display = "block";
+					} else {
+						reload_lanes_button.innerText = "Annotate Truth Lanes";
+						document.getElementById("download_lanes_button").style.display = "none";
+					}
+
+					reloadLanesButton.disabled = false
+
+				});
+			}
+		}
+	});
+} // end of Reload Lanes Button Code

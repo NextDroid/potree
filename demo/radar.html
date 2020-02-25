@@ -162,62 +162,6 @@
 		//TODO: eventually make this function occur upon window being ready
 		loadPotree();
 
-// Reload Lanes Button Code (Start)
-window.annotateLanesModeActive = false;
-$(document).ready(() => {
-	// Configure Playbar
-	$("#reload_lanes_button")[0].style.display="block"
-	let reloadLanesButton = $("#reload_lanes_button")[0];
-	reloadLanesButton.addEventListener("mousedown", () => {
-
-		let proceed = true;
-		if (window.annotateLanesModeActive) {
-			proceed = confirm("Proceed? Lanes will be reloaded, so ensure that annotations have been saved if you want to keep them.");
-		}
-
-		if (proceed) {
-			// REMOVE LANES
-			let removeLanes = viewer.scene.scene.getChildByName("Lanes");
-			while(removeLanes) {
-				viewer.scene.scene.remove(removeLanes);
-				removeLanes = viewer.scene.scene.getChildByName("Lanes");
-			}
-
-			// Pause animation:
-			animationEngine.stop();
-
-			// TOGGLE window.annotateLanesModeActive
-			window.annotateLanesModeActive = !window.annotateLanesModeActive;
-
-			// Disable Button:
-			reloadLanesButton.disabled = true;
-
-			{
-				$("#loading-bar")[0].style.display = "none";
-				setLoadingScreen();
-				loadLanesCallback(s3, bucket, name, () => {
-					removeLoadingScreen();
-
-					// TOGGLE BUTTON TEXT
-					if (window.annotateLanesModeActive) {
-						reload_lanes_button.innerText = "View Truth Lanes";
-						document.getElementById("download_lanes_button").style.display = "block";
-					} else {
-						reload_lanes_button.innerText = "Annotate Truth Lanes";
-						document.getElementById("download_lanes_button").style.display = "none";
-					}
-
-					reloadLanesButton.disabled = false
-
-				});
-			}
-		}
-	});
-});
-// Reload Lanes Button Code (end)
-
-
-
 // Load Gaps Code (Start)
 window.gapsLoaded = false;
 $(document).ready(() => {
