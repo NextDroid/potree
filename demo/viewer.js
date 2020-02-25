@@ -1,6 +1,7 @@
 // this file handles the creation of the potree viewer
 import { visualizationMode, annotateLanesAvailable, downloadLanesAvailable, 
 	calibrationModeAvailable} from "../demo/paramLoader.js"
+import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js"
 
 export function createViewer() {
 	window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));

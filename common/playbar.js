@@ -1,4 +1,6 @@
-$(document).ready(function () {
+
+// sets up playbar in window
+function createPlaybar () {
 
   // Insert HTML for Playbar:
   var playbarhtml = $(`
@@ -263,6 +265,11 @@ $(document).ready(function () {
 
 
     });
+    createPlaybarListeners(playbarhtml);
+
+}
+
+function createPlaybarListeners(playbarhtml) {
 
     window.addEventListener("message", e => {
      if (e.data === 'pause') {
@@ -289,4 +296,57 @@ $(document).ready(function () {
     document.getElementById("load_detections_button").style.display = "none";
     document.getElementById("load_gaps_button").style.display = "none";
     document.getElementById("download_lanes_button").style.display = "none";
-});
+
+	// originall from radar.html
+	document.getElementById("playbar_tmax").disabled = false;
+	document.getElementById("playbar_tmin").disabled = false;
+	document.getElementById("elevation_max").display = false;
+	document.getElementById("elevation_min").disabled = false;
+
+	window.truthAnnotationMode = 0;	// 0: None, 1: Delete, 2: Add
+	let annotationScreen = $(`<div id="annotationScreen"><p id="annotation-label">ANNOTATION MODE: <b id="annotation-mode-text"></b></p></div>`);
+	$('body').prepend(annotationScreen);
+	let div = document.getElementById("annotationScreen");
+	div.style.opacity=0;
+
+	// event listeners
+	window.addEventListener('keydown', (e) => {
+		if (window.annotateLanesModeActive) {
+			if (e.code == "KeyA") {
+				window.truthAnnotationMode = 2;
+			} else if (e.code == "KeyS") {
+				window.truthAnnotationMode = 1;
+			} else if (e.shiftKey) {
+				window.truthAnnotationMode = (window.truthAnnotationMode + 1) % 3;
+			}
+
+			let div = document.getElementById("annotationScreen");
+			let label = document.getElementById("annotation-mode-text");
+			if (window.truthAnnotationMode == 0) {
+				div.style.background = "black";
+				div.style.opacity=0;
+				label.innerHTML = "NONE";
+			}
+			else if (window.truthAnnotationMode == 1) {
+				div.style.background = "red";
+				div.style.opacity=0.25;
+				label.innerHTML = "DELETE POINTS";
+			} else if (window.truthAnnotationMode == 2) {
+				div.style.background = "green";
+				div.style.opacity=0.25;
+				label.innerHTML = "ADD POINTS";
+			}
+		}
+	});
+
+	window.addEventListener("keyup", (e) => {
+		if (window.annotateLanesModeActive) {
+			window.truthAnnotationMode = 0;
+			let div = document.getElementById("annotationScreen");
+			let label = document.getElementById("annotation-mode-text");
+			div.style.background = "black";
+			div.style.opacity=0;
+			label.innerHTML = "NONE";
+		}
+	});
+}

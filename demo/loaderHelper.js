@@ -2,11 +2,15 @@
 
 import {} from "../demo/paramLoader.js"
 import { createViewer } from "../demo/viewer.js" 
+import "../common/playbar.js"
 
 // Call all function to load potree
 export function loadPotree() {
-    createViewer();
-    
-    // Create AnimationEngine:
-    window.animationEngine = new AnimationEngine();
+	// Create AnimationEngine:
+	createViewer();
+	window.animationEngine = new AnimationEngine();
+	
+	$(document).ready(() => {
+		createPlaybar(); 
+	});
 }

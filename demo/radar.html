@@ -58,7 +58,7 @@
 	<script type="module" src="RtkTrajectory.js"></script>
 	<script type="module" src="../src/loader/PointAttributes.js"></script>
 	<script type='module' src="paramLoader.js"></script>
-	<script type='module' src="loadController.js"></script>
+	<script type='module' src="loaderHelper.js"></script>
 
 	<!-- TODO REMOVE BELOW -->
 	<script src="tweenTest.js"></script>
@@ -158,7 +158,7 @@
 		import { runForLocalDevelopment, params, bucket, region, names, name, visualizationMode,
 			annotateLanesAvailable, downloadLanesAvailable, calibrationModeAvailable, accessKeyId,
 			secretAccessKey, sessionToken, fonts, theme, comparisonDatasets, s3, getShaderMaterial} from "../demo/paramLoader.js"
-		import { loadPotree } from "../demo/loadController.js"
+		import { loadPotree } from "../demo/loaderHelper.js"
 
 		// setLoadingScreen();
 
@@ -167,59 +167,6 @@
 
 		// Playbar Configuration:
 		$(document).ready(() => {
-			document.getElementById("playbar_tmax").disabled = false;
-			document.getElementById("playbar_tmin").disabled = false;
-			document.getElementById("elevation_max").display = false;
-			document.getElementById("elevation_min").disabled = false;
-
-			window.truthAnnotationMode = 0;	// 0: None, 1: Delete, 2: Add
-			let annotationScreen = $(`<div id="annotationScreen"><p id="annotation-label">ANNOTATION MODE: <b id="annotation-mode-text"></b></p></div>`);
-			$('body').prepend(annotationScreen);
-			let div = document.getElementById("annotationScreen");
-			div.style.opacity=0;
-
-
-			window.addEventListener('keydown', (e) => {
-				if (window.annotateLanesModeActive) {
-					if (e.code == "KeyA") {
-						window.truthAnnotationMode = 2;
-					} else if (e.code == "KeyS") {
-						window.truthAnnotationMode = 1;
-					} else if (e.shiftKey) {
-						window.truthAnnotationMode = (window.truthAnnotationMode + 1) % 3;
-					}
-
-					let div = document.getElementById("annotationScreen");
-					let label = document.getElementById("annotation-mode-text");
-					if (window.truthAnnotationMode == 0) {
-						div.style.background = "black";
-						div.style.opacity=0;
-						label.innerHTML = "NONE";
-					}
-					else if (window.truthAnnotationMode == 1) {
-						div.style.background = "red";
-						div.style.opacity=0.25;
-						label.innerHTML = "DELETE POINTS";
-					} else if (window.truthAnnotationMode == 2) {
-						div.style.background = "green";
-						div.style.opacity=0.25;
-						label.innerHTML = "ADD POINTS";
-					}
-				}
-			});
-
-			window.addEventListener("keyup", (e) => {
-				if (window.annotateLanesModeActive) {
-					window.truthAnnotationMode = 0;
-					let div = document.getElementById("annotationScreen");
-					let label = document.getElementById("annotation-mode-text");
-					div.style.background = "black";
-					div.style.opacity=0;
-					label.innerHTML = "NONE";
-				}
-			});
-
-
 
 			// Load Data Sources in loadRtkCallback:
 			loadRtkCallback(s3, bucket, name, () => {
