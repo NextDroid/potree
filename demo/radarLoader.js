@@ -1,3 +1,4 @@
+"use strict"
 import { getShaderMaterial, s3, bucket, name,   } from "../demo/paramLoader.js"
 import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
 

@@ -1,3 +1,4 @@
+"use strict"
 import { runForLocalDevelopment, s3, bucket, name } from "../demo/paramLoader.js"
 import { PointAttributeNames } from "../src/loader/PointAttributes.js";
 import { togglePointClass } from "../common/custom-sidebar.js"

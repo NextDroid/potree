@@ -1,3 +1,4 @@
+"use strict"
 // import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
 // import { Flatbuffer } from "http://localhost:1234/schemas/GroundTruth_generated.js";
 

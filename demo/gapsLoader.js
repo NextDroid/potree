@@ -1,3 +1,4 @@
+"use strict"
 //import { Vec3 } from "../schemas/BasicTypes_generated.js";
 //import { Flatbuffer } from "../schemas/VisualizationPrimitives_generated.js";
 import { getShaderMaterial, s3, bucket, name,   } from "../demo/paramLoader.js"

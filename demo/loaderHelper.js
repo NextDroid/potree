@@ -1,5 +1,5 @@
 // this file is intended to call every other function in order to get potree to load
-
+"use strict"
 import {
 	runForLocalDevelopment, params, bucket, region, names, name, visualizationMode,
 	annotateLanesAvailable, downloadLanesAvailable, calibrationModeAvailable, accessKeyId,

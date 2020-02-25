@@ -1,4 +1,5 @@
 
+"use strict"
 // sets up playbar in window
 export function createPlaybar () {
 
