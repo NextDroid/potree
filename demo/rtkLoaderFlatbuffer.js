@@ -1,8 +1,8 @@
 import { getLoadingBar, removeLoadingScreen } from "../common/overlay.js";
 import { RtkTrajectory } from "../demo/RtkTrajectory.js";
-import { applyRotation } from "../demo/rtkLoader.js";
-import { visualizationMode } from  "../demo/paramLoader.js"; 
-import { loadTexture } from "../demo/textureLoader.js";
+import { animateRTK } from "../demo/rtkLoader.js";
+import { } from  "../demo/paramLoader.js"; 
+import { loadTexturedCar } from "../demo/textureLoader.js";
 import { createSliderListeners } from "../common/playbar.js"
 
 export async function loadRtkFlatbuffer(s3, bucket, name, callback) {
@@ -140,14 +140,12 @@ function parseRTK(bytesArray, FlatbufferModule) {
   return {mpos, orientations, timestamps, t_init, t_range};
 }
 
-// Load RTK: TODO REFACTOR THIS (a lot of stuff happenning here, break it up if possible)
-// utilizes loadRtkFlatbuffer and adds callbacks to it
+// Load RTK: utilizes loadRtkFlatbuffer and adds callbacks to it
 export function loadRtkCallback(s3, bucket, name, callback) {
 	// loadRtk(s3, bucket, name, (pos, rot, timestamps, t_init, t_range) => {
 	loadRtkFlatbuffer(s3, bucket, name, (pos, rot, timestamps, t_init, t_range) => {
 		window.timeframe = { "tstart": t_init, "tend": t_init + t_range };
 
-		// TODO Move this into main loader function:
 		let tstart = window.timeframe.tstart;	// Set in loadRtkCallback
 		let tend = window.timeframe.tend;			// Set in loadRtkCallback
 		let playbackRate = 1.0;
@@ -163,72 +161,13 @@ export function loadRtkCallback(s3, bucket, name, callback) {
 		const samplingFreq = 100; // Hertz TODO hardcoded
 		const rtkTrajectory = new RtkTrajectory(path, orientations, timestamps, samplingFreq);
 
-		// load the texture for car
-		loadTexture(rtkTrajectory, pos, rot);
+		// load the car's object into the viewer with texture
+		loadTexturedCar(rtkTrajectory, pos, rot);
 
 		// create event listeners that animate the playbar
 		createSliderListeners();
 
-	});
-
-
-	// RTK TweenTarget Callback:
-	window.updateCamera = true;
-	window.pitchThreshold = 1.00;
-	window.elevationWindow = { min: 1, max: 1, z: 0 };
-	animationEngine.tweenTargets.push((gpsTime) => {
-		try {
-			let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
-			let vehicle = viewer.scene.scene.getObjectByName("Vehicle");
-			let mesh = vehicle.getObjectByName("Vehicle Mesh");
-			let lastRtkPoint = vehicle.position.clone();
-			let lastRtkOrientation = vehicle.rotation.clone();
-			let lastTransform = vehicle.matrixWorld.clone();
-			// debugger; //vehicle
-			let state = vehicle.rtkTrajectory.getState(gpsTime);
-			let rtkPoint = state.pose.clone();
-			let vehicleOrientation = state.orient.clone();
-			vehicle.position.copy(rtkPoint);
-			if (visualizationMode == "aptivLanes") {
-				vehicle.position.add(new THREE.Vector3(0, 0, 1000));
-			}
-			applyRotation(vehicle, vehicleOrientation.x, vehicleOrientation.y, vehicleOrientation.z);
-			vehicle.updateMatrixWorld();
-
-			// Apply Transformation to Camera and Target:
-			if (window.updateCamera) {
-				let newTransform = vehicle.matrixWorld.clone();
-				let lastTransformInverse = lastTransform.getInverse(lastTransform);
-				let deltaTransform = lastTransformInverse.premultiply(newTransform);
-				let target = viewer.scene.view.position.clone();
-				let direction = viewer.scene.view.direction.clone();
-				let radius = viewer.scene.view.radius;
-				target.add(direction.multiplyScalar(radius));
-				viewer.scene.view.position.applyMatrix4(deltaTransform);
-				if (Math.abs(viewer.scene.view.pitch) < window.pitchThreshold) {
-					viewer.scene.view.lookAt(target.applyMatrix4(deltaTransform));
-				}
-			}
-
-			// Set Elevation:
-			// let elevationDeltaMin = -0;
-			// let elevationDeltaMax = 2;
-			let clouds = viewer.scene.pointclouds;
-			for (let ii = 0, numClouds = clouds.length; ii < numClouds; ii++) {
-				let zheight = mesh.matrixWorld.getPosition().z;
-				window.elevationWindow.z = zheight;
-				viewer.scene.pointclouds[ii].material.elevationRange = [window.elevationWindow.z - window.elevationWindow.min, window.elevationWindow.z + window.elevationWindow.max];
-				// TODO set elevation slider range extent
-			}
-
-			// Save Current RTK Pose in Uniforms:
-			for (let ii = 0, numClouds = clouds.length; ii < numClouds; ii++) {
-				let material = clouds[ii].material;
-				material.uniforms.currentRtkPosition.value = state.pose.clone();
-				material.uniforms.currentRtkOrientation.value = state.orient.toVector3().clone();
-			}
-		} catch (e) {
-			console.error("Caught error: ", e);
-		}
+		// RTK TweenTarget Callback:
+		animateRTK();
 	});
 }
