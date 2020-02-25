@@ -58,7 +58,7 @@
 	<script type="module" src="RtkTrajectory.js"></script>
 	<script type="module" src="../src/loader/PointAttributes.js"></script>
 	<script type='module' src="paramLoader.js"></script>
-	<script type='module' src="loaderHelper.js"></script>
+	<script type='module' src="loaderHelper.js"></script> <!-- Include this to start loading the page -->
 
 	<!-- TODO REMOVE BELOW -->
 	<script src="tweenTest.js"></script>
@@ -132,37 +132,4 @@
       }
 
   </script>
-
-
-
-
-	<script type="module">
-		"use strict";
-		import { loadLanes } from "../demo/laneLoader.js";
-		import { loadTracks } from "../demo/trackLoader.js";
-		import { loadDetections } from "../demo/detectionLoader.js";
-		import { loadRadar } from "../demo/radarLoader.js";
-		import { loadGaps } from "../demo/gapsLoader.js";
-		import { loadRem } from "../demo/remLoader.js";
-		import { loadVelo2Rtk, loadRtk2Vehicle, storeCalibration } from "../demo/calibrationManager.js";
-		import { updateSidebar, togglePointClass } from "../common/custom-sidebar.js";
-		import { getLoadingBar } from "../common/overlay.js";
-		// import {  } from "../common/overlay.js";
-		import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
-		import { PointAttributeNames } from "../src/loader/PointAttributes.js";
-
-		// TODO: remove imports that are not needed from param loader
-		import { runForLocalDevelopment, params, bucket, region, names, name, visualizationMode,
-			annotateLanesAvailable, downloadLanesAvailable, calibrationModeAvailable, accessKeyId,
-			secretAccessKey, sessionToken, fonts, theme, comparisonDatasets, s3, getShaderMaterial} from "../demo/paramLoader.js"
-		import { loadPotree } from "../demo/loaderHelper.js"
-
-		// setLoadingScreen();
-
-		//TODO: eventually make this function occur upon window being ready
-		loadPotree();
-
-
-	</script>
-  </body>
 </html>

@@ -18,13 +18,19 @@ import { addLoadRadarButton } from "../demo/radarLoader.js"
 import { addCalibrationButton } from "../demo/calibrationManager.js"
 import { addDetectionButton } from "../demo/detectionLoader.js"
 
-// Call all function to load potree
+
+// event listener that spins off everything to load the page
+$(document).ready(() => {
+	loadPotree();
+});
+
+// Call all functions to load potree
 export function loadPotree() {
-	// Create AnimationEngine:
-	createViewer();
-	window.animationEngine = new AnimationEngine();
-	
 	$(document).ready(() => {
+		// Create AnimationEngine:
+		createViewer();
+		window.animationEngine = new AnimationEngine();
+	
 		// add html element with listeners to document
 		createPlaybar(); 
 
