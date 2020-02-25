@@ -16,6 +16,7 @@ import { loadRemCallback } from "../demo/remLoader.js"
 import { addLoadGapsButton } from "../demo/gapsLoader.js"
 import { addLoadRadarButton } from "../demo/radarLoader.js"
 import { addCalibrationButton } from "../demo/calibrationManager.js"
+import { addDetectionButton } from "../demo/detectionLoader.js"
 
 // Call all function to load potree
 export function loadPotree() {
@@ -33,6 +34,7 @@ export function loadPotree() {
 		addLoadGapsButton();
 		addLoadRadarButton();
 		addCalibrationButton();
+		addDetectionButton();
 
 		// load in actual data & configure playbar along the way
 		loadDataIntoDocument();
