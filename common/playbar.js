@@ -189,7 +189,7 @@ export function createPlaybar () {
 
       // Find Calibration Panels:
       let panels = $(".draggable-overlay");
-      for(ii=0, len=panels.length; ii<len; ii++) {
+      for(let ii=0, len=panels.length; ii<len; ii++) {
 
         let panel = panels[ii];
 

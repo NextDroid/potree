@@ -15,6 +15,7 @@ import { loadTracksCallback } from "../demo/trackLoader.js"
 import { loadRemCallback } from "../demo/remLoader.js"
 import { addLoadGapsButton } from "../demo/gapsLoader.js"
 import { addLoadRadarButton } from "../demo/radarLoader.js"
+import { addCalibrationButton } from "../demo/calibrationManager.js"
 
 // Call all function to load potree
 export function loadPotree() {
@@ -31,6 +32,7 @@ export function loadPotree() {
 		addReloadLanesButton();
 		addLoadGapsButton();
 		addLoadRadarButton();
+		addCalibrationButton();
 
 		// load in actual data & configure playbar along the way
 		loadDataIntoDocument();
