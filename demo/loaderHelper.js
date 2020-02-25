@@ -7,7 +7,7 @@ import {
 } from "../demo/paramLoader.js"
 import { createViewer } from "../demo/viewer.js" 
 import { AnimationEngine } from "../demo/animationEngine.js"
-import { createPlaybar } from "../common/playbar.js"
+import { createPlaybar, addPlaybarListeners } from "../common/playbar.js"
 import { loadRtkCallback } from "../demo/rtkLoaderFlatbuffer.js"
 import { loadVelo2Rtk, loadRtk2Vehicle, storeCalibration } from "../demo/calibrationManager.js"
 import { loadLanesCallback } from "../demo/laneLoader.js"
@@ -23,6 +23,9 @@ export function loadPotree() {
 	$(document).ready(() => {
 		// add html element with listeners to document
 		createPlaybar(); 
+
+		// create event listeners that animate the playbar
+		addPlaybarListeners();
 
 		// load in actual data & configure playbar along the way
 		loadDataIntoDocument();

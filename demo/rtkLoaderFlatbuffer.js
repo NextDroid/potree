@@ -3,7 +3,6 @@ import { RtkTrajectory } from "../demo/RtkTrajectory.js";
 import { animateRTK } from "../demo/rtkLoader.js";
 import { } from  "../demo/paramLoader.js"; 
 import { loadTexturedCar } from "../demo/textureLoader.js";
-import { createSliderListeners } from "../common/playbar.js"
 
 export async function loadRtkFlatbuffer(s3, bucket, name, callback) {
   let lastLoaded = 0;
@@ -163,9 +162,6 @@ export function loadRtkCallback(s3, bucket, name, callback) {
 
 		// load the car's object into the viewer with texture
 		loadTexturedCar(rtkTrajectory, pos, rot);
-
-		// create event listeners that animate the playbar
-		createSliderListeners();
 
 		// RTK TweenTarget Callback:
 		animateRTK();
