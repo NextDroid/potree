@@ -155,8 +155,8 @@ export function addLoadRadarButton() {
 				}
 				window.radarLoaded = true;
 				loadRadarButton.disabled = true;
-				removeLoadingScreen();
 			});
+			removeLoadingScreen();
 		}
 	});
 } // end of add radar button

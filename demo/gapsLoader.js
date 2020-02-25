@@ -325,8 +325,8 @@ export function addLoadGapsButton() {
 				});
 				window.gapsLoaded = true;
 				loadGapsButton.disabled = true;
-				removeLoadingScreen();
 			});
+			removeLoadingScreen();
 		}
 	});
 } // end of Load Gaps Button
