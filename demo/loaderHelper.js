@@ -12,5 +12,6 @@ export function loadPotree() {
 	
 	$(document).ready(() => {
 		createPlaybar(); 
+
 	});
 }
