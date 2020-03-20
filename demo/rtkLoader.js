@@ -187,7 +187,7 @@ export function applyRotation(obj, roll, pitch, yaw) {
 
 }
 
-// animates the viewer camera and TweenTarget for RTK 
+// animates the viewer camera and TweenTarget for RTK
 // once textured vehicle object is created
 export function animateRTK() {
 	window.updateCamera = true;
@@ -197,9 +197,10 @@ export function animateRTK() {
 		try {
 			let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
 			// vehicle contains all the work done by textureLoader
-			let vehicle = viewer.scene.scene.getObjectByName("Vehicle"); 
-			let mesh = vehicle.getObjectByName("Vehicle Mesh");
-			let lastRtkPoint = vehicle.position.clone();
+			let vehicle = viewer.scene.scene.getObjectByName("Vehicle");
+                        const mesh = vehicle.getObjectByName("Vehicle Mesh");
+                        const meshPosition = new THREE.Vector3();
+		        let lastRtkPoint = vehicle.position.clone();
 			let lastRtkOrientation = vehicle.rotation.clone();
 			let lastTransform = vehicle.matrixWorld.clone();
 			// debugger; //vehicle
@@ -233,8 +234,9 @@ export function animateRTK() {
 			// let elevationDeltaMax = 2;
 			let clouds = viewer.scene.pointclouds;
 			for (let ii = 0, numClouds = clouds.length; ii < numClouds; ii++) {
-				let zheight = mesh.matrixWorld.getPosition().z;
-				window.elevationWindow.z = zheight;
+                                meshPosition.setFromMatrixPosition(mesh.matrixWorld);
+                                const zheight = meshPosition.z;
+			        window.elevationWindow.z = zheight;
 				viewer.scene.pointclouds[ii].material.elevationRange = [window.elevationWindow.z - window.elevationWindow.min, window.elevationWindow.z + window.elevationWindow.max];
 				// TODO set elevation slider range extent
 			}
