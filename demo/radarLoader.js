@@ -1,6 +1,6 @@
-"use strict"
-import { getShaderMaterial, s3, bucket, name,   } from "../demo/paramLoader.js"
-import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
+'use strict';
+import { getShaderMaterial, s3, bucket, name } from "../demo/paramLoader.js"
+import { getLoadingBar, getLoadingBarTotal, setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
 
 function isNan(n) {
   return n !== n;
@@ -8,9 +8,12 @@ function isNan(n) {
 
 export async function loadRadar(s3, bucket, name, callback) {
   const tstart = performance.now();
+  let loadingBar = getLoadingBar();
+  let loadingBarTotal = getLoadingBarTotal(); 
+  let lastLoaded = 0;
   if (s3 && bucket && name) {
     const objectName = `${name}/0_Preprocessed/radardata.csv`;
-    s3.getObject({Bucket: bucket,
+    const request = s3.getObject({Bucket: bucket,
                   Key: objectName},
                  (err, data) => {
                    if (err) {
@@ -20,6 +23,18 @@ export async function loadRadar(s3, bucket, name, callback) {
                      const {geometry, t_init} = parseRadar(string);
                      callback(geometry, t_init);
                    }});
+    request.on("httpDownloadProgress", (e) => {
+      let val = e.loaded/e.total * 100;  
+      val = Math.max(lastLoaded, val);
+      loadingBar.set(Math.max(val, loadingBar.value));
+      lastLoaded = val;
+    });
+    
+    request.on("complete", () => {
+      loadingBar.set(100)
+      loadingBarTotal.set(100);
+      removeLoadingScreen();
+    });
   } else {
     const filename = "csv/radar_tracks_demo.csv";
     const xhr = new XMLHttpRequest();

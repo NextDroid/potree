@@ -1,10 +1,11 @@
-"use strict"
-import { getLoadingBar } from "../common/overlay.js";
+'use strict';
+import { getLoadingBar, getLoadingBarTotal, setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
 import { s3, bucket, name, getShaderMaterial } from "../demo/paramLoader.js"
-import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
 
 
 export async function loadDetections(s3, bucket, name, shaderMaterial, animationEngine, callback) {
+  let loadingBar = getLoadingBar();
+  let loadingBarTotal = getLoadingBarTotal(); 
   let lastLoaded = 0;
   const tstart = performance.now();
   if (s3 && bucket && name) {
@@ -27,6 +28,18 @@ export async function loadDetections(s3, bucket, name, shaderMaterial, animation
                        const detectionGeometries = parseDetections(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
                        callback(detectionGeometries, );
                      }});
+      request.on("httpDownloadProgress", (e) => {
+        let val = e.loaded/e.total * 100;  
+        val = Math.max(lastLoaded, val);
+        loadingBar.set(val);
+        lastLoaded = val;
+      });
+      
+      request.on("complete", () => {
+        loadingBar.set(100)
+        loadingBarTotal.set(100);
+        removeLoadingScreen();
+      });
     })();
 
   } else {

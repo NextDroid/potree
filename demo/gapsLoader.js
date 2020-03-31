@@ -1,10 +1,11 @@
-"use strict"
-//import { Vec3 } from "../schemas/BasicTypes_generated.js";
-//import { Flatbuffer } from "../schemas/VisualizationPrimitives_generated.js";
-import { getShaderMaterial, s3, bucket, name,   } from "../demo/paramLoader.js"
-import { setLoadingScreen, removeLoadingScreen } from "../common/overlay.js"
+'use strict';
+import { getShaderMaterial, s3, bucket, name } from "../demo/paramLoader.js"
+import { getLoadingBar, getLoadingBarTotal, numberTasks, setLoadingScreen, removeLoadingScreen } from "../common/overlay.js";
 
 export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine, callback) {
+  let loadingBar = getLoadingBar();
+  let loadingBarTotal = getLoadingBarTotal(); 
+  let lastLoaded = 0;
   const tstart = performance.now();
   if (s3 && bucket && name) {
     (async () => {
@@ -16,7 +17,7 @@ export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine
         Key: schemaFile
       });
 
-      s3.getObject({Bucket: bucket,
+      const request = s3.getObject({Bucket: bucket,
                     Key: objectName},
                    async (err, data) => {
                      if (err) {
@@ -26,6 +27,18 @@ export async function loadGaps(s3, bucket, name, shaderMaterial, animationEngine
                        const gapGeometries = parseGaps(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
                        callback( gapGeometries );
                      }});
+      request.on("httpDownloadProgress", (e) => {
+        let val = e.loaded/e.total * 100;  
+        val = Math.max(lastLoaded, val);
+        loadingBar.set(val);
+        lastLoaded = val;
+      });
+      
+      request.on("complete", () => {
+        loadingBar.set(100)
+        loadingBarTotal.set(100);
+        removeLoadingScreen();
+      });
     })();
 
   } else {
@@ -179,6 +192,9 @@ function createGapGeometries(vertexGroups, material) {
 
 
 function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animationEngine) {
+  console.log("gaps loader")
+  let loadingBar = getLoadingBar();
+  let loadingBarTotal = getLoadingBarTotal(); 
 
   let gap;
   let lefts = [];
@@ -187,6 +203,7 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
   let allBoxes = new THREE.Geometry();
   let gapTimes = [];
   for(let ii=0, len=gaps.length; ii<len; ii++) {
+    loadingBar.set(ii/len * 100); // update individual task progress
     // if (ii > 1000) {
     //   continue;
     // }
@@ -287,6 +304,9 @@ function createGapGeometriesOld(gaps, shaderMaterial, FlatbufferModule, animatio
   const output = {
     left: all
   }
+  // update total progress
+  loadingBarTotal.set(Math.min(Math.ceil(loadingBarTotal.value + (100/numberTasks))), 100);
+  loadingBar.set(0);
   return output;
 }
 
