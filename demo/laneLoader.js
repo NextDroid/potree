@@ -347,7 +347,15 @@ async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volum
       if (annotationMode) {
 
         if (volumes.length == 0) {
-          laneLeft.addMarker(new THREE.Vector3(left.x(), left.y(), left.z()));
+          console.log("Left point valid: ", lane.leftPointInterpolated(jj));
+
+          if (lane.leftPointInterpolated(jj)) {
+            laneLeft.color = new THREE.Color(0x0000ff);
+          }
+          laneLeft.addMarker(new THREE.Vector3(left.x(), left.y(), left.z()), color);
+          laneLeft.color = new THREE.Color(0xff0000);
+          testcount = (testcount + 1) % 3;
+
         } else {
           isContains = updateSegments(leftLaneSegments, clonedBoxes, isContains, left, jj, numVertices);
         }
@@ -363,7 +371,13 @@ async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volum
       if (annotationMode) {
 
         if (volumes.length == 0) {
-          laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()));
+          // console.log("Right point valid: ", lane.rightPointInterpolated());
+          // if (lane.rightPointInterpolated()) {
+          //   laneRight.color = new THREE.Color(0x0000ff);
+          // }
+          // laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()));
+          // laneRight.color = new THREE.Color(0xff0000);
+          
         }
         else {
           isContains = updateSegments(rightLaneSegments, clonedBoxes, isContains, right, jj, numVertices);

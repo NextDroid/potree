@@ -1,14 +1,14 @@
 'use strict';
 
 // This file contains common constant variables (some of which are pulled from the url params)
-export const runForLocalDevelopment = location.search === "" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const runForLocalDevelopment = true; //location.search === "" && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const params = new URLSearchParams(location.search);
 export const bucket = params.get("bucket");
 export const region = params.get("region");
 export const names = JSON.parse(params.get("names"));
 export const name = params.get("clicked");
 export const visualizationMode = params.get("mode");
-export const annotateLanesAvailable = params.get('annotate') == 'Annotate';
+export const annotateLanesAvailable = true; // params.get('annotate') == 'Annotate';
 export const downloadLanesAvailable = annotateLanesAvailable;
 export const calibrationModeAvailable = params.get("calibrate") == "Calibrate" || runForLocalDevelopment;
 export const accessKeyId = params.get("key1");
@@ -18,7 +18,7 @@ export const fonts = JSON.parse(params.get("fonts"));
 export const theme = JSON.parse(params.get("theme")); // material-ui theme
 export let comparisonDatasets = [];
 if (names) {
-    comparisonDatasets = names.filter(element => element !== name);
+    comparisonDatasets = ['lanes-550.fb', 'lanes-300.fb'];
 }
 
 if (fonts) {
@@ -53,9 +53,9 @@ export const s3 = bucket && region && name && accessKeyId && secretAccessKey &&
         sessionToken: sessionToken,
     });
 
-if (!(s3 || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    window.history.back()
-};
+// if (!(s3 || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+//     window.history.back()
+// };
 // We really want this, but it doesn't work in the browser. Only on a server.
 // const stream = s3.getObject({Bucket: bucket,
 //                              Key: name}).createReadStream();

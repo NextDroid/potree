@@ -74,18 +74,23 @@ export class Measure extends THREE.Object3D {
 		this.add(this.areaLabel);
 	}
 
-	createSphereMaterial () {
+	createSphereMaterial (color) {
+
+
+
 		let sphereMaterial = new THREE.MeshLambertMaterial({
 			//shading: THREE.SmoothShading,
-			color: this.color,
+			color: color || this.color,
 			depthTest: false,
 			depthWrite: false}
 		);
 
+		// console.log("COLOR: ", sphereMaterial.color);
+
 		return sphereMaterial;
 	};
 
-	addMarker (point, callback) {
+	addMarker (point, color, callback) {
 		if (point instanceof THREE.Vector3) {
 			point = {position: point};
 		}else if(point instanceof Array){
@@ -94,7 +99,7 @@ export class Measure extends THREE.Object3D {
 		this.points.push(point);
 
 		// sphere
-		let sphere = new THREE.Mesh(this.sphereGeometry, this.createSphereMaterial());
+		let sphere = new THREE.Mesh(this.sphereGeometry, this.createSphereMaterial(color));
 
 		this.add(sphere);
 		this.spheres.push(sphere);
@@ -376,7 +381,7 @@ export class Measure extends THREE.Object3D {
 
 			// spheres
 			sphere.position.copy(point.position);
-			sphere.material.color = this.color;
+			// sphere.material.color = this.color;
 
 			{ // edges
 				let edge = this.edges[index];
