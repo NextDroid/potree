@@ -148,7 +148,7 @@ async function parseLanes(bytesArray, FlatbufferModule, supplierNum, annotationM
     lanes.push(lane);
     segOffset += segSize;
   }
-  return await createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes);
+  return await createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes, FlatbufferModule);
 }
 
 
@@ -262,7 +262,7 @@ function createLaneGeometries(vertexGroups, material) {
 
 // async function in order to enable a real time loading bar (caller functions must also use async/await)
 // without it the javascript code will run and block the UI that needs to update the loading bar (remove at your own risk)
-async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes) {
+async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volumes, FlatbufferModule) {
 
   let materialLeft, materialSpine, materialRight;
   switch (supplierNum) {
@@ -341,20 +341,20 @@ async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volum
 
     let left, right, spine;
     let isContains = false;
+    let color = new THREE.Color(0xff0000);
     for(let jj=0, numVertices=lane.leftLength(); jj<numVertices; jj++) {
       left = lane.left(jj);
 
       if (annotationMode) {
 
         if (volumes.length == 0) {
-          console.log("Left point valid: ", lane.leftPointInterpolated(jj));
+          console.log("Left point valid: ", lane.leftPointValidity(jj) == FlatbufferModule.Flatbuffer.GroundTruth.PointValidity.VALID);
 
-          if (lane.leftPointInterpolated(jj)) {
-            laneLeft.color = new THREE.Color(0x0000ff);
+          if (lane.leftPointValidity(jj) == FlatbufferModule.Flatbuffer.GroundTruth.PointValidity.INVALID) {
+            color = new THREE.Color(0x0000ff);
           }
           laneLeft.addMarker(new THREE.Vector3(left.x(), left.y(), left.z()), color);
-          laneLeft.color = new THREE.Color(0xff0000);
-          testcount = (testcount + 1) % 3;
+          color = new THREE.Color(0xff0000);
 
         } else {
           isContains = updateSegments(leftLaneSegments, clonedBoxes, isContains, left, jj, numVertices);
@@ -371,12 +371,12 @@ async function createLaneGeometriesOld(lanes, supplierNum, annotationMode, volum
       if (annotationMode) {
 
         if (volumes.length == 0) {
-          // console.log("Right point valid: ", lane.rightPointInterpolated());
-          // if (lane.rightPointInterpolated()) {
-          //   laneRight.color = new THREE.Color(0x0000ff);
-          // }
-          // laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()));
-          // laneRight.color = new THREE.Color(0xff0000);
+          console.log("Right point valid: ", lane.rightPointValidity(jj) == FlatbufferModule.Flatbuffer.GroundTruth.PointValidity.INVALID);
+          if (lane.rightPointValidity(jj) == FlatbufferModule.Flatbuffer.GroundTruth.PointValidity.INVALID) {
+            color = new THREE.Color(0x0000ff);
+          }
+          laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()), color);
+          color = new THREE.Color(0xff0000);
           
         }
         else {
