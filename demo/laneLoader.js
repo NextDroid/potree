@@ -25,6 +25,10 @@ async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, v
     return
   }
 
+  if (fname) {
+    laneFiles.objectName = `${name}/2_Truth/${fname}`;
+  }
+
   if (s3 && bucket && name) {
     const request = s3.getObject({Bucket: bucket,
                                   Key: laneFiles.objectName});
@@ -448,7 +452,7 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.leftAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'));
+    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
   }
 
   if (laneGeometries.rightAnomalies.length !== 0) {
@@ -458,7 +462,7 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.rightAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'));
+    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
   }
 }
 
@@ -526,6 +530,8 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   viewer.scene.dispatchEvent({
     "type": "truth_layer_added",
     "truthLayer": lanesLayer
+
+
   });
   if (callback) {
     callback();
@@ -547,14 +553,16 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   if (comparisonDatasets.length > 0) {
     filename = 'lanes.fb';
     tmpSupplierNum = -2;
-    await loadLanes(s3, bucket, comparisonDatasets[0], filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
-      const lanesLayer = new THREE.Group();
-      lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
-      addLaneGeometries(laneGeometries, lanesLayer);
-      viewer.scene.dispatchEvent({
-        type: "truth_layer_added",
-        truthLayer: lanesLayer
-      });
+
+
+    const laneGeometries = await loadLanes(s3, bucket, comparisonDataset[0], filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes);
+    // need to have Annoted Lanes layer, so that can have original and edited lanes layers
+    const lanesLayer = new THREE.Group();
+    lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
+    addLaneGeometries(laneGeometries, lanesLayer);
+    viewer.scene.dispatchEvent({
+      "type": "truth_layer_added",
+      "truthLayer": lanesLayer
     });
   }
 }
