@@ -3,7 +3,7 @@ import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
 import { visualizationMode, comparisonDatasets, s3, bucket, name } from "../demo/paramLoader.js"
 import { updateLoadingBar, incrementLoadingBarTotal, resetProgressBars } from "../common/overlay.js";
-import { getFbFileInfo } from "./loaderUtilities.js";
+import { getFbFileInfo, getFilesFromS3 } from "./loaderUtilities.js";
 
 
 let laneFiles = null;
@@ -27,6 +27,10 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
     return
   }
 
+  if (fname) {
+    laneFiles.objectName = `${name}/2_Truth/${fname}`;
+  }
+
   if (s3 && bucket && name) {
     (async () => {
       const schemaUrl = s3.getSignedUrl('getObject', {
@@ -35,17 +39,17 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
       });
 
       const request = await s3.getObject({Bucket: bucket,
-                    Key: laneFiles.objectName},
-                    async (err, data) => {
-                      if (err) {
-                        console.error(err, err.stack);
-                      } else {
-                        const FlatbufferModule = await import(schemaUrl);
-                        const laneGeometries = await parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
-                        await callback( laneGeometries );
-                      }
-                      incrementLoadingBarTotal("loaded lanes")
-                    });
+        Key: laneFiles.objectName},
+      async (err, data) => {
+        if (err) {
+          console.error(err, err.stack);
+        } else {
+          const FlatbufferModule = await import(schemaUrl);
+          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
+          await callback( laneGeometries );
+        }
+        incrementLoadingBarTotal("loaded lanes")
+      });
       request.on("httpDownloadProgress", async (e) => {
         await updateLoadingBar(e.loaded/e.total * 100)
       });
@@ -496,7 +500,7 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
 
 
 // Adds anomaly annotations
-function addAnnotations (laneGeometries) {
+function addAnomalies (laneGeometries) {
   const aRoot = viewer.scene.annotations;
   const aAnomalies = new Potree.Annotation({
     title: 'Lane Anomalies',
@@ -513,7 +517,7 @@ function addAnnotations (laneGeometries) {
       position: laneGeometries.leftAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(populateAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
+    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
   }
 
   if (laneGeometries.rightAnomalies.length !== 0) {
@@ -523,11 +527,11 @@ function addAnnotations (laneGeometries) {
       position: laneGeometries.rightAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(populateAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
+    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
   }
 }
 
-function populateAnomaliesHelper (annotation, anomalies, name) {
+function addAnomaliesHelper (annotation, anomalies, name) {
   for (let ii = 0, len = anomalies.length; ii < len; ii++) {
     const point = anomalies[ii];
     const aAnomaly = new Potree.Annotation({
@@ -551,23 +555,42 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
   // add lane anomaly geometries
   if (laneGeometries.leftAnomalies.length !== 0 ||
     laneGeometries.rightAnomalies.length !== 0) {
-    addAnnotations(laneGeometries);
+    addAnomalies(laneGeometries);
   }
 }
 
 
 // Load Lanes Truth Data:
 export async function loadLanesCallback (s3, bucket, name, callback) {
-  let filename, tmpSupplierNum;
-  tmpSupplierNum = -1;
+  let filename;
+  const lanesFiles = await getFilesFromS3(s3, bucket, name, '2_Truth');
+  for (let ii = 0, numFiles = lanesFiles.length; ii < numFiles; ii++) {
+    if (!lanesFiles[ii].endsWith('lanes.fb')) continue;
+    if (lanesFiles[ii] !== 'lanes.fb') {
+      let tmpSupplierNum = 3;
+      const laneName = getLaneName(lanesFiles[ii]);
+      filename = lanesFiles[ii];
+      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+    } else {
+      let tmpSupplierNum = -1;
+      const laneName = 'Lanes';
+      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+    }
+  }
+}
+
+async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName) {
+  // console.log(typeof lanesFiles[ii]);
   await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
     // need to have Annoted Lanes layer, so that can have original and edited lanes layers
     const lanesLayer = new THREE.Group();
-    lanesLayer.name = "Lanes";
+    // TODO clean up name: (Lanes, remove fb, capitalize first letter, etc)
+    lanesLayer.name = laneName;
     addLaneGeometries(laneGeometries, lanesLayer);
+    if (laneName !== 'Lanes') lanesLayer.visible = false;
     viewer.scene.dispatchEvent({
-      "type": "truth_layer_added",
-      "truthLayer": lanesLayer
+      type: "truth_layer_added",
+      truthLayer: lanesLayer
     });
     if (callback) {
       callback();
@@ -595,12 +618,13 @@ export async function loadLanesCallback (s3, bucket, name, callback) {
       lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
       addLaneGeometries(laneGeometries, lanesLayer);
       viewer.scene.dispatchEvent({
-        "type": "truth_layer_added",
-        "truthLayer": lanesLayer
+        type: "truth_layer_added",
+        truthLayer: lanesLayer
       });
     });
   }
-} // end of loadLanesCallback
+}
+
 
 async function loadLanesHelper (layerName, filename, s) {
   try {
@@ -633,8 +657,8 @@ export function addReloadLanesButton() {
       // REMOVE LANES
       let removeLanes = viewer.scene.scene.getChildByName("Lanes");
       while (removeLanes) {
-	viewer.scene.scene.remove(removeLanes);
-	removeLanes = viewer.scene.scene.getChildByName("Lanes");
+        viewer.scene.scene.remove(removeLanes);
+        removeLanes = viewer.scene.scene.getChildByName("Lanes");
       }
 
       // Pause animation:
@@ -665,3 +689,7 @@ export function addReloadLanesButton() {
     }
   });
 } // end of Reload Lanes Button Code
+
+function getLaneName (filename) {
+  return filename.split('.').slice(0, -1).join('.');
+}
