@@ -47,18 +47,12 @@ export const getFileInfo = async (datasetFiles, objNameMatch, localObj) =>
 
 export async function getFilesFromS3 (s3, bucket, name, directory) {
   const output = [];
-  var params = {
+  const data = await s3.listObjectsV2({
     Bucket: bucket,
     Prefix: `${name}/${directory}`
-  };
-  await s3.listObjectsV2(params, function (err, data) {
-    if (err) {
-      console.log(err, err.stack);
-    } else {
-      for (let ii = 0, numFiles = data.Contents.length; ii < numFiles; ii++) {
-        output.push(data.Contents[ii].Key.split(/.*[\/|\\]/)[1]);
-      }
-    }
   }).promise();
+  for (let ii = 0, numFiles = data.Contents.length; ii < numFiles; ii++) {
+    output.push(data.Contents[ii].Key.split(/.*[\/|\\]/)[1]);
+  }
   return output;
 }
