@@ -30,7 +30,10 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
     return
   }
 
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 <<<<<<< ffab5c404195accf90068e5e8304bef859a2507b
+=======
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
   if (fname) {
     laneFiles.objectName = `${name}/2_Truth/${fname}`;
   }
@@ -47,16 +50,25 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
         Key: laneFiles.schemaFile
       });
 
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
       const request = await s3.getObject({
         Bucket: bucket,
         Key: `${name}/2_Truth/${fname}`
       },
+=======
+      const request = await s3.getObject({Bucket: bucket,
+        Key: laneFiles.objectName},
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
       async (err, data) => {
         if (err) {
           console.error(err, err.stack);
         } else {
           const FlatbufferModule = await import(schemaUrl);
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
           const laneGeometries = await parseLanes(data.Body, FlatbufferModule, supplierNum, annotationMode, volumes);
+=======
+          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
           await callback( laneGeometries );
         }
         incrementLoadingBarTotal("loaded lanes")
@@ -480,7 +492,11 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
 
 
 // Adds anomaly annotations
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 function addAnomalies (laneGeometries, lanesLayer) {
+=======
+function addAnomalies (laneGeometries) {
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
   const aRoot = viewer.scene.annotations;
   const aAnomalies = new Potree.Annotation({
     title: `${lanesLayer.name} Anomalies`,
@@ -497,7 +513,11 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.leftAnomalies[0],
       collapseThreshold: 0
     });
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
     aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'));
+=======
+    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
   }
 
   if (laneGeometries.rightAnomalies.length !== 0) {
@@ -507,7 +527,11 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.rightAnomalies[0],
       collapseThreshold: 0
     });
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
     aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'));
+=======
+    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
   }
 }
 
@@ -535,12 +559,17 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
   // add lane anomaly geometries
   if (laneGeometries.leftAnomalies.length !== 0 ||
     laneGeometries.rightAnomalies.length !== 0) {
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
     addAnomalies(laneGeometries, lanesLayer);
+=======
+    addAnomalies(laneGeometries);
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
   }
 }
 
 
 // Load Lanes Truth Data:
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
   // Handle local file
   // TODO load original file too
@@ -561,6 +590,41 @@ export async function loadLanesCallback (s3, bucket, name, callback, s3Files=nul
       } else {
         loadLanesCallbackHelper(s3, bucket, name, s3File, 3, callback, getLaneName(s3File));
       }
+=======
+export async function loadLanesCallback (s3, bucket, name, callback) {
+  let filename;
+  const lanesFiles = await getFilesFromS3(s3, bucket, name, '2_Truth');
+  for (let ii = 0, numFiles = lanesFiles.length; ii < numFiles; ii++) {
+    if (!lanesFiles[ii].endsWith('lanes.fb')) continue;
+    if (lanesFiles[ii] !== 'lanes.fb') {
+      let tmpSupplierNum = 3;
+      const laneName = getLaneName(lanesFiles[ii]);
+      filename = lanesFiles[ii];
+      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+    } else {
+      let tmpSupplierNum = -1;
+      const laneName = 'Lanes';
+      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+    }
+  }
+}
+
+async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName) {
+  // console.log(typeof lanesFiles[ii]);
+  await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
+    // need to have Annoted Lanes layer, so that can have original and edited lanes layers
+    const lanesLayer = new THREE.Group();
+    // TODO clean up name: (Lanes, remove fb, capitalize first letter, etc)
+    lanesLayer.name = laneName;
+    addLaneGeometries(laneGeometries, lanesLayer);
+    if (laneName !== 'Lanes') lanesLayer.visible = false;
+    viewer.scene.dispatchEvent({
+      type: "truth_layer_added",
+      truthLayer: lanesLayer
+    });
+    if (callback) {
+      callback();
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
     }
   }
 
@@ -600,6 +664,7 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   if (comparisonDatasets.length > 0) {
     filename = 'lanes.fb';
     tmpSupplierNum = -2;
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 
 
     const laneGeometries = await loadLanes(s3, bucket, comparisonDataset[0], filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes);
@@ -610,6 +675,16 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
     viewer.scene.dispatchEvent({
       "type": "truth_layer_added",
       "truthLayer": lanesLayer
+=======
+    await loadLanes(s3, bucket, comparisonDatasets[0], filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
+      const lanesLayer = new THREE.Group();
+      lanesLayer.name = `Lanes-${comparisonDatasets[0].split("Data/")[1]}`;
+      addLaneGeometries(laneGeometries, lanesLayer);
+      viewer.scene.dispatchEvent({
+        type: "truth_layer_added",
+        truthLayer: lanesLayer
+      });
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
     });
   }
 }
@@ -677,6 +752,7 @@ export function addReloadLanesButton() {
   });
 } // end of Reload Lanes Button Code
 
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 /**
  * @brief Function that gets the display name of a lane
  * @param { String } filename
@@ -719,3 +795,8 @@ function getLaneColorScheme (supplierNum) {
   }
   return [materialLeft, materialRight, materialSpine];
 }
+=======
+function getLaneName (filename) {
+  return filename.split('.').slice(0, -1).join('.');
+}
+>>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present

@@ -108,6 +108,7 @@ export function applyRotation(obj, roll, pitch, yaw) {
   obj.rotation.setFromRotationMatrix(rotMat);
 }
 
+<<<<<<< 3ae810ed407bcb8faf032a5d880e58f483b06685
 export async function getFilesFromS3 (s3, bucket, name, directory) {
   const output = [];
   var params = {
