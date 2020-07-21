@@ -77,7 +77,9 @@ export async function loadPotree() {
   // now that animation engine has been created, can add event listeners
   createPlaybar();
 
-  const datasetFiles = await getS3Files()
+  const files = await getS3Files()
+	const datasetFiles = files[0];
+	const datasetFilesTable = files[1];
   const numTasks = await determineNumTasks(datasetFiles)
   setNumTasks(numTasks)
 
@@ -90,7 +92,7 @@ export async function loadPotree() {
   addDetectionButton();
 
   // load in actual data & configure playbar along the way
-  loadDataIntoDocument();
+  loadDataIntoDocument(datasetFilesTable);
 
   // Load Pointclouds
   if (runLocalPointCloud) {
@@ -105,7 +107,7 @@ export async function loadPotree() {
 }
 
 // loads all necessary data (car obj/texture, rtk, radar, tracks, etc...)
-function loadDataIntoDocument() {
+function loadDataIntoDocument (datasetFiles) {
 	        // Load Data Sources in loadRtkCallback:
                 loadRtkCallback(s3, bucket, name, () => {
 
@@ -155,7 +157,7 @@ function loadDataIntoDocument() {
 			// TODO shaderMaterial
 			let shaderMaterial = getShaderMaterial();
 			let trackShaderMaterial = shaderMaterial.clone();
-			loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine);
+			loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine, datasetFiles['2_Truth']);
 		} catch (e) {
 			console.error("Could not load Tracks: ", e);
 		}
@@ -235,15 +237,19 @@ async function getS3Files() {
 	// consolidate each subdirs' contents after doing multiple requests
 	// prevent one folder's numerous binary files from blocking the retrieval of other dirs' files
 	const filePaths = []
+	const table = {};
 	for (const dir of topLevelDirs) {
+		let list = [];
 		const listData = await s3.listObjectsV2({
 			Bucket: bucket,
 			Prefix: dir,
 		}).promise()
 		listData.Contents.forEach(fileListing => filePaths.push(fileListing.Key))
+		listData.Contents.forEach(fileListing => list.push(fileListing.Key))
+		table[dir] = list;
 	}
 
-	return filePaths
+	return [filePaths, table];
 }
 
 /**
