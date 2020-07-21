@@ -232,6 +232,7 @@ async function getS3Files() {
 	// prevent one folder's numerous binary files from blocking the retrieval of other dirs' files
 	const filePaths = []
 	for (const dir of topLevelDirs) {
+		console.log("dir", dir);
 		const listData = await s3.listObjectsV2({
 			Bucket: bucket,
 			Prefix: dir,

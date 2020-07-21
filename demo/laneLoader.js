@@ -18,7 +18,7 @@ export const laneDownloads = async (datasetFiles) => {
 
 async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   // Logic for dealing with Map Supplier Data:
-  const resolvedSupplierNum = supplierNum || -1;
+  // const resolvedSupplierNum = supplierNum || -1;
 
   if (!laneFiles) {
     console.log("No lane files present")
@@ -452,7 +452,7 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.leftAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
+    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'));
   }
 
   if (laneGeometries.rightAnomalies.length !== 0) {
@@ -462,7 +462,7 @@ function addAnomalies (laneGeometries, lanesLayer) {
       position: laneGeometries.rightAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
+    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'));
   }
 }
 
@@ -525,8 +525,10 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   const laneGeometries = await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes);
   // need to have Annoted Lanes layer, so that can have original and edited lanes layers
   const lanesLayer = new THREE.Group();
-  lanesLayer.name = "Lanes";
+  lanesLayer.name = laneName;
   addLaneGeometries(laneGeometries, lanesLayer);
+  if (laneName !== 'Lanes') lanesLayer.visible = false;
+
   viewer.scene.dispatchEvent({
     "type": "truth_layer_added",
     "truthLayer": lanesLayer
