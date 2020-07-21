@@ -20,7 +20,7 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
   const tstart = performance.now();
 
   // Logic for dealing with Map Supplier Data:
-  const resolvedSupplierNum = supplierNum || -1;
+  // const resolvedSupplierNum = supplierNum || -1;
 
   if (!laneFiles) {
     console.log("No lane files present")
@@ -45,7 +45,7 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
           console.error(err, err.stack);
         } else {
           const FlatbufferModule = await import(schemaUrl);
-          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
+          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, supplierNum, annotationMode, volumes);
           await callback( laneGeometries );
         }
         incrementLoadingBarTotal("loaded lanes")
@@ -82,7 +82,7 @@ export async function loadLanes(s3, bucket, name, fname, supplierNum, annotation
       }
 
       let bytesArray = new Uint8Array(response);
-      const laneGeometries = await parseLanes(bytesArray, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
+      const laneGeometries = await parseLanes(bytesArray, FlatbufferModule, supplierNum, annotationMode, volumes);
       await callback( laneGeometries );
       incrementLoadingBarTotal("loaded lanes")
     };
@@ -120,152 +120,124 @@ async function parseLanes(bytesArray, FlatbufferModule, supplierNum, annotationM
 
 
 // TODO we are not using this function and will need to rewrite is to accomodate annotations and amomalies. Recmommend removing
-function splitLaneVertices(lanes) {
-
-  let leftVertices = [];
-  let rightVertices = [];
-  let spineVertices = [];
-
-  let lane, vtx, laneVertices;
-  for (let ii=0, numLanes=lanes.length; ii<numLanes; ii++) {
-
-    lane = lanes[ii];
-
-    laneVertices = [];
-    for (let jj=0, numLeftVtx=lane.leftLength(); jj<numLeftVtx; jj++) {
-      vtx = lane.left(jj);
-      laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
-    }
-    leftVertices.push(laneVertices);
-
-    laneVertices = [];
-    for (let jj=0, numRightVtx=lane.rightLength(); jj<numRightVtx; jj++) {
-      vtx = lane.right(jj);
-      laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
-    }
-    rightVertices.push(laneVertices);
-
-    laneVertices = [];
-    for (let jj=0, numSpineVtx=lane.spineLength(); jj<numSpineVtx; jj++) {
-      vtx = lane.spine(jj);
-      spineVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
-    }
-    spineVertices.push(laneVertices);
-  }
-
-  let output = {
-    leftGroups: leftVertices,
-    rightGroups: rightVertices,
-    spineGroups: spineVertices
-  }
-
-  return output;
-}
+// function splitLaneVertices(lanes) {
+//
+//   let leftVertices = [];
+//   let rightVertices = [];
+//   let spineVertices = [];
+//
+//   let lane, vtx, laneVertices;
+//   for (let ii=0, numLanes=lanes.length; ii<numLanes; ii++) {
+//
+//     lane = lanes[ii];
+//
+//     laneVertices = [];
+//     for (let jj=0, numLeftVtx=lane.leftLength(); jj<numLeftVtx; jj++) {
+//       vtx = lane.left(jj);
+//       laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
+//     }
+//     leftVertices.push(laneVertices);
+//
+//     laneVertices = [];
+//     for (let jj=0, numRightVtx=lane.rightLength(); jj<numRightVtx; jj++) {
+//       vtx = lane.right(jj);
+//       laneVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
+//     }
+//     rightVertices.push(laneVertices);
+//
+//     laneVertices = [];
+//     for (let jj=0, numSpineVtx=lane.spineLength(); jj<numSpineVtx; jj++) {
+//       vtx = lane.spine(jj);
+//       spineVertices.push( new THREE.Vector3(vtx.x(), vtx.y(), vtx.z()) );
+//     }
+//     spineVertices.push(laneVertices);
+//   }
+//
+//   let output = {
+//     leftGroups: leftVertices,
+//     rightGroups: rightVertices,
+//     spineGroups: spineVertices
+//   }
+//
+//   return output;
+// }
 
 
 // TODO we are not using this function and will need to rewrite is to accomodate annotations and amomalies. Recmommend removing
-function createLaneGeometries(vertexGroups, material) {
-
-  let laneGeometries = [];
-  let allBoxes = new THREE.Geometry();
-
-  let allLanes = [];
-  let vertexGroup;
-  let v1, v2;
-  let length, width, height;
-  let vector, axis;
-  let center, firstCenter, delta;
-  let boxGeometry, se3, quaternion;
-  debugger; // vertexGroups.length
-  for (let ii=0, len=vertexGroups.length; ii<len; ii++) {
-
-    vertexGroup = vertexGroups[ii];
-
-    for (let jj=1, numVertices=vertexGroup.length; jj<numVertices; jj++) {
-
-      v1 = vertexGroup[jj-1];
-      v2 = vertexGroup[jj];
-
-      length = v1.distanceTo(v2);
-      height = 0.01;
-      width = 0.1;
-
-      vector = v2.sub(v1);
-      axis = new THREE.Vector3(1, 0, 0);
-      center = v1.addScaledVector(vector, 0.5);
-
-      if (firstCenter == undefined) {
-        firstCenter = center.clone();
-      }
-
-      delta = center.clone().sub(firstCenter);
-      lastCenter = center.clone();
-      // debugger; // delta
-
-      // Transform Box:
-      boxGeometry = new THREE.BoxGeometry(length, width, height);
-      se3 = new THREE.Matrix4();
-      quaternion = new THREE.Quaternion().setFromUnitVectors(axis, vector.clone().normalize());
-      // debugger; // se3;
-      se3.makeRotationFromQuaternion(quaternion); // Rotation
-      se3.setPosition(delta); // Translation
-
-      boxGeometry.applyMatrix( se3 );
-      allBoxes.merge(boxGeometry);
-
-      if ((ii%10000)==0 || ii==(len-1)) {
-        // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
-        let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
-        mesh.position.copy(firstCenter);
-        laneGeometries.push(mesh);
-        allBoxes = new THREE.Geometry();
-        firstCenter = center.clone();
-      }
-
-
-    }
-  }
-
-  return laneGeometries;
-}
+// function createLaneGeometries(vertexGroups, material) {
+//
+//   let laneGeometries = [];
+//   let allBoxes = new THREE.Geometry();
+//
+//   let allLanes = [];
+//   let vertexGroup;
+//   let v1, v2;
+//   let length, width, height;
+//   let vector, axis;
+//   let center, firstCenter, delta;
+//   let boxGeometry, se3, quaternion;
+//   debugger; // vertexGroups.length
+//   for (let ii=0, len=vertexGroups.length; ii<len; ii++) {
+//
+//     vertexGroup = vertexGroups[ii];
+//
+//     for (let jj=1, numVertices=vertexGroup.length; jj<numVertices; jj++) {
+//
+//       v1 = vertexGroup[jj-1];
+//       v2 = vertexGroup[jj];
+//
+//       length = v1.distanceTo(v2);
+//       height = 0.01;
+//       width = 0.1;
+//
+//       vector = v2.sub(v1);
+//       axis = new THREE.Vector3(1, 0, 0);
+//       center = v1.addScaledVector(vector, 0.5);
+//
+//       if (firstCenter == undefined) {
+//         firstCenter = center.clone();
+//       }
+//
+//       delta = center.clone().sub(firstCenter);
+//       lastCenter = center.clone();
+//       // debugger; // delta
+//
+//       // Transform Box:
+//       boxGeometry = new THREE.BoxGeometry(length, width, height);
+//       se3 = new THREE.Matrix4();
+//       quaternion = new THREE.Quaternion().setFromUnitVectors(axis, vector.clone().normalize());
+//       // debugger; // se3;
+//       se3.makeRotationFromQuaternion(quaternion); // Rotation
+//       se3.setPosition(delta); // Translation
+//
+//       boxGeometry.applyMatrix( se3 );
+//       allBoxes.merge(boxGeometry);
+//
+//       if ((ii%10000)==0 || ii==(len-1)) {
+//         // let mesh = new THREE.Mesh(allBoxes, new THREE.MeshBasicMaterial({color:0x00ff00}));
+//         let mesh = new THREE.Mesh(new THREE.BufferGeometry().fromGeometry(allBoxes), material); // Buffergeometry
+//         mesh.position.copy(firstCenter);
+//         laneGeometries.push(mesh);
+//         allBoxes = new THREE.Geometry();
+//         firstCenter = center.clone();
+//       }
+//
+//
+//     }
+//   }
+//
+//   return laneGeometries;
+// }
 
 
 // async function in order to enable a real time loading bar (caller functions must also use async/await)
 // without it the javascript code will run and block the UI that needs to update the loading bar (remove at your own risk)
 async function createLaneGeometriesOld (lanes, supplierNum, annotationMode, volumes) {
 
-  let materialLeft, materialSpine, materialRight;
-  switch (supplierNum) {
-
-    case -2:
-      materialLeft = new THREE.MeshBasicMaterial({color: 0x11870a});
-      materialSpine = new THREE.MeshBasicMaterial({color: 0x11870a});
-      materialRight = new THREE.MeshBasicMaterial({color: 0x11870a});
-      break;
-
-    case 1:
-      materialLeft = new THREE.MeshBasicMaterial({color: 0x3aaeb7});
-      materialSpine = new THREE.MeshBasicMaterial({color: 0x3aaeb7});
-      materialRight = new THREE.MeshBasicMaterial({color: 0x3aaeb7});
-      break;
-
-    case 2:
-      materialLeft = new THREE.MeshBasicMaterial({color: 0x3e3ab7});
-      materialSpine = new THREE.MeshBasicMaterial({color: 0x3e3ab7});
-      materialRight = new THREE.MeshBasicMaterial({color: 0x3e3ab7});
-      break;
-
-    case 3:
-      materialLeft = new THREE.MeshBasicMaterial({color: 0xa63ab7});
-      materialSpine = new THREE.MeshBasicMaterial({color: 0xa63ab7});
-      materialRight = new THREE.MeshBasicMaterial({color: 0xa63ab7});
-      break;
-
-    default:
-      materialLeft = new THREE.MeshBasicMaterial({color: 0xffffff});
-      materialSpine = new THREE.MeshBasicMaterial({color: 0x00ff00});
-      materialRight = new THREE.MeshBasicMaterial({color: 0xffffff});
-  }
+  const laneColors = getLaneColorScheme(supplierNum);
+  const materialLeft = laneColors[0];
+  const materialRight = laneColors[1];
+  const materialSpine = laneColors[2];
 
   const laneLeft = new Measure(); laneLeft.name = "Lane Left"; laneLeft.closed = false; laneLeft.showCoordinates = true; laneLeft.showAngles = true;
   // const laneSpine = new Measure(); laneSpine.name = "Lane Spine"; //laneRight.closed = false;
@@ -500,10 +472,10 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
 
 
 // Adds anomaly annotations
-function addAnomalies (laneGeometries) {
+function addAnomalies (laneGeometries, lanesLayer) {
   const aRoot = viewer.scene.annotations;
   const aAnomalies = new Potree.Annotation({
-    title: 'Lane Anomalies',
+    title: `${lanesLayer.objectName} Anomalies`,
     position: null,
     collapseThreshold: 0
   });
@@ -517,7 +489,7 @@ function addAnomalies (laneGeometries) {
       position: laneGeometries.leftAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'))
+    aAnomalies.add(addAnomaliesHelper(aLeft, laneGeometries.leftAnomalies, 'Left'));
   }
 
   if (laneGeometries.rightAnomalies.length !== 0) {
@@ -527,7 +499,7 @@ function addAnomalies (laneGeometries) {
       position: laneGeometries.rightAnomalies[0],
       collapseThreshold: 0
     });
-    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'))
+    aAnomalies.add(addAnomaliesHelper(aRight, laneGeometries.rightAnomalies, 'Right'));
   }
 }
 
@@ -555,26 +527,22 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
   // add lane anomaly geometries
   if (laneGeometries.leftAnomalies.length !== 0 ||
     laneGeometries.rightAnomalies.length !== 0) {
-    addAnomalies(laneGeometries);
+    addAnomalies(laneGeometries, lanesLayer);
   }
 }
 
 
 // Load Lanes Truth Data:
 export async function loadLanesCallback (s3, bucket, name, callback) {
-  let filename;
   const lanesFiles = await getFilesFromS3(s3, bucket, name, '2_Truth');
   for (let ii = 0, numFiles = lanesFiles.length; ii < numFiles; ii++) {
     if (!lanesFiles[ii].endsWith('lanes.fb')) continue;
-    if (lanesFiles[ii] !== 'lanes.fb') {
-      let tmpSupplierNum = 3;
-      const laneName = getLaneName(lanesFiles[ii]);
-      filename = lanesFiles[ii];
-      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+    if (lanesFiles[ii] === 'lanes.fb') {
+      loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
+    } else if (lanesFiles[ii] === 'original-lanes.fb') {
+      loadLanesCallbackHelper(s3, bucket, name, lanesFiles[ii], -1, callback, 'Original Lanes');
     } else {
-      let tmpSupplierNum = -1;
-      const laneName = 'Lanes';
-      loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName);
+      loadLanesCallbackHelper(s3, bucket, name, lanesFiles[ii], 3, callback, getLaneName(lanesFiles[ii]));
     }
   }
 }
@@ -584,7 +552,6 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
     // need to have Annoted Lanes layer, so that can have original and edited lanes layers
     const lanesLayer = new THREE.Group();
-    // TODO clean up name: (Lanes, remove fb, capitalize first letter, etc)
     lanesLayer.name = laneName;
     addLaneGeometries(laneGeometries, lanesLayer);
     if (laneName !== 'Lanes') lanesLayer.visible = false;
@@ -690,6 +657,45 @@ export function addReloadLanesButton() {
   });
 } // end of Reload Lanes Button Code
 
+/**
+ * @brief Function that gets the display name of a lane
+ * @param { String } filename
+ */
 function getLaneName (filename) {
   return filename.split('.').slice(0, -1).join('.');
+}
+
+/**
+ * @brief Function that gets the color scheme of the lanes to be rendered
+ * @param { int } supplierNum
+ */
+function getLaneColorScheme (supplierNum) {
+  let materialLeft, materialSpine, materialRight;
+  switch (supplierNum) {
+    case -2:
+      materialLeft = new THREE.MeshBasicMaterial({ color: 0x11870a });
+      materialSpine = new THREE.MeshBasicMaterial({ color: 0x11870a });
+      materialRight = new THREE.MeshBasicMaterial({ color: 0x11870a });
+      break;
+    case 1:
+      materialLeft = new THREE.MeshBasicMaterial({ color: 0x3aaeb7 });
+      materialSpine = new THREE.MeshBasicMaterial({ color: 0x3aaeb7 });
+      materialRight = new THREE.MeshBasicMaterial({ color: 0x3aaeb7 });
+      break;
+    case 2:
+      materialLeft = new THREE.MeshBasicMaterial({ color: 0x3e3ab7 });
+      materialSpine = new THREE.MeshBasicMaterial({ color: 0x3e3ab7 });
+      materialRight = new THREE.MeshBasicMaterial({ color: 0x3e3ab7 });
+      break;
+    case 3:
+      materialLeft = new THREE.MeshBasicMaterial({ color: 0xa63ab7 });
+      materialSpine = new THREE.MeshBasicMaterial({ color: 0xa63ab7 });
+      materialRight = new THREE.MeshBasicMaterial({ color: 0xa63ab7 });
+      break;
+    default:
+      materialLeft = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      materialSpine = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      materialRight = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  }
+  return [materialLeft, materialRight, materialSpine];
 }
