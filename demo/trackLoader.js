@@ -16,21 +16,21 @@ export const trackDownloads = async (datasetFiles) => {
   return trackFiles;
 }
 
-export async function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, callback) {
+export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial, animationEngine, callback) {
   const tstart = performance.now();
   if (!trackFiles) {
     console.log("No track files present")
     return
   }
 
-  if (s3 && bucket && name) {
+  if (s3 && bucket && name && trackFileName) {
     (async () => {
       const schemaUrl = s3.getSignedUrl('getObject', {
         Bucket: bucket,
         Key: trackFiles.schemaFile
       });
       const request = await s3.getObject({Bucket: bucket,
-        Key: trackFiles.objectName},
+        Key: trackFileName},
         async (err, data) => {
           if (err) {
             console.error("Error getting tracks file", err, err.stack);
@@ -316,28 +316,51 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
   return output;
 }
 
-export async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine) {
+export async function loadTracksCallback (s3, bucket, name, trackShaderMaterial, animationEngine, s3Files) {
+  // Handle local file
+  if (!s3Files) {
+    loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, null, 'Tracked Objects');
+  } else {
+    // Handle s3 files
+    for (let s3File of s3Files) {
+      s3File = s3File.split(/.*[\/|\\]/)[1];
+      if (!s3File.endsWith('tracks.fb')) {
+        continue;
+      } else if (s3File === 'tracks.fb') {
+        loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, s3File, 'Tracked Objects');
+      } else {
+        loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, s3File, getDisplayName(s3File));
+      }
+    }
+  }
+}
 
-	await loadTracks(s3, bucket, name, trackShaderMaterial, animationEngine, (trackGeometries) => {
-		let trackLayer = new THREE.Group();
-		trackLayer.name = "Tracked Objects";
-		for (let ii = 0, len = trackGeometries.bbox.length; ii < len; ii++) {
-			trackLayer.add(trackGeometries.bbox[ii]);
-			// viewer.scene.scene.add(trackGeometries.bbox[ii]); // Original
-		}
+async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, trackFileName, trackName) {
+  await loadTracks(s3, bucket, name, trackFileName, trackShaderMaterial, animationEngine, (trackGeometries) => {
+    const trackLayer = new THREE.Group();
+    trackLayer.name = trackName;
+    for (let ii = 0, len = trackGeometries.bbox.length; ii < len; ii++) {
+      trackLayer.add(trackGeometries.bbox[ii]);
+      // viewer.scene.scene.add(trackGeometries.bbox[ii]); // Original
+    }
 
-		viewer.scene.scene.add(trackLayer);
-		let e = new CustomEvent("truth_layer_added", { detail: trackLayer, writable: true });
-		viewer.scene.dispatchEvent({
-			"type": "truth_layer_added",
-			"truthLayer": trackLayer
-		});
+    viewer.scene.scene.add(trackLayer);
+    let e = new CustomEvent("truth_layer_added", { detail: trackLayer, writable: true });
+    viewer.scene.dispatchEvent({
+      type: "truth_layer_added",
+      truthLayer: trackLayer
+    });
 
-		// TODO check if group works as expected, then trigger "truth_layer_added" event
-		animationEngine.tweenTargets.push((gpsTime) => {
-			let currentTime = gpsTime - animationEngine.tstart;
-			trackShaderMaterial.uniforms.minGpsTime.value = currentTime + animationEngine.activeWindow.backward;
-			trackShaderMaterial.uniforms.maxGpsTime.value = currentTime + animationEngine.activeWindow.forward;
-		});
-	});
-}  // end of loadTracksCallback
+    // TODO check if group works as expected, then trigger "truth_layer_added" event
+    animationEngine.tweenTargets.push((gpsTime) => {
+      const currentTime = gpsTime - animationEngine.tstart;
+      trackShaderMaterial.uniforms.minGpsTime.value = currentTime + animationEngine.activeWindow.backward;
+      trackShaderMaterial.uniforms.maxGpsTime.value = currentTime + animationEngine.activeWindow.forward;
+    });
+  });
+}
+
+// TODO move this to loaderUtilities because it can be used in laneLoader too
+export function getDisplayName (filename) {
+  return filename.split('.').slice(0, -1).join('.');
+}
