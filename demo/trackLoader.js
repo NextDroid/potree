@@ -29,18 +29,20 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
         Bucket: bucket,
         Key: trackFiles.schemaFile
       });
-      const request = await s3.getObject({Bucket: bucket,
-        Key: trackFileName},
-        async (err, data) => {
-          if (err) {
-            console.error("Error getting tracks file", err, err.stack);
-          } else {
-            const FlatbufferModule = await import(schemaUrl);
-            const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
-            await callback(trackGeometries, );
-          }
-          incrementLoadingBarTotal("tracks loaded")
-        });
+      const request = await s3.getObject({
+        Bucket: bucket,
+        Key: `${name}/2_Truth/${trackFileName}`
+      },
+      async (err, data) => {
+        if (err) {
+          console.error("Error getting tracks file", err, err.stack);
+        } else {
+          const FlatbufferModule = await import(schemaUrl);
+          const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
+          await callback(trackGeometries);
+        }
+        incrementLoadingBarTotal("tracks loaded")
+      });
       request.on("httpDownloadProgress", async (e) => {
         await updateLoadingBar(e.loaded/e.total * 100);
       });
