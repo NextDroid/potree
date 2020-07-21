@@ -93,7 +93,11 @@ export async function loadPotree() {
 <<<<<<< ffab5c404195accf90068e5e8304bef859a2507b
 =======
 
+<<<<<<< 4e7136f8611d8a7bc3d5039f2ffa0daf817e5d22
 >>>>>>> Changes to how files are loaded, cleans up mess of callback function
+=======
+  console.log("dataset files", datasetFiles);
+>>>>>>> Fix more bugs, clean up code
   // load in actual data & configure playbar along the way
   await loadDataIntoDocument();
 
@@ -236,6 +240,7 @@ async function getS3Files() {
 	// prevent one folder's numerous binary files from blocking the retrieval of other dirs' files
 	const filePaths = []
 	for (const dir of topLevelDirs) {
+		console.log("dir", dir);
 		const listData = await s3.listObjectsV2({
 			Bucket: bucket,
 			Prefix: dir,
