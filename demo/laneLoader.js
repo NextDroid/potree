@@ -19,27 +19,22 @@ export const laneDownloads = async (datasetFiles) => {
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   const tstart = performance.now();
 
-  // Logic for dealing with Map Supplier Data:
-  // const resolvedSupplierNum = supplierNum || -1;
-
   if (!laneFiles) {
     console.log("No lane files present")
     return
   }
 
-  if (fname) {
-    laneFiles.objectName = `${name}/2_Truth/${fname}`;
-  }
-
-  if (s3 && bucket && name) {
+  if (s3 && bucket && name && fname) {
     (async () => {
       const schemaUrl = s3.getSignedUrl('getObject', {
         Bucket: bucket,
         Key: laneFiles.schemaFile
       });
 
-      const request = await s3.getObject({Bucket: bucket,
-        Key: laneFiles.objectName},
+      const request = await s3.getObject({
+        Bucket: bucket,
+        Key: `${name}/2_Truth/${fname}`
+      },
       async (err, data) => {
         if (err) {
           console.error(err, err.stack);
@@ -533,18 +528,29 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 
 
 // Load Lanes Truth Data:
-export async function loadLanesCallback (s3, bucket, name, callback) {
-  const lanesFiles = await getFilesFromS3(s3, bucket, name, '2_Truth');
-  for (let ii = 0, numFiles = lanesFiles.length; ii < numFiles; ii++) {
-    if (!lanesFiles[ii].endsWith('lanes.fb')) continue;
-    if (lanesFiles[ii] === 'lanes.fb') {
-      loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
-    } else if (lanesFiles[ii] === 'original-lanes.fb') {
-      loadLanesCallbackHelper(s3, bucket, name, lanesFiles[ii], -1, callback, 'Original Lanes');
-    } else {
-      loadLanesCallbackHelper(s3, bucket, name, lanesFiles[ii], 3, callback, getLaneName(lanesFiles[ii]));
+export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
+  // Handle local file
+  // TODO load original file too
+  if (s3Files) {
+    loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
+  // Handle S3 files
+  } else {
+    // TODO remove and use parameter
+    s3Files = await getFilesFromS3(s3, bucket, name, '2_Truth');
+    for (let s3File of s3Files) {
+      // s3File = s3File.split(/.*[\/|\\]/)[1];
+      if (!s3File.endsWith('lanes.fb')) {
+        continue;
+      } else if (s3File === 'lanes.fb') {
+        loadLanesCallbackHelper(s3, bucket, name, s3File, -1, callback, 'Lanes');
+      } else if (s3File === 'original-lanes.fb') {
+        loadLanesCallbackHelper(s3, bucket, name, s3File, -1, callback, 'Original Lanes');
+      } else {
+        loadLanesCallbackHelper(s3, bucket, name, s3File, 3, callback, getLaneName(s3File));
+      }
     }
   }
+
 }
 
 async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName) {
