@@ -16,15 +16,21 @@ export const laneDownloads = async (datasetFiles) => {
   return laneFiles
 }
 
+<<<<<<< ffab5c404195accf90068e5e8304bef859a2507b
 async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   // Logic for dealing with Map Supplier Data:
   // const resolvedSupplierNum = supplierNum || -1;
+=======
+export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
+  const tstart = performance.now();
+>>>>>>> Changes to how files are loaded, cleans up mess of callback function
 
   if (!laneFiles) {
     console.log("No lane files present")
     return
   }
 
+<<<<<<< ffab5c404195accf90068e5e8304bef859a2507b
   if (fname) {
     laneFiles.objectName = `${name}/2_Truth/${fname}`;
   }
@@ -33,6 +39,45 @@ async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, v
     const request = s3.getObject({Bucket: bucket,
                                   Key: laneFiles.objectName});
     request.on("httpDownloadProgress", async (e) => {
+=======
+  if (s3 && bucket && name && fname) {
+    (async () => {
+      const schemaUrl = s3.getSignedUrl('getObject', {
+        Bucket: bucket,
+        Key: laneFiles.schemaFile
+      });
+
+      const request = await s3.getObject({
+        Bucket: bucket,
+        Key: `${name}/2_Truth/${fname}`
+      },
+      async (err, data) => {
+        if (err) {
+          console.error(err, err.stack);
+        } else {
+          const FlatbufferModule = await import(schemaUrl);
+          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, supplierNum, annotationMode, volumes);
+          await callback( laneGeometries );
+        }
+        incrementLoadingBarTotal("loaded lanes")
+      });
+      request.on("httpDownloadProgress", async (e) => {
+        await updateLoadingBar(e.loaded/e.total * 100)
+      });
+
+      request.on("complete", () => {
+        incrementLoadingBarTotal("downloaded lanes")
+      });
+    })();
+  } else {
+    let t0, t1;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", laneFiles.objectName);
+    xhr.responseType = "arraybuffer";
+
+    xhr.onprogress = async (e) => {
+>>>>>>> Changes to how files are loaded, cleans up mess of callback function
       await updateLoadingBar(e.loaded/e.total*100)
     });
     const data = await request.promise();
