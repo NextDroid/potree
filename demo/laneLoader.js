@@ -470,7 +470,7 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
 function addAnomalies (laneGeometries, lanesLayer) {
   const aRoot = viewer.scene.annotations;
   const aAnomalies = new Potree.Annotation({
-    title: `${lanesLayer.objectName} Anomalies`,
+    title: `${lanesLayer.name} Anomalies`,
     position: null,
     collapseThreshold: 0
   });
@@ -528,17 +528,18 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 
 
 // Load Lanes Truth Data:
-export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
+export async function loadLanesCallback (s3, bucket, name, callback, s3Files = null) {
   // Handle local file
   // TODO load original file too
   if (!s3Files) {
-    loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
+    loadLanesCallbackHelper(s3, bucket, name, 'lanes.fb', -1, callback, 'Lanes');
+    // loadLanesCallbackHelper(s3, bucket, name, 'original-lanes.fb', 3, callback, 'Original Lanes');
   // Handle S3 files
   } else {
-    // TODO remove and use parameter
+    // TODO remove and use s3Files parameter
     s3Files = await getFilesFromS3(s3, bucket, name, '2_Truth');
     for (let s3File of s3Files) {
-      // s3File = s3File.split(/.*[\/|\\]/)[1];
+      s3File = s3File.split(/.*[\/|\\]/)[1];
       if (!s3File.endsWith('lanes.fb')) {
         continue;
       } else if (s3File === 'lanes.fb') {
@@ -554,7 +555,6 @@ export async function loadLanesCallback (s3, bucket, name, callback, s3Files=nul
 }
 
 async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName) {
-  // console.log(typeof lanesFiles[ii]);
   await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
     // need to have Annoted Lanes layer, so that can have original and edited lanes layers
     const lanesLayer = new THREE.Group();
@@ -647,17 +647,15 @@ export function addReloadLanesButton() {
       resetProgressBars(2) // have to download & process/load lanes
 
       loadLanesCallback(s3, bucket, name, () => {
-	// TOGGLE BUTTON TEXT
-	if (window.annotateLanesModeActive) {
-	  reload_lanes_button.innerText = "View Truth Lanes";
-	  document.getElementById("download_lanes_button").style.display = "block";
-	} else {
-	  reload_lanes_button.innerText = "Annotate Truth Lanes";
-	  document.getElementById("download_lanes_button").style.display = "none";
-	}
-
-	reloadLanesButton.disabled = false
-
+        // TOGGLE BUTTON TEXT
+        if (window.annotateLanesModeActive) {
+          reload_lanes_button.innerText = "View Truth Lanes";
+          document.getElementById("download_lanes_button").style.display = "block";
+        } else {
+          reload_lanes_button.innerText = "Annotate Truth Lanes";
+          document.getElementById("download_lanes_button").style.display = "none";
+        }
+        reloadLanesButton.disabled = false;
       });
     }
   });
