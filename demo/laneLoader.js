@@ -524,17 +524,18 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 
 
 // Load Lanes Truth Data:
-export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
+export async function loadLanesCallback (s3, bucket, name, callback, s3Files = null) {
   // Handle local file
   // TODO load original file too
   if (!s3Files) {
-    loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
+    loadLanesCallbackHelper(s3, bucket, name, 'lanes.fb', -1, callback, 'Lanes');
+    // loadLanesCallbackHelper(s3, bucket, name, 'original-lanes.fb', 3, callback, 'Original Lanes');
   // Handle S3 files
   } else {
-    // TODO remove and use parameter
+    // TODO remove and use s3Files parameter
     s3Files = await getFilesFromS3(s3, bucket, name, '2_Truth');
     for (let s3File of s3Files) {
-      // s3File = s3File.split(/.*[\/|\\]/)[1];
+      s3File = s3File.split(/.*[\/|\\]/)[1];
       if (!s3File.endsWith('lanes.fb')) {
         continue;
       } else if (s3File === 'lanes.fb') {
@@ -563,6 +564,9 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
 
 
   });
+
+
+
   if (callback) {
     callback();
   }
