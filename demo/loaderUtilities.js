@@ -45,7 +45,6 @@ export const getFileInfo = async (datasetFiles, objNameMatch, localObj) =>
     }
   };
 
-<<<<<<< f0fdc4b5a7437b95b84789afd28d63a1cc308fd0
 export const getFbFileInfox = async (datasetFiles, objNameMatch, schemaMatch, localObjList, localSchema) =>
   {
     if (datasetFiles) {
@@ -109,16 +108,22 @@ export function applyRotation(obj, roll, pitch, yaw) {
   obj.rotation.setFromRotationMatrix(rotMat);
 
 
-=======
+}
+
 export async function getFilesFromS3 (s3, bucket, name, directory) {
   const output = [];
-  const data = await s3.listObjectsV2({
+  var params = {
     Bucket: bucket,
     Prefix: `${name}/${directory}`
+  };
+  await s3.listObjectsV2(params, function (err, data) {
+    if (err) {
+      console.log(err, err.stack);
+    } else {
+      for (let ii = 0, numFiles = data.Contents.length; ii < numFiles; ii++) {
+        output.push(data.Contents[ii].Key.split(/.*[\/|\\]/)[1]);
+      }
+    }
   }).promise();
-  for (let ii = 0, numFiles = data.Contents.length; ii < numFiles; ii++) {
-    output.push(data.Contents[ii].Key.split(/.*[\/|\\]/)[1]);
-  }
   return output;
->>>>>>> Initial commit: includes ability to view all lanes files in 2_Truth. Bugs may be present
 }
