@@ -527,7 +527,7 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
   // Handle local file
   // TODO load original file too
-  if (s3Files) {
+  if (!s3Files) {
     loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
   // Handle S3 files
   } else {
