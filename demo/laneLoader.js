@@ -470,7 +470,11 @@ function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index,
 function addAnomalies (laneGeometries, lanesLayer) {
   const aRoot = viewer.scene.annotations;
   const aAnomalies = new Potree.Annotation({
+<<<<<<< HEAD
     title: `${lanesLayer.name} Anomalies`,
+=======
+    title: `${lanesLayer.objectName} Anomalies`,
+>>>>>>> bd06a36ed0525e41c59447e735590cf7a558509b
     position: null,
     collapseThreshold: 0
   });
@@ -528,6 +532,7 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 
 
 // Load Lanes Truth Data:
+<<<<<<< HEAD
 export async function loadLanesCallback (s3, bucket, name, callback, s3Files = null) {
   // Handle local file
   // TODO load original file too
@@ -540,6 +545,19 @@ export async function loadLanesCallback (s3, bucket, name, callback, s3Files = n
     s3Files = await getFilesFromS3(s3, bucket, name, '2_Truth');
     for (let s3File of s3Files) {
       s3File = s3File.split(/.*[\/|\\]/)[1];
+=======
+export async function loadLanesCallback (s3, bucket, name, callback, s3Files=null) {
+  // Handle local file
+  // TODO load original file too
+  if (s3Files) {
+    loadLanesCallbackHelper(s3, bucket, name, null, -1, callback, 'Lanes');
+  // Handle S3 files
+  } else {
+    // TODO remove and use parameter
+    s3Files = await getFilesFromS3(s3, bucket, name, '2_Truth');
+    for (let s3File of s3Files) {
+      // s3File = s3File.split(/.*[\/|\\]/)[1];
+>>>>>>> bd06a36ed0525e41c59447e735590cf7a558509b
       if (!s3File.endsWith('lanes.fb')) {
         continue;
       } else if (s3File === 'lanes.fb') {
@@ -555,6 +573,10 @@ export async function loadLanesCallback (s3, bucket, name, callback, s3Files = n
 }
 
 async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNum, callback, laneName) {
+<<<<<<< HEAD
+=======
+  // console.log(typeof lanesFiles[ii]);
+>>>>>>> bd06a36ed0525e41c59447e735590cf7a558509b
   await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
     // need to have Annoted Lanes layer, so that can have original and edited lanes layers
     const lanesLayer = new THREE.Group();
