@@ -369,6 +369,7 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 export function getDisplayName (filename) {
   return filename.split('.').slice(0, -1).join('.');
 }
+<<<<<<< HEAD
 
 // const color = getRandomRGB();
 // shaderMaterial.uniforms.color.value = new THREE.Color(`rgb(${color})`);
@@ -379,3 +380,5 @@ export function getDisplayName (filename) {
 //   const b = randomValue(0, 255);
 //   return `${r}, ${g}, ${b}`;
 // }
+=======
+>>>>>>> 840372d66dcedccb76ed554ec3a09ba34c4beff9
