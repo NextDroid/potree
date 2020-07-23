@@ -17,50 +17,24 @@ export const laneDownloads = async (datasetFiles) => {
 }
 
 export async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
-  const tstart = performance.now();
+  // Logic for dealing with Map Supplier Data:
+  const resolvedSupplierNum = supplierNum || -1;
 
   if (!laneFiles) {
     console.log("No lane files present")
     return
   }
 
-  if (s3 && bucket && name && fname) {
-    (async () => {
-      const schemaUrl = s3.getSignedUrl('getObject', {
-        Bucket: bucket,
-        Key: laneFiles.schemaFile
-      });
+  if (fname) {
+    laneFiles.objectName = `${name}/2_Truth/${fname}`;
+  }
 
-      const request = await s3.getObject({
-        Bucket: bucket,
-        Key: `${name}/2_Truth/${fname}`
-      },
-      async (err, data) => {
-        if (err) {
-          console.error(err, err.stack);
-        } else {
-          const FlatbufferModule = await import(schemaUrl);
-          const laneGeometries = await parseLanes(data.Body, FlatbufferModule, supplierNum, annotationMode, volumes);
-          await callback( laneGeometries );
-        }
-        incrementLoadingBarTotal("loaded lanes")
-      });
-      request.on("httpDownloadProgress", async (e) => {
-        await updateLoadingBar(e.loaded/e.total * 100)
-      });
-
-      request.on("complete", () => {
-        incrementLoadingBarTotal("downloaded lanes")
-      });
-    })();
-  } else {
-    let t0, t1;
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", laneFiles.objectName);
-    xhr.responseType = "arraybuffer";
-
-    xhr.onprogress = async (e) => {
+  if (s3 && bucket && name) {
+    const request = s3.getObject({
+      Bucket: bucket,
+      Key: laneFiles.objectName
+    });
+    request.on("httpDownloadProgress", async (e) => {
       await updateLoadingBar(e.loaded/e.total*100)
     });
     const data = await request.promise();
@@ -514,7 +488,6 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
     lanesLayer.add(laneGeometries.all[ii]);
   }
   viewer.scene.scene.add(lanesLayer);
-
   // add lane anomaly geometries
   if (laneGeometries.leftAnomalies.length !== 0 ||
     laneGeometries.rightAnomalies.length !== 0) {
@@ -526,7 +499,6 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 // Load Lanes Truth Data:
 export async function loadLanesCallback (s3, bucket, name, callback, s3Files = null) {
   // Handle local file
-  // TODO load original file too
   if (!s3Files) {
     loadLanesCallbackHelper(s3, bucket, name, 'lanes.fb', -1, callback, 'Lanes');
     // loadLanesCallbackHelper(s3, bucket, name, 'original-lanes.fb', 3, callback, 'Original Lanes');
@@ -557,15 +529,10 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
   lanesLayer.name = laneName;
   addLaneGeometries(laneGeometries, lanesLayer);
   if (laneName !== 'Lanes') lanesLayer.visible = false;
-
   viewer.scene.dispatchEvent({
     "type": "truth_layer_added",
     "truthLayer": lanesLayer
-
-
   });
-
-
 
   if (callback) {
     callback();
@@ -588,7 +555,6 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
     filename = 'lanes.fb';
     tmpSupplierNum = -2;
 
-
     const laneGeometries = await loadLanes(s3, bucket, comparisonDataset[0], filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes);
     // need to have Annoted Lanes layer, so that can have original and edited lanes layers
     const lanesLayer = new THREE.Group();
@@ -604,14 +570,13 @@ async function loadLanesCallbackHelper(s3, bucket, name, filename, tmpSupplierNu
 
 async function loadLanesHelper (layerName, filename, s) {
   try {
-    await loadLanes(s3, bucket, name, filename, s, window.annotateLanesModeActive, viewer.scene.volumes, (laneGeometries) => {
-      const lanesLayer = new THREE.Group();
-      lanesLayer.name = layerName;
-      addLaneGeometries(laneGeometries, lanesLayer);
-      viewer.scene.dispatchEvent({
-        type: 'map_provider_layer_added',
-        mapLayer: lanesLayer
-      });
+    const laneGeometries = await loadLanes(s3, bucket, filename, s, window.annotateLanesModeActive, viewer.scene.volumes);
+    const lanesLayer = new THREE.Group();
+    lanesLayer.name = layerName;
+    addLaneGeometries(laneGeometries, lanesLayer);
+    viewer.scene.dispatchEvent({
+      "type": "map_provider_layer_added",
+      "truthLayer": lanesLayer
     });
   } catch (e) {
     console.error(`Couldn't load ${filename}`, e);
