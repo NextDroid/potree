@@ -23,7 +23,11 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
     return
   }
 
-  if (s3 && bucket && name && trackFileName) {
+  if (trackFileName) {
+    trackFiles.objectName = `${name}/2_Truth/${trackFileName}`;
+  }
+
+  if (s3 && bucket && name) {
     (async () => {
       const schemaUrl = s3.getSignedUrl('getObject', {
         Bucket: bucket,
@@ -31,7 +35,7 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
       });
       const request = await s3.getObject({
         Bucket: bucket,
-        Key: `${name}/2_Truth/${trackFileName}`
+        Key: trackFiles.objectName
       },
       async (err, data) => {
         if (err) {
@@ -41,7 +45,7 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
           const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
           await callback(trackGeometries);
         }
-        incrementLoadingBarTotal("tracks loaded")
+        incrementLoadingBarTotal("tracks loaded");
       });
       request.on("httpDownloadProgress", async (e) => {
         await updateLoadingBar(e.loaded/e.total * 100);
@@ -111,22 +115,21 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
 
 async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngine) {
 
-  let numBytes = bytesArray.length;
-  let tracks = [];
+  const numBytes = bytesArray.length;
+  const tracks = [];
 
   let segOffset = 0;
-  let segSize, viewSize, viewData;
   while (segOffset < numBytes) {
 
     // Read SegmentSize:
-    viewSize = new DataView(bytesArray.buffer, segOffset, 4);
-    segSize = viewSize.getUint32(0, true); // True: little-endian | False: big-endian
+    const viewSize = new DataView(bytesArray.buffer, segOffset, 4);
+    const segSize = viewSize.getUint32(0, true); // True: little-endian | False: big-endian
 
     // Get Flatbuffer Track Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
-    let fbuffer = new flatbuffers.ByteBuffer(buf);
-    let track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
+    const buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    const fbuffer = new flatbuffers.ByteBuffer(buf);
+    const track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
     // debugger;
 
     tracks.push(track);
@@ -318,10 +321,10 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
   return output;
 }
 
-export async function loadTracksCallback (s3, bucket, name, trackShaderMaterial, animationEngine, s3Files) {
+export async function loadTracksCallback (s3, bucket, name, trackShaderMaterial, animationEngine, s3Files = null) {
   // Handle local file
   if (!s3Files) {
-    loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, null, 'Tracked Objects');
+    loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, 'tracks.fb', 'Tracked Objects');
   } else {
     // Handle s3 files
     for (let s3File of s3Files) {
@@ -337,7 +340,7 @@ export async function loadTracksCallback (s3, bucket, name, trackShaderMaterial,
   }
 }
 
-async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, trackFileName, trackName) {
+async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, animationEngine, trackFileName, trackName) {
   await loadTracks(s3, bucket, name, trackFileName, trackShaderMaterial, animationEngine, (trackGeometries) => {
     const trackLayer = new THREE.Group();
     trackLayer.name = trackName;

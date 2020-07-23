@@ -110,6 +110,7 @@ export async function loadPotree() {
 
 // loads all necessary data (car obj/texture, rtk, radar, tracks, etc...)
 function loadDataIntoDocument (datasetFiles) {
+	console.log("dataset table", datasetFiles);
 	        // Load Data Sources in loadRtkCallback:
                 loadRtkCallback(s3, bucket, name, () => {
 
@@ -248,7 +249,9 @@ async function getS3Files() {
 		}).promise()
 		listData.Contents.forEach(fileListing => filePaths.push(fileListing.Key))
 		listData.Contents.forEach(fileListing => list.push(fileListing.Key))
-		table[dir] = list;
+		let key = dir.split('/');
+		console.log('key', key[2]);
+		table[key[2]] = list;
 	}
 
 	return [filePaths, table];
