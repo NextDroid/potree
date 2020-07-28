@@ -171,6 +171,8 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
     let track = tracks[ss];
     for (let ii=0, len=track.statesLength(); ii<len; ii++) {
 
+      const color = getRandomRGB();
+      material.uniforms.color.value = new THREE.Color(`rgb(${color})`);
       // Assign Current Track State:
       state = track.states(ii);
 
@@ -268,7 +270,7 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
           edges.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps, 1));
 
           // let bufferBoxGeometry = allBoxes;
-          let wireframe = new THREE.LineSegments( edges, material ); // NOTE don't clone material to assign to multiple meshes
+          let wireframe = new THREE.LineSegments( edges, material.clone() ); // NOTE don't clone material to assign to multiple meshes
           let mesh = wireframe;
           mesh.position.copy(firstCentroid);
           bboxs.push( mesh );
@@ -359,8 +361,11 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
     // TODO check if group works as expected, then trigger "truth_layer_added" event
     animationEngine.tweenTargets.push((gpsTime) => {
       const currentTime = gpsTime - animationEngine.tstart;
-      trackShaderMaterial.uniforms.minGpsTime.value = currentTime + animationEngine.activeWindow.backward;
-      trackShaderMaterial.uniforms.maxGpsTime.value = currentTime + animationEngine.activeWindow.forward;
+      for (let track of trackGeometries.bbox) {
+        console.log("track", track);
+      track.material.uniforms.minGpsTime.value = currentTime + animationEngine.activeWindow.backward;
+      track.material.uniforms.maxGpsTime.value = currentTime + animationEngine.activeWindow.forward;
+    }
     });
   });
 }
@@ -369,16 +374,12 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 export function getDisplayName (filename) {
   return filename.split('.').slice(0, -1).join('.');
 }
-<<<<<<< HEAD
 
-// const color = getRandomRGB();
-// shaderMaterial.uniforms.color.value = new THREE.Color(`rgb(${color})`);
-// function getRandomRGB () {
-//   const randomValue = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
-//   const r = randomValue(0, 255);
-//   const g = randomValue(0, 255);
-//   const b = randomValue(0, 255);
-//   return `${r}, ${g}, ${b}`;
-// }
-=======
->>>>>>> 840372d66dcedccb76ed554ec3a09ba34c4beff9
+
+function getRandomRGB () {
+  const randomValue = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+  const r = randomValue(0, 255);
+  const g = randomValue(0, 255);
+  const b = randomValue(0, 255);
+  return `${r}, ${g}, ${b}`;
+}
