@@ -82,6 +82,39 @@ export const getFileInfox = async (datasetFiles, objNameEnding, localObjList) =>
     }
   };
 
+export const loadFbFile = async (s3, bucket, name, filesInfo, type, parser) => {
+  if (!filesInfo) {
+    console.error(`No ${type} files present; don't call me this way`)
+    // Null will probably break the caller. Don't call with no filesInfo.
+    return null;
+  }
+  if (s3 && bucket && name) {
+    const request = s3.getObject({Bucket: bucket,
+                                  Key: filesInfo.objectName});
+    request.on("httpDownloadProgress", async (e) => {
+      await updateLoadingBar(e.loaded/e.total*100)
+    });
+    const response = await request.promise();
+    incrementLoadingBarTotal(`${type} downloaded`)
+    const schemaUrl = s3.getSignedUrl('getObject', {
+      Bucket: bucket,
+      Key: filesInfo.schemaFile
+    });
+    const FlatbufferModule = await import(schemaUrl);
+    const result = await parser(response.Body.buffer, FlatbufferModule);
+    incrementLoadingBarTotal(`${type} loaded`)
+    return result;
+  } else {
+    // It's possible, but messy, to get progress on fetch.
+    // Not worth the trouble.
+    const response = await fetch(filesInfo.objectName);
+    incrementLoadingBarTotal(`${type} downloaded`)
+    const FlatbufferModule = await import(filesInfo.schemaFile);
+    const result = await parser(response.arrayBuffer(), FlatbufferModule);
+    incrementLoadingBarTotal(`${type} loaded`)
+    return result;
+  }
+}
 
 export function applyRotation(obj, roll, pitch, yaw) {
   if ( typeof(obj.initialRotation) != "undefined") {

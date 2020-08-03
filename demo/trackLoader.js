@@ -2,86 +2,22 @@
 // import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
 // import { Flatbuffer } from "http://localhost:1234/schemas/GroundTruth_generated.js";
 import { updateLoadingBar, incrementLoadingBarTotal } from "../common/overlay.js";
-import { getFbFileInfo } from "./loaderUtilities.js";
+import { getFbFileInfo, loadFbFile } from "./loaderUtilities.js";
 
 
 // sets local variable and returns so # files can be counted
 let trackFiles = null;
-export const trackDownloads = async (datasetFiles) => {
-  trackFiles = await getFbFileInfo(datasetFiles,
-                                   "tracks.fb", // 2_Truth
-                                   "GroundTruth_generated.js", // 5_Schemas
-                                   "../data/tracks.fb",
-                                   "../schemas/GroundTruth_generated.js");
-  return trackFiles;
-}
+export const trackDownloads = (datasetFiles) =>
+  getFbFileInfo(datasetFiles,
+                "tracks.fb", // 2_Truth
+                "GroundTruth_generated.js", // 5_Schemas
+                "../data/tracks.fb",
+                "../schemas/GroundTruth_generated.js");
 
-export async function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, callback) {
-  const tstart = performance.now();
-  if (!trackFiles) {
-    console.log("No track files present")
-    return
-  }
-
-  if (s3 && bucket && name) {
-    (async () => {
-      const schemaUrl = s3.getSignedUrl('getObject', {
-        Bucket: bucket,
-        Key: trackFiles.schemaFile
-      });
-      const request = await s3.getObject({Bucket: bucket,
-        Key: trackFiles.objectName},
-        async (err, data) => {
-          if (err) {
-            console.error("Error getting tracks file", err, err.stack);
-          } else {
-            const FlatbufferModule = await import(schemaUrl);
-            const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
-            await callback(trackGeometries, );
-          }
-          incrementLoadingBarTotal("tracks loaded")
-        });
-      request.on("httpDownloadProgress", async (e) => {
-        await updateLoadingBar(e.loaded/e.total * 100);
-      });
-
-      request.on("complete", () => {
-        incrementLoadingBarTotal("tracks downloaded")
-      });
-    })();
-
-  } else {
-    let t0, t1;
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", trackFiles.objectName);
-    xhr.responseType = "arraybuffer";
-
-    xhr.onprogress = async (e) => {
-      await updateLoadingBar(e.loaded/e.total*100)
-      t1 = performance.now();
-      t0 = t1;
-    }
-
-    xhr.onload = async (data) => {
-      incrementLoadingBarTotal("tracks downloaded")
-      const FlatbufferModule = await import(trackFiles.schemaFile);
-
-      const response = data.target.response;
-      if (!response) {
-        console.error("Could not create buffer from tracks data");
-        return;
-      }
-
-      let bytesArray = new Uint8Array(response);
-      const trackGeometries = await parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngine);
-      await callback(trackGeometries, );
-      incrementLoadingBarTotal("tracks loaded")
-    };
-
-    t0 = performance.now();
-    xhr.send();
-  }
+async function loadTracks(s3, bucket, name, shaderMaterial, animationEngine, callback) {
+  return await loadFbFile(s3, bucket, name, trackFiles, 'tracks',
+                          async (arrayBuffer, flatbufferModule) =>
+                            await parseTracks(arrayBuffer, flatbufferModule, shaderMaterial, animationEngine));
 }
 
 //
@@ -107,7 +43,7 @@ export async function loadTracks(s3, bucket, name, shaderMaterial, animationEngi
 //   xhr.send();
 // }
 
-async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngine) {
+async function parseTracks(arrayBuffer, FlatbufferModule, shaderMaterial, animationEngine) {
 
   let numBytes = bytesArray.length;
   let tracks = [];
@@ -117,12 +53,12 @@ async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animati
   while (segOffset < numBytes) {
 
     // Read SegmentSize:
-    viewSize = new DataView(bytesArray.buffer, segOffset, 4);
+    viewSize = new DataView(arrayBuffer, segOffset, 4);
     segSize = viewSize.getUint32(0, true); // True: little-endian | False: big-endian
 
     // Get Flatbuffer Track Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    let buf = new Uint8Array(arrayBuffer.slice(segOffset, segOffset+segSize));
     let fbuffer = new flatbuffers.ByteBuffer(buf);
     let track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
     // debugger;
@@ -317,7 +253,7 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
 }
 
 export async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine) {
-
+  if (!trackFiles) { return; };
 	await loadTracks(s3, bucket, name, trackShaderMaterial, animationEngine, (trackGeometries) => {
 		let trackLayer = new THREE.Group();
 		trackLayer.name = "Tracked Objects";

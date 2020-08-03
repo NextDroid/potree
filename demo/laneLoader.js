@@ -3,54 +3,25 @@ import { Measure } from "../src/utils/Measure.js";
 import { LaneSegments } from "./LaneSegments.js"
 import { visualizationMode, comparisonDatasets, s3, bucket, name } from "../demo/paramLoader.js"
 import { updateLoadingBar, incrementLoadingBarTotal, resetProgressBars } from "../common/overlay.js";
-import { getFbFileInfo } from "./loaderUtilities.js";
+import { getFbFileInfo, loadFbFile } from "./loaderUtilities.js";
 
 
 let laneFiles = null;
-export const laneDownloads = async (datasetFiles) => {
-  laneFiles = await getFbFileInfo(datasetFiles,
-                                  "lanes.fb", // 2_Truth
-                                  "GroundTruth_generated.js", // 5_Schemas
-                                  "../data/lanes.fb",
-                                  "../schemas/GroundTruth_generated.js");
-  return laneFiles
-}
+export const laneDownloads = (datasetFiles) =>
+  getFbFileInfo(datasetFiles,
+                "lanes.fb", // 2_Truth
+                "GroundTruth_generated.js", // 5_Schemas
+                "../data/lanes.fb",
+                "../schemas/GroundTruth_generated.js");
 
 async function loadLanes(s3, bucket, name, fname, supplierNum, annotationMode, volumes, callback) {
   // Logic for dealing with Map Supplier Data:
   const resolvedSupplierNum = supplierNum || -1;
 
-  if (!laneFiles) {
-    console.log("No lane files present")
-    return
-  }
-
-  if (s3 && bucket && name) {
-    const request = s3.getObject({Bucket: bucket,
-                                  Key: laneFiles.objectName});
-    request.on("httpDownloadProgress", async (e) => {
-      await updateLoadingBar(e.loaded/e.total*100)
-    });
-    const data = await request.promise();
-    incrementLoadingBarTotal("lanes downloaded")
-    const schemaUrl = s3.getSignedUrl('getObject', {
-      Bucket: bucket,
-      Key: laneFiles.schemaFile
-    });
-    const FlatbufferModule = await import(schemaUrl);
-    const laneGeometries = await parseLanes(data.Body.buffer, FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
-    incrementLoadingBarTotal("lanes loaded")
-    return laneGeometries;
-  } else {
-    const response = await fetch(laneFiles.objectName);
-    incrementLoadingBarTotal("lanes downloaded")
-    const FlatbufferModule = await import(laneFiles.schemaFile);
-    const laneGeometries = await parseLanes(response.arrayBuffer(), FlatbufferModule, resolvedSupplierNum, annotationMode, volumes);
-    incrementLoadingBarTotal("lanes loaded")
-    return laneGeometries;
-  }
+  return loadFbFile(s3, bucket, name, laneFiles, 'lanes',
+                    async (arrayBuffer, flatbufferModule) =>
+                      await parseLanes(arrayBuffer, flatbufferModule, resolvedSupplierNum, annotationMode, volumes));
 }
-
 
 async function parseLanes(arrayBuffer, FlatbufferModule, supplierNum, annotationMode, volumes) {
 
@@ -520,7 +491,8 @@ function addLaneGeometries (laneGeometries, lanesLayer) {
 
 
 // Load Lanes Truth Data:
-export async function loadLanesCallback(s3, bucket, name, callback) {
+export async function loadLanesCallback(s3, bucket, name) {
+  if (!laneFiles) { return; }
   let filename, tmpSupplierNum;
   tmpSupplierNum = -1;
   const laneGeometries = await loadLanes(s3, bucket, name, filename, tmpSupplierNum, window.annotateLanesModeActive, viewer.scene.volumes);
@@ -532,9 +504,6 @@ export async function loadLanesCallback(s3, bucket, name, callback) {
     "type": "truth_layer_added",
     "truthLayer": lanesLayer
   });
-  if (callback) {
-    callback();
-  }
 
   if (visualizationMode === "aptivLanes") {
     for (const s of [1, 2, 3]) {
