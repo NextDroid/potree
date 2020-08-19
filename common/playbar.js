@@ -415,7 +415,9 @@ function saveLaneChanges () {
     const laneLeft = window.viewer.scene.scene.getChildByName("Lane Left");
     lane.left = laneLeft.points;
   } else {
-    lane.left = laneLeftSegments.getFinalPoints();
+    const leftPointsAndValidities = laneLeftSegments.getFinalPoints();
+    lane.left = leftPointsAndValidities.finalPoints;
+    lane.leftPointValidity = leftPointsAndValidities.finalPointValidities;
   }
 
   // Right Lane Vertices:
@@ -424,23 +426,27 @@ function saveLaneChanges () {
     const laneRight = window.viewer.scene.scene.getChildByName("Lane Right");
     lane.right = laneRight.points;
   } else {
-    lane.right = laneRightSegments.getFinalPoints();
+    const rightPointsAndValidities = laneRightSegments.getFinalPoints();
+    lane.right = rightPointsAndValidities.finalPoints;
+    lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
 
   // Get New Spine Vertices
-  updateSpine(bucket, name, lane.left, lane.right);
+  updateSpine(bucket, name, lane);
 }
 
-function updateSpine (bucket, name, left, right) {
+function updateSpine (bucket, name, lane) {
   const input = {
     bucket: bucket,
     name: name,
-    left: left,
-    right: right
+    left: lane.left,
+    leftPointValidity: lane.leftPointValidity,
+    right: lane.right,
+    rightPointValidity: lane.rightPointValidity
   };
   const lambda = getLambda();
   lambda.invoke({
-    FunctionName: 'arn:aws:lambda:us-east-1:757877321035:function:UpdateLanes:2',
+    FunctionName: 'arn:aws:lambda:us-east-1:757877321035:function:UpdateLanes:4',
     LogType: 'None',
     Payload: JSON.stringify(input)
   }, function (err, data) {

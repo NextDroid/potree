@@ -279,7 +279,7 @@ async function createLaneGeometriesOld (lanes, supplierNum, annotationMode, volu
         if (volumes.length === 0) {
           laneLeft.addMarker(new THREE.Vector3(left.x(), left.y(), left.z()));
         } else {
-          isContains = updateSegments(leftLaneSegments, clonedBoxes, isContains, left, jj, numVertices);
+          isContains = leftLaneSegments.updateSegments(clonedBoxes, isContains, left, lane.leftPointValidity(jj), jj, numVertices);
         }
       } else {
         geometryLeft.vertices.push(new THREE.Vector3(left.x(), left.y(), left.z()));
@@ -298,7 +298,7 @@ async function createLaneGeometriesOld (lanes, supplierNum, annotationMode, volu
         if (volumes.length === 0) {
           laneRight.addMarker(new THREE.Vector3(right.x(), right.y(), right.z()));
         } else {
-          isContains = updateSegments(rightLaneSegments, clonedBoxes, isContains, right, jj, numVertices);
+          isContains = rightLaneSegments.updateSegments(clonedBoxes, isContains, right, lane.rightPointValidity(jj), jj, numVertices);
         }
       } else {
         geometryRight.vertices.push(new THREE.Vector3(right.x(), right.y(), right.z()));
@@ -426,37 +426,6 @@ async function createLaneGeometriesOld (lanes, supplierNum, annotationMode, volu
   };
   return output;
 }
-
-function updateSegments(laneSegments, clonedBoxes, prevIsContains, point, index, lengthArray) {
-
-  let newIsContains = false;
-  for (let bbi=0, bbLen=clonedBoxes.length; bbi<bbLen; bbi++) {
-    const isContains = clonedBoxes[bbi].containsPoint(new THREE.Vector3(point.x(), point.y(), point.z()));
-    if (isContains) {
-      newIsContains = isContains;
-    }
-  }
-  if (newIsContains && !prevIsContains) {
-    laneSegments.initializeSegment("Lane Segment "); // can pass as a parameter and differentiate between left and right, but not required for now
-  }
-  if (!newIsContains && prevIsContains) {
-    laneSegments.finalizeSegment();
-  }
-
-  if (newIsContains) {
-    laneSegments.addSegmentMarker(new THREE.Vector3(point.x(), point.y(), point.z()));
-  } else {
-    laneSegments.incrementOffset(new THREE.Vector3(point.x(), point.y(), point.z()));
-  }
-
-  // edge case if a segment exists at the end
-  if (newIsContains && index == lengthArray-1) {
-    laneSegments.finalizeSegment();
-  }
-
-  return newIsContains
-}
-
 
 // Adds anomaly annotations
 function addAnnotations (laneGeometries) {
