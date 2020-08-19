@@ -432,6 +432,7 @@ function saveLaneChanges () {
     lane.right = rightPointsAndValidities.finalPoints;
     lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
+<<<<<<< HEAD
   callUpdateLanesLambdaFunction(bucket, name, lane);
 }
 
@@ -445,6 +446,15 @@ function saveLaneChanges () {
 function callUpdateLanesLambdaFunction (bucket, name, lane) {
   const payload = {
     region: region,
+=======
+
+  // Get New Spine Vertices
+  updateSpine(bucket, name, lane);
+}
+
+function updateSpine (bucket, name, lane) {
+  const input = {
+>>>>>>> b067a5bb536b573f85bc3fcbffdce3bf6c1e15eb
     bucket: bucket,
     name: name,
     left: lane.left,
@@ -454,7 +464,11 @@ function callUpdateLanesLambdaFunction (bucket, name, lane) {
   };
   const lambda = getLambda();
   lambda.invoke({
+<<<<<<< HEAD
     FunctionName: 'UpdateLanes:4',
+=======
+    FunctionName: 'arn:aws:lambda:us-east-1:757877321035:function:UpdateLanes:4',
+>>>>>>> b067a5bb536b573f85bc3fcbffdce3bf6c1e15eb
     LogType: 'None',
     Payload: JSON.stringify(payload)
   }, function (err, data) {
