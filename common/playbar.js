@@ -417,7 +417,9 @@ function saveLaneChanges () {
     const laneLeft = window.viewer.scene.scene.getChildByName("Lane Left");
     lane.left = laneLeft.points;
   } else {
-    lane.left = laneLeftSegments.getFinalPoints();
+    const leftPointsAndValidities = laneLeftSegments.getFinalPoints();
+    lane.left = leftPointsAndValidities.finalPoints;
+    lane.leftPointValidity = leftPointsAndValidities.finalPointValidities;
   }
 
   // Right Lane Vertices:
@@ -426,8 +428,11 @@ function saveLaneChanges () {
     const laneRight = window.viewer.scene.scene.getChildByName("Lane Right");
     lane.right = laneRight.points;
   } else {
-    lane.right = laneRightSegments.getFinalPoints();
+    const rightPointsAndValidities = laneRightSegments.getFinalPoints();
+    lane.right = rightPointsAndValidities.finalPoints;
+    lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
+<<<<<<< d8b7afa458d7c0a092374882327f913999a80439
   callUpdateLanesLambdaFunction(bucket, name, lane.left, lane.right);
 }
 
@@ -441,14 +446,29 @@ function saveLaneChanges () {
 function callUpdateLanesLambdaFunction (bucket, name, left, right) {
   const payload = {
     region: region,
+=======
+
+  // Get New Spine Vertices
+  updateSpine(bucket, name, lane);
+}
+
+function updateSpine (bucket, name, lane) {
+  const input = {
+>>>>>>> Initial commit, working lane validity annotations
     bucket: bucket,
     name: name,
-    left: left,
-    right: right
+    left: lane.left,
+    leftPointValidity: lane.leftPointValidity,
+    right: lane.right,
+    rightPointValidity: lane.rightPointValidity
   };
   const lambda = getLambda();
   lambda.invoke({
+<<<<<<< d8b7afa458d7c0a092374882327f913999a80439
     FunctionName: 'UpdateLanes:3',
+=======
+    FunctionName: 'arn:aws:lambda:us-east-1:757877321035:function:UpdateLanes:4',
+>>>>>>> Initial commit, working lane validity annotations
     LogType: 'None',
     Payload: JSON.stringify(payload)
   }, function (err, data) {
