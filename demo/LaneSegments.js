@@ -85,7 +85,7 @@ export class LaneSegments extends THREE.Object3D {
 	  if (newIsContains) {
 	    this.addSegmentMarker(new THREE.Vector3(point.x(), point.y(), point.z()));
 	  } else {
-	    this.incrementOffset(new THREE.Vector3(point.x(), point.y(), point.z()), pointValidity);
+	    this.incrementOffset(new THREE.Vector3(point.x(), point.y(), point.z()), parseInt(pointValidity));
 	  }
 
 	  // edge case if a segment exists at the end

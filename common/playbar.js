@@ -432,7 +432,9 @@ function saveLaneChanges () {
     lane.right = rightPointsAndValidities.finalPoints;
     lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
-  callUpdateLanesLambdaFunction(bucket, name, lane);
+  console.log("left", lane.leftPointValidity);
+  console.log("right", lane.rightPointValidity);
+  // callUpdateLanesLambdaFunction(bucket, name, lane);
 }
 
 /**
