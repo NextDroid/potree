@@ -432,8 +432,7 @@ function saveLaneChanges () {
     lane.right = rightPointsAndValidities.finalPoints;
     lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
-<<<<<<< d8b7afa458d7c0a092374882327f913999a80439
-  callUpdateLanesLambdaFunction(bucket, name, lane.left, lane.right);
+  callUpdateLanesLambdaFunction(bucket, name, lane);
 }
 
 /**
@@ -443,18 +442,9 @@ function saveLaneChanges () {
  * @param { Array } left The left lane polyline
  * @param { Array } right The right lane polyline
  */
-function callUpdateLanesLambdaFunction (bucket, name, left, right) {
+function callUpdateLanesLambdaFunction (bucket, name, lane) {
   const payload = {
     region: region,
-=======
-
-  // Get New Spine Vertices
-  updateSpine(bucket, name, lane);
-}
-
-function updateSpine (bucket, name, lane) {
-  const input = {
->>>>>>> Initial commit, working lane validity annotations
     bucket: bucket,
     name: name,
     left: lane.left,
@@ -464,11 +454,7 @@ function updateSpine (bucket, name, lane) {
   };
   const lambda = getLambda();
   lambda.invoke({
-<<<<<<< d8b7afa458d7c0a092374882327f913999a80439
-    FunctionName: 'UpdateLanes:3',
-=======
-    FunctionName: 'arn:aws:lambda:us-east-1:757877321035:function:UpdateLanes:4',
->>>>>>> Initial commit, working lane validity annotations
+    FunctionName: 'UpdateLanes:4',
     LogType: 'None',
     Payload: JSON.stringify(payload)
   }, function (err, data) {
