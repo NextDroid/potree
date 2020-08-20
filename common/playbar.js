@@ -432,9 +432,7 @@ function saveLaneChanges () {
     lane.right = rightPointsAndValidities.finalPoints;
     lane.rightPointValidity = rightPointsAndValidities.finalPointValidities;
   }
-  console.log("left", lane.leftPointValidity);
-  console.log("right", lane.rightPointValidity);
-  // callUpdateLanesLambdaFunction(bucket, name, lane);
+  callUpdateLanesLambdaFunction(bucket, name, lane);
 }
 
 /**
@@ -456,7 +454,7 @@ function callUpdateLanesLambdaFunction (bucket, name, lane) {
   };
   const lambda = getLambda();
   lambda.invoke({
-    FunctionName: 'UpdateLanes:4',
+    FunctionName: 'UpdateLanes:5',
     LogType: 'None',
     Payload: JSON.stringify(payload)
   }, function (err, data) {

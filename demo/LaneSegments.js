@@ -50,15 +50,16 @@ export class LaneSegments extends THREE.Object3D {
 		var finalPointValidities = [];
 
 		finalPoints = finalPoints.concat(this.outPoints[0]);
-		finalPointValidities = finalPointValidities.concat(this.outValidities[0]);
+		var outPointValidities = this.outValiditiesHelper(0);
+		finalPointValidities = finalPointValidities.concat(outPointValidities);
 
 		for (let si=0, sLen=this.segments.length; si<sLen; si++) {
 			finalPoints = finalPoints.concat(this.segments[si].points);
 			finalPoints = finalPoints.concat(this.outPoints[si+1]);
-
-			const valids = Array(this.segments[si].points.length).fill(0);
-			finalPointValidities = finalPointValidities.concat(valids);
-			finalPointValidities = finalPointValidities.concat(this.outValidities[si+1]);
+			const segmentValidities = Array(this.segments[si].points.length).fill(0);
+			finalPointValidities = finalPointValidities.concat(segmentValidities);
+			outPointValidities = this.outValiditiesHelper(si+1);
+			finalPointValidities = finalPointValidities.concat(outPointValidities);
 
 		}
 		return {
@@ -85,7 +86,7 @@ export class LaneSegments extends THREE.Object3D {
 	  if (newIsContains) {
 	    this.addSegmentMarker(new THREE.Vector3(point.x(), point.y(), point.z()));
 	  } else {
-	    this.incrementOffset(new THREE.Vector3(point.x(), point.y(), point.z()), parseInt(pointValidity));
+	    this.incrementOffset(new THREE.Vector3(point.x(), point.y(), point.z()), pointValidity);
 	  }
 
 	  // edge case if a segment exists at the end
@@ -94,6 +95,15 @@ export class LaneSegments extends THREE.Object3D {
 	  }
 
 	  return newIsContains
+	};
+
+	outValiditiesHelper(index) {
+		const outPointValidities = []
+	for (const validity of this.outValidities[index]) {
+		outPointValidities.push(validity.pointValidity);
 	}
+	return outPointValidities;
+}
+
 
 };
