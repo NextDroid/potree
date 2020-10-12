@@ -16,7 +16,7 @@ export const trackDownloads = async (datasetFiles) => {
   return trackFiles;
 }
 
-export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial, animationEngine, callback) {
+export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial, callback) {
   const tstart = performance.now();
   if (!trackFiles) {
     console.log("No track files present")
@@ -41,7 +41,7 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
             console.error("Error getting tracks file", err, err.stack);
           } else {
             const FlatbufferModule = await import(schemaUrl);
-            const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
+            const trackGeometries = await parseTracks(data.Body, shaderMaterial, FlatbufferModule);
             await callback(trackGeometries, );
           }
           incrementLoadingBarTotal("tracks loaded")
@@ -79,7 +79,7 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
       }
 
       let bytesArray = new Uint8Array(response);
-      const trackGeometries = await parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngine);
+      const trackGeometries = await parseTracks(bytesArray, shaderMaterial, FlatbufferModule);
       await callback(trackGeometries, );
       incrementLoadingBarTotal("tracks loaded")
     };
@@ -112,7 +112,7 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
 //   xhr.send();
 // }
 
-async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animationEngine) {
+async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule) {
 
   let numBytes = bytesArray.length;
   let tracks = [];
@@ -136,11 +136,12 @@ async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule, animati
     segOffset += segSize;
   }
 
-  return await createTrackGeometries(shaderMaterial, tracks, animationEngine);
+  return await createTrackGeometries(shaderMaterial, tracks);
   // callback(trackGeometries, );
 }
 
-async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
+async function createTrackGeometries(shaderMaterial, tracks) {
+  const animationEngine = window.animationEngine;
 
   let lineMaterial = new THREE.LineBasicMaterial({
     color: 0x00ff00,
@@ -242,7 +243,7 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
         // }
         // boxMesh.geometry.addAttribute('gpsTime', new THREE.Float32BufferAttribute(timestamps, 1));
 
-        stateTimes.push(state.timestamps()-animationEngine.tstart); // HACK -- 16.8 is a hack to get the tracked box timestamps to lineup with the rest of the animation
+        stateTimes.push(state.timestamps() - animationEngine.tstart); // HACK -- 16.8 is a hack to get the tracked box timestamps to lineup with the rest of the animation
 
 
         let se3 = new THREE.Matrix4();
@@ -321,27 +322,27 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
   return output;
 }
 
-export async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine, files) {
+export async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, files) {
   if (files) {
     for (let file of files) {
       file = file.split(/.*[\/|\\]/)[1];
       if (!file.endsWith('tracks.fb')) {
         continue;
       } else if (file === 'tracks.fb') {
-        loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, file, 'Tracked Objects');
+        loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, file, 'Tracked Objects');
       } else {
         const newTrackShaderMaterial = trackShaderMaterial.clone();
         newTrackShaderMaterial.uniforms.color.value = new THREE.Color(0xdf00fe);
-        loadTracksCallbackHelper(s3, bucket, name, newTrackShaderMaterial, animationEngine, file, removeFileExtension(file));
+        loadTracksCallbackHelper(s3, bucket, name, newTrackShaderMaterial, file, removeFileExtension(file));
       }
     }
   } else {
-    loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, animationEngine, 'tracks.fb', 'Tracked Objects');
+    loadTracksCallbackHelper(s3, bucket, name, trackShaderMaterial, 'tracks.fb', 'Tracked Objects');
   }
 }
 
-async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, animationEngine, trackFileName, trackName) {
-	await loadTracks(s3, bucket, name, trackFileName, trackShaderMaterial, animationEngine, (trackGeometries) => {
+async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, trackFileName, trackName) {
+	await loadTracks(s3, bucket, name, trackFileName, trackShaderMaterial, (trackGeometries) => {
 		const trackLayer = new THREE.Group();
 		trackLayer.name = trackName;
 		for (let ii = 0, len = trackGeometries.bbox.length; ii < len; ii++) {
@@ -354,6 +355,8 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 			"type": "truth_layer_added",
 			"truthLayer": trackLayer
 		});
+
+    const animationEngine = window.animationEngine;
 
 		// TODO check if group works as expected, then trigger "truth_layer_added" event
 		animationEngine.tweenTargets.push((gpsTime) => {

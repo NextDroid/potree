@@ -65,9 +65,9 @@ window.radarVisualizationBudget = 1000;
 async function loadRadarVisualizationCallbackHelper (radarVisualizationType) {
   const shaderMaterial = getInstancedShaderMaterial();
   const radarVisualizationShaderMaterial = shaderMaterial.clone();
-  await loadRadarVisualization(radarVisualizationShaderMaterial, animationEngine, (meshData) => {
+  await loadRadarVisualization(radarVisualizationShaderMaterial, (meshData) => {
     let {mesh, offset, radarData} = meshData;
-
+    const animationEngine = window.animationEngine;
     const radarVisualizationLayer = new THREE.Group();
     radarVisualizationLayer.name = getRadarVisualizationName(radarVisualizationType);
     mesh.position.copy(offset);
@@ -126,7 +126,7 @@ async function loadRadarVisualizationCallbackHelper (radarVisualizationType) {
   }, radarVisualizationType);
 }
 
-async function loadRadarVisualization (radarVisualizationShaderMaterial, animationEngine, callback, radarVisualizationType) {
+async function loadRadarVisualization (radarVisualizationShaderMaterial, callback, radarVisualizationType) {
   var objectName;
   const s3 = getS3();
   const awsVariables = getAWSObjectVariables();
@@ -154,7 +154,7 @@ async function loadRadarVisualization (radarVisualizationShaderMaterial, animati
           console.log(err, err.stack);
         } else {
           const FlatbufferModule = await import(schemaUrl);
-          const radarVisualizationMeshes = await parseRadarVisualizationData(data.Body.buffer, radarVisualizationShaderMaterial, FlatbufferModule, animationEngine, radarVisualizationType);
+          const radarVisualizationMeshes = await parseRadarVisualizationData(data.Body.buffer, radarVisualizationShaderMaterial, FlatbufferModule, radarVisualizationType);
           await callback(radarVisualizationMeshes);
         }
       });
@@ -180,7 +180,7 @@ async function loadRadarVisualization (radarVisualizationShaderMaterial, animati
         return;
       }
       const bytesArray = new Uint8Array(response);
-      const radarVisualizationMeshes = await parseRadarVisualizationData(bytesArray.buffer, radarVisualizationShaderMaterial, FlatbufferModule, animationEngine, radarVisualizationType);
+      const radarVisualizationMeshes = await parseRadarVisualizationData(bytesArray.buffer, radarVisualizationShaderMaterial, FlatbufferModule, radarVisualizationType);
       await callback(radarVisualizationMeshes);
       incrementLoadingBarTotal(`loaded radar ${radarVisualizationType}`);
     };
@@ -189,18 +189,18 @@ async function loadRadarVisualization (radarVisualizationShaderMaterial, animati
   }
 }
 
-async function parseRadarVisualizationData (dataBuffer, radarVisualizationShaderMaterial, FlatbufferModule, animationEngine, radarVisualizationType) {
+async function parseRadarVisualizationData (dataBuffer, radarVisualizationShaderMaterial, FlatbufferModule, radarVisualizationType) {
   const dataView = new DataView(dataBuffer);
   const segmentSize = dataView.getUint32(0, true);
   const buffer = new Uint8Array(dataBuffer.slice(4, segmentSize));
   const byteBuffer = new flatbuffers.ByteBuffer(buffer);
   const spheresBuffer = FlatbufferModule.Flatbuffer.Primitives.Spheres3D.getRootAsSpheres3D(byteBuffer);
-  return await createRadarVisualizationMeshes(spheresBuffer, radarVisualizationShaderMaterial, FlatbufferModule, animationEngine, radarVisualizationType);
+  return await createRadarVisualizationMeshes(spheresBuffer, radarVisualizationShaderMaterial, FlatbufferModule, radarVisualizationType);
 }
 
-async function createRadarVisualizationMeshes (radarVisualizationData, radarVisualizationShaderMaterial, FlatbufferModule, animationEngine, radarVisualizationType) {
+async function createRadarVisualizationMeshes (radarVisualizationData, radarVisualizationShaderMaterial, FlatbufferModule, radarVisualizationType) {
   radarVisualizationShaderMaterial.uniforms.color.value = getRadarVisualizationColor(radarVisualizationType);
-
+  const animationEngine = window.animationEngine;
   const length = radarVisualizationData.pointsLength();
   const radarData = new Array(length);
   const timestamps = new Float32Array(window.radarVisualizationBudget);

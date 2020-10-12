@@ -3,7 +3,7 @@ import { getInstancedShaderMaterial } from '../demo/paramLoader.js';
 import { updateLoadingBar, incrementLoadingBarTotal } from '../common/overlay.js';
 
 // load control points
-export async function loadControlPointsCallback (s3, bucket, name, animationEngine, files) {
+export async function loadControlPointsCallback (s3, bucket, name, files) {
   // Handle local files
   if (files) {
     // Handle s3 files
@@ -12,7 +12,7 @@ export async function loadControlPointsCallback (s3, bucket, name, animationEngi
       file = file.split(/.*[\/|\\]/)[1];
       // Handle old naming and new naming schemas
       if (file.includes('control_point_3_rtk_relative.fb') || file.includes('viz_Spheres3D_')) {
-        await loadControlPointsCallbackHelper(s3, bucket, name, animationEngine, file);
+        await loadControlPointsCallbackHelper(s3, bucket, name, file);
       }
     }
   }
@@ -57,11 +57,13 @@ function indexOfClosestTimestamp(controlPoints, timestamp) {
 }
 
 window.controlPointBudget = 1000;
-async function loadControlPointsCallbackHelper (s3, bucket, name, animationEngine, controlPointType) {
+async function loadControlPointsCallbackHelper (s3, bucket, name, controlPointType) {
   const shaderMaterial = getInstancedShaderMaterial();
   const controlPointShaderMaterial = shaderMaterial.clone();
-  await loadControlPoints(s3, bucket, name, controlPointShaderMaterial, animationEngine, (meshData) => {
+  await loadControlPoints(s3, bucket, name, controlPointShaderMaterial, (meshData) => {
     let {mesh, offset, controlPointData} = meshData;
+
+    const animationEngine = window.animationEngine;
 
     const controlPointLayer = new THREE.Group();
     controlPointLayer.name = getControlPointName(controlPointType);
@@ -121,7 +123,7 @@ async function loadControlPointsCallbackHelper (s3, bucket, name, animationEngin
   }, controlPointType);
 }
 
-export async function loadControlPoints (s3, bucket, name, controlPointShaderMaterial, animationEngine, callback, controlPointType) {
+export async function loadControlPoints (s3, bucket, name, controlPointShaderMaterial, callback, controlPointType) {
   var objectName;
 
   if (s3 && bucket && name) {
@@ -147,7 +149,7 @@ export async function loadControlPoints (s3, bucket, name, controlPointShaderMat
           // loadingBarTotal.set(Math.min(Math.ceil(loadingBarTotal.value + (100 / numberTasks))), 100);
         } else {
           const FlatbufferModule = await import(schemaUrl);
-          const controlPointSphereMeshes = await parseControlPoints(data.Body, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType);
+          const controlPointSphereMeshes = await parseControlPoints(data.Body, controlPointShaderMaterial, FlatbufferModule, controlPointType);
           await callback(controlPointSphereMeshes);
         }
       });
@@ -173,7 +175,7 @@ export async function loadControlPoints (s3, bucket, name, controlPointShaderMat
         return;
       }
       const bytesArray = new Uint8Array(response);
-      const controlPointSphereMeshes = await parseControlPoints(bytesArray, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType);
+      const controlPointSphereMeshes = await parseControlPoints(bytesArray, controlPointShaderMaterial, FlatbufferModule, controlPointType);
       await callback(controlPointSphereMeshes);
       incrementLoadingBarTotal(`loaded cp ${controlPointType}`);
     };
@@ -182,7 +184,7 @@ export async function loadControlPoints (s3, bucket, name, controlPointShaderMat
   }
 }
 
-async function parseControlPoints (bytesArray, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType) {
+async function parseControlPoints (bytesArray, controlPointShaderMaterial, FlatbufferModule, controlPointType) {
   if (controlPointType === 'control_point_3_rtk_relative.fb') {
     const numBytes = bytesArray.length;
     const controlPoint = [];
@@ -200,7 +202,7 @@ async function parseControlPoints (bytesArray, controlPointShaderMaterial, Flatb
       controlPoint.push(point);
       segOffset += segSize;
     }
-    return await createREMControlMeshes(controlPoint, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType);
+    return await createREMControlMeshes(controlPoint, controlPointShaderMaterial, FlatbufferModule, controlPointType);
   } else {
     const dataBuffer = bytesArray.buffer;
     const dataView = new DataView(dataBuffer);
@@ -209,13 +211,13 @@ async function parseControlPoints (bytesArray, controlPointShaderMaterial, Flatb
     const byteBuffer = new flatbuffers.ByteBuffer(buffer);
     const spheresBuffer = FlatbufferModule.Flatbuffer.Primitives.Spheres3D.getRootAsSpheres3D(byteBuffer);
 
-    return await createControlMeshes(spheresBuffer, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType);
+    return await createControlMeshes(spheresBuffer, controlPointShaderMaterial, FlatbufferModule, controlPointType);
   }
 }
 
-async function createControlMeshes (controlPoints, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType) {
+async function createControlMeshes (controlPoints, controlPointShaderMaterial, FlatbufferModule, controlPointType) {
   controlPointShaderMaterial.uniforms.color.value = getControlPointColor(controlPointType);
-
+  const animationEngine = window.animationEngine;
   const length = controlPoints.pointsLength();
   const controlPointData = new Array(length);
   const timestamps = new Float32Array(window.controlPointBudget);
@@ -254,12 +256,12 @@ async function createControlMeshes (controlPoints, controlPointShaderMaterial, F
   return {mesh, offset, controlPointData};
 }
 
-async function createREMControlMeshes (controlPoints, controlPointShaderMaterial, FlatbufferModule, animationEngine, controlPointType) {
+async function createREMControlMeshes (controlPoints, controlPointShaderMaterial, FlatbufferModule, controlPointType) {
   const length = controlPoints.length;
   const controlPointData = new Array(length);
   const timestamps = new Float32Array(window.controlPointBudget);
   const newSchemaFlag = (length > 0) && !!controlPoints[0].timestamp;
-
+  const animationEngine = window.animationEngine;
   const initialPosition = controlPoints[0].pos();
   const offset = new THREE.Vector3(initialPosition.x(), initialPosition.y(), initialPosition.z());
 

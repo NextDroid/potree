@@ -191,14 +191,14 @@ async function loadDataIntoDocument(filesTable) {
 			// TODO shaderMaterial
 			const shaderMaterial = getShaderMaterial();
 			const trackShaderMaterial = shaderMaterial.clone();
-			loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine, filesTable['2_Truth']);
+			loadTracksCallback(s3, bucket, name, trackShaderMaterial, filesTable['2_Truth']);
 		} catch (e) {
 			console.error("Could not load Tracks: ", e);
 		}
 
     // Load Control Points (REM, LaneSense, SPP)
 		try {
-			loadControlPointsCallback(s3, bucket, name, animationEngine, filesTable['3_Assessments']);
+			loadControlPointsCallback(s3, bucket, name, filesTable['3_Assessments']);
 		} catch (e) {
 			console.error("No control points: ", e);
 		}

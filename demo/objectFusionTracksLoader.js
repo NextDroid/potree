@@ -14,7 +14,7 @@ export const objectFusionTracksDownloads = async (datasetFiles) => {
   return objectFusionTracksFiles;
 }
 
-async function loadDetections(file, shaderMaterial, animationEngine) {
+async function loadDetections(file, shaderMaterial) {
 
   if (!objectFusionTracksFiles) {
     console.log("No detection files present")
@@ -45,20 +45,20 @@ async function loadDetections(file, shaderMaterial, animationEngine) {
       Key: objectFusionTracksFiles.schemaFile
     });
     const FlatbufferModule = await import(schemaUrl);
-    const detectionGeometries = await parseDetections(data.Body, shaderMaterial, FlatbufferModule, animationEngine);
+    const detectionGeometries = await parseDetections(data.Body, shaderMaterial, FlatbufferModule);
     incrementLoadingBarTotal("detections loaded");
     return detectionGeometries;
   } else {
     const response = await fetch(objectFusionTracksFiles.objectName);
     incrementLoadingBarTotal("detections downloaded");
     const FlatbufferModule = await import(objectFusionTracksFiles.schemaFile);
-    const detectionGeometries = await parseDetections(await response.arrayBuffer(), shaderMaterial, FlatbufferModule, animationEngine);
+    const detectionGeometries = await parseDetections(await response.arrayBuffer(), shaderMaterial, FlatbufferModule);
     incrementLoadingBarTotal("detections loaded");
     return detectionGeometries;
   }
 }
 
-async function parseDetections(bytesArray, shaderMaterial, FlatbufferModule, animationEngine) {
+async function parseDetections(bytesArray, shaderMaterial, FlatbufferModule) {
 
   const numBytes = bytesArray.length;
   const detections = [];
@@ -81,12 +81,12 @@ async function parseDetections(bytesArray, shaderMaterial, FlatbufferModule, ani
     segOffset += segSize;
   }
 
-  return await createDetectionGeometries(shaderMaterial, detections, animationEngine);
+  return await createDetectionGeometries(shaderMaterial, detections);
 }
 
-async function createDetectionGeometries(shaderMaterial, detections, animationEngine) {
+async function createDetectionGeometries(shaderMaterial, detections) {
   const material = shaderMaterial;
-
+  const animationEngine = window.animationEngine;
   let detect, firstCentroid, delta, boxGeometry2;
   const bboxs = [];
   const x0 = [];
@@ -192,8 +192,8 @@ async function loadObjectFusionTracksCallbackHelper (file) {
   const shaderMaterial = getShaderMaterial();
   const detectionShaderMaterial = shaderMaterial.clone();
   detectionShaderMaterial.uniforms.color.value = new THREE.Color(0x00FFFF);
-  const detectionGeometries = await loadDetections(file, detectionShaderMaterial, animationEngine);
-
+  const detectionGeometries = await loadDetections(file, detectionShaderMaterial);
+  const animationEngine = window.animationEngine;
   if (detectionGeometries != null) {
     const detectionLayer = new THREE.Group();
     detectionLayer.name = 'Object Fusion Tracks (boxes)';
