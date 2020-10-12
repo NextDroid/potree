@@ -58,7 +58,7 @@ async function parseRTK(arrayBuffer, FlatbufferModule) {
   const t0_loop = performance.now();
 
   let numBytes = arrayBuffer.byteLength;
-  let rtkPoses = [];
+  // let rtkPoses = [];
   let pos = [];
   let timestamps = [];
   let orientations = [];
@@ -66,7 +66,7 @@ async function parseRTK(arrayBuffer, FlatbufferModule) {
   let count = 0;
 
   let segOffset = 0;
-  let segSize, viewSize, viewData;
+  let segSize, viewSize;
   while (segOffset < numBytes) {
     await updateLoadingBar(segOffset/numBytes*100); // update individual task progress
 
@@ -130,7 +130,7 @@ export async function loadRtkCallback(s3, bucket, name, callback) {
   const {pos, orientations, timestamps, t_init, t_range} = await loadRtk(s3, bucket, name);
   if (!(pos && orientations && timestamps)) { return; }
   window.timeframe = { "tstart": t_init, "tend": t_init + t_range };
-
+  const animationEngine = window.animationEngine;
   const tstart = window.timeframe.tstart;	// Set in loadRtkCallback
   const tend = window.timeframe.tend;			// Set in loadRtkCallback
   const playbackRate = 1.0;
@@ -156,17 +156,18 @@ export async function loadRtkCallback(s3, bucket, name, callback) {
  // animates the viewer camera and TweenTarget for RTK
 // once textured vehicle object is created
 function animateRTK() {
+	const animationEngine = window.animationEngine;
 	window.updateCamera = true;
 	window.pitchThreshold = 1.00;
 	animationEngine.tweenTargets.push((gpsTime) => {
 		try {
-			let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
+			// let t = (gpsTime - animationEngine.tstart) / (animationEngine.timeRange);
 			// vehicle contains all the work done by textureLoader
 			let vehicle = viewer.scene.scene.getObjectByName("Vehicle");
-                        const mesh = vehicle.getObjectByName("Vehicle Mesh");
-                        const meshPosition = new THREE.Vector3();
-		        let lastRtkPoint = vehicle.position.clone();
-			let lastRtkOrientation = vehicle.rotation.clone();
+    	const mesh = vehicle.getObjectByName("Vehicle Mesh");
+      const meshPosition = new THREE.Vector3();
+      // let lastRtkPoint = vehicle.position.clone();
+			// let lastRtkOrientation = vehicle.rotation.clone();
 			let lastTransform = vehicle.matrixWorld.clone();
 			// debugger; //vehicle
 			let state = vehicle.rtkTrajectory.getState(gpsTime);
@@ -203,11 +204,11 @@ function animateRTK() {
                         const elevationMin = Number(min);
                         const elevationMax = Number(max);
 			for (let ii = 0, numClouds = clouds.length; ii < numClouds; ii++) {
-                                meshPosition.setFromMatrixPosition(mesh.matrixWorld);
-                                const zheight = meshPosition.z;
-                                // Is this setting ever used?
-			        elevationWindow.z = zheight;
-			        viewer.scene.pointclouds[ii].material.elevationRange = [zheight + elevationMin, zheight + elevationMax];
+        meshPosition.setFromMatrixPosition(mesh.matrixWorld);
+        const zheight = meshPosition.z;
+        // Is this setting ever used?
+        elevationWindow.z = zheight;
+      	viewer.scene.pointclouds[ii].material.elevationRange = [zheight + elevationMin, zheight + elevationMax];
 				// TODO set elevation slider range extent
 			}
 
