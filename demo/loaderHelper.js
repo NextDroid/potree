@@ -16,8 +16,8 @@ import { loadLanesCallback, addReloadLanesButton, laneDownloads } from "../demo/
 import { loadTracksCallback, trackDownloads } from "../demo/trackLoader.js"
 import { loadRadarVisualizationCallback, radarVisualizationDownloads } from "../demo/radarVisualizationLoader.js"
 import { loadObjectFusionTracksCallback, objectFusionTracksDownloads } from "../demo/objectFusionTracksLoader.js"
-import { addLoadGapsButton, gapDownloads } from "../demo/gapsLoader.js"
-import { addLoadRadarButton, radarDownloads } from "../demo/radarLoader.js"
+// import { addLoadGapsButton, gapDownloads } from "../demo/gapsLoader.js"
+// import { addLoadRadarButton, radarDownloads } from "../demo/radarLoader.js"
 import { addDetectionButton, detectionDownloads } from "../demo/detectionLoader.js"
 import { PointAttributeNames } from "../src/loader/PointAttributes.js";
 import { setNumTasks } from "../common/overlay.js"
@@ -107,14 +107,14 @@ export async function loadPotree() {
   const numTasks = await determineNumTasks(files.filePaths)
   setNumTasks(numTasks)
 
-  const otherDownloads = [detectionDownloads, gapDownloads, radarDownloads]
+  const otherDownloads = [detectionDownloads] // gapDownloads, radarDownloads
   otherDownloads.forEach(async (getRelevantFiles) => await getRelevantFiles(files.filePaths))
 
   if (annotateLanesAvailable) {
     addReloadLanesButton();
   }
-  addLoadGapsButton();
-  addLoadRadarButton();
+  // addLoadGapsButton();
+  // addLoadRadarButton();
   addCalibrationButton();
   addDetectionButton();
   // load in actual data & configure playbar along the way
