@@ -114,11 +114,11 @@ export async function loadTracks(s3, bucket, name, trackFileName, shaderMaterial
 
 async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule) {
 
-  let numBytes = bytesArray.length;
-  let tracks = [];
+  const numBytes = bytesArray.length;
+  const tracks = [];
 
   let segOffset = 0;
-  let segSize, viewSize, viewData;
+  let segSize, viewSize;
   while (segOffset < numBytes) {
 
     // Read SegmentSize:
@@ -127,9 +127,9 @@ async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule) {
 
     // Get Flatbuffer Track Object:
     segOffset += 4;
-    let buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
-    let fbuffer = new flatbuffers.ByteBuffer(buf);
-    let track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
+    const buf = new Uint8Array(bytesArray.buffer.slice(segOffset, segOffset+segSize));
+    const fbuffer = new flatbuffers.ByteBuffer(buf);
+    const track = FlatbufferModule.Flatbuffer.GroundTruth.Track.getRootAsTrack(fbuffer);
     // debugger;
 
     tracks.push(track);
@@ -143,33 +143,23 @@ async function parseTracks(bytesArray, shaderMaterial, FlatbufferModule) {
 async function createTrackGeometries(shaderMaterial, tracks) {
   const animationEngine = window.animationEngine;
 
-  let lineMaterial = new THREE.LineBasicMaterial({
-    color: 0x00ff00,
-    transparent: true
-  });
-
-  let boxMaterial = new THREE.MeshNormalMaterial();
-
-  let material = shaderMaterial;
+  const material = shaderMaterial;
 
   let state;
   let bbox;
-  let bboxs = [];
-  let trackPoints = [];
+  const bboxs = [];
   let t0 = -1;
-  let x0 = [];
-  let y0 = [];
-  let z0 = [];
-  let firstTimestamp = true;
+  const x0 = [];
+  const y0 = [];
+  const z0 = [];
   let firstCentroid, delta;
   let allBoxes = new THREE.Geometry();
   let stateTimes = [];
-  let all = [];
   for (let ss=0, numTracks=tracks.length; ss<numTracks; ss++) {
     if (ss % 100 === 0) {
       await updateLoadingBar(ss/numTracks * 100);
     }
-    let track = tracks[ss];
+    const track = tracks[ss];
     for (let ii=0, len=track.statesLength(); ii<len; ii++) {
 
       // Assign Current Track State:
@@ -278,7 +268,6 @@ async function createTrackGeometries(shaderMaterial, tracks) {
           stateTimes = [];
         }
 
-
         const output = {
           t0: t0,
           boxMesh: boxMesh,
@@ -287,7 +276,7 @@ async function createTrackGeometries(shaderMaterial, tracks) {
         return output;
       }
 
-      let result = getBoundingBoxGeometry(t0, state, material);
+      const result = getBoundingBoxGeometry(t0, state, material);
       t0 = result.t0;
       // if (bboxs.length < 1000) {  // TODO only showing 1000 boxes because it of my inefficient way of updating them
       // if (true) {
