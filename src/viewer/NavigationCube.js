@@ -8,7 +8,7 @@ export class NavigationCube extends THREE.Object3D {
 
 		let createPlaneMaterial = (img) => {
 			let material = new THREE.MeshBasicMaterial( {
-				depthTest: true, 
+				depthTest: true,
 				depthWrite: true,
 				side: THREE.DoubleSide
 			});

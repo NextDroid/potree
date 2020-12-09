@@ -271,6 +271,7 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
           // let bufferBoxGeometry = allBoxes;
           let wireframe = new THREE.LineSegments( edges, material ); // NOTE don't clone material to assign to multiple meshes
           let mesh = wireframe;
+          mesh.track_id = track.id();
           mesh.position.copy(firstCentroid);
           bboxs.push( mesh );
           allBoxes = new THREE.Geometry();
@@ -355,7 +356,32 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 		viewer.scene.dispatchEvent({
 			"type": "truth_layer_added",
 			"truthLayer": trackLayer
-		});
+    });
+
+    if (trackLayer.name === 'Tracked Objects') {
+      let onMouseDown = (event) => {
+        if (event.button === THREE.MOUSE.LEFT) {
+          const currentAnnotation = viewer.scene.annotations.children.find(({_title}) => _title.startsWith("Track ID: "));
+          if (currentAnnotation) viewer.scene.annotations.remove(currentAnnotation)
+
+          let mouse = new THREE.Vector2();
+          mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+          mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+          let raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse.clone(), viewer.scene.getActiveCamera());
+
+          let intersects = raycaster.intersectObjects(trackLayer.children, true);
+          if (intersects?.length > 0) {
+            viewer.scene.annotations.add(new Potree.Annotation({
+              title: "Track ID: " + intersects[0].object.track_id,
+              position: intersects[0].point
+            }));
+          }
+        }
+      }
+      viewer.renderer.domElement.addEventListener('mousedown', onMouseDown);
+    }
 
 		// TODO check if group works as expected, then trigger "truth_layer_added" event
 		animationEngine.tweenTargets.push((gpsTime) => {
