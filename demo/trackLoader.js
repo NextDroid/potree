@@ -2,8 +2,7 @@
 // import { Flatbuffer } from "../schemas/GroundTruth_generated.js";
 // import { Flatbuffer } from "http://localhost:1234/schemas/GroundTruth_generated.js";
 import { updateLoadingBar, incrementLoadingBarTotal } from "../common/overlay.js";
-import { getFbFileInfo, removeFileExtension } from "./loaderUtilities.js";
-import { getShaderMaterial } from '../demo/paramLoader.js';
+import { getFbFileInfo, removeFileExtension, indexOfClosestTimestamp } from "./loaderUtilities.js";
 
 
 // sets local variable and returns so # files can be counted
@@ -169,7 +168,7 @@ function getTrackMeshParams(state, timeDelta) {
 }
 
 async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
-  const allTracks = [];
+  const trackMeshes = [];
 
   for (let ss=0, numTracks=tracks.length; ss<numTracks; ss++) {
     if (ss % 100 === 0) {
@@ -183,7 +182,7 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
     const trackMesh = new THREE.LineSegments(trackWireframe, shaderMaterial.clone());
 
     trackMesh.track_id = track.id();
-    allTracks.push({mesh: trackMesh, states: []});
+    trackMeshes.push({mesh: trackMesh, states: []});
 
     for (let ii=0, len=track.statesLength(); ii<len; ii++) {
       // Assign Current Track State:
@@ -195,16 +194,17 @@ async function createTrackGeometries(shaderMaterial, tracks, animationEngine) {
       const trackQuaternion = new THREE.Quaternion().setFromAxisAngle(zAxis, yaw);
       const trackScale = new THREE.Vector3(length, width, height);
 
-      allTracks[ss].states.push({position: centroidLocation, quaternion: trackQuaternion, scale: trackScale, timestamp});
+      trackMeshes[ss].states.push({position: centroidLocation, quaternion: trackQuaternion, scale: trackScale, timestamp});
     }
   }
 
-  allTracks.forEach(({states}) => states.sort((a, b) => a.timestamp - b.timestamp));
+  trackMeshes.forEach(({states}, i) => {
+    states.sort((a, b) => a.timestamp - b.timestamp);
+    trackMeshes[i].timeRange = { min: states[0].timestamp, max: states[states.length - 1].timestamp };
+  });
+
   await updateLoadingBar(100);
-
-  const output = { allTracks }
-
-  return output;
+  return { trackMeshes };
 }
 
 export async function loadTracksCallback(s3, bucket, name, trackShaderMaterial, animationEngine, files) {
@@ -231,7 +231,7 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 		const trackLayer = new THREE.Group();
     trackLayer.name = trackName;
     trackLayer.visible = trackName === 'Tracked Objects'
-    trackGeometries.allTracks.forEach((track, i) => trackLayer.add(trackGeometries.allTracks[i].mesh));
+    trackGeometries.trackMeshes.forEach((track, i) => trackLayer.add(trackGeometries.trackMeshes[i].mesh));
 
 		viewer.scene.scene.add(trackLayer);
 		const e = new CustomEvent("truth_layer_added", { detail: trackLayer, writable: true });
@@ -274,55 +274,22 @@ async function loadTracksCallbackHelper (s3, bucket, name, trackShaderMaterial, 
 			trackShaderMaterial.uniforms.minGpsTime.value = minTime;
       trackShaderMaterial.uniforms.maxGpsTime.value = maxTime;
 
-      trackGeometries.allTracks.forEach(({states}, i) => {
-        const currentState = states[indexOfClosestTimestamp(states, currentTime)];
+      trackGeometries.trackMeshes.forEach(({states, timeRange}, i) => {
+        if (currentTime >= timeRange.min && currentTime <= timeRange.max) {
+          const currentState = states[indexOfClosestTimestamp(states, currentTime)];
 
-        trackGeometries.allTracks[i].mesh.visible = currentState.timestamp >= minTime && currentState.timestamp <= maxTime;
-        trackGeometries.allTracks[i].mesh.position.copy(currentState.position);
-        trackGeometries.allTracks[i].mesh.quaternion.copy(currentState.quaternion);
-        trackGeometries.allTracks[i].mesh.scale.copy(currentState.scale);
+          trackGeometries.trackMeshes[i].mesh.visible = true;
+          trackGeometries.trackMeshes[i].mesh.position.copy(currentState.position);
+          trackGeometries.trackMeshes[i].mesh.quaternion.copy(currentState.quaternion);
+          trackGeometries.trackMeshes[i].mesh.scale.copy(currentState.scale);
+        }
+        else {
+          trackGeometries.trackMeshes[i].mesh.visible = false;
+        }
       });
 		});
 	});
 }  // end of loadTracksCallback
-
-function indexOfClosestTimestamp(tracks, timestamp) {
-  if (timestamp <= tracks[0].timestamp) {
-    return 0;
-  }
-
-  if (timestamp >= tracks[tracks.length - 1].timestamp) {
-    return tracks.length - 1;
-  }
-
-  let start = 0;
-  let end = tracks.length;
-  let mid = 0;
-
-  while (start < end) {
-    mid = Math.floor((start + end) / 2);
-
-    if (tracks[mid].timestamp === timestamp) {
-      return mid;
-    }
-    else if (timestamp < tracks[mid].timestamp) {
-      if (mid > 0 && timestamp > tracks[mid - 1].timestamp) {
-        return Math.abs(timestamp - tracks[mid].timestamp) < Math.abs(timestamp - tracks[mid - 1].timestamp) ? mid : mid - 1;
-      }
-
-      end = mid;
-    }
-    else {
-      if (mid < tracks.length - 1 && timestamp < tracks[mid + 1].timestamp) {
-        return Math.abs(timestamp - tracks[mid].timestamp) < Math.abs(timestamp - tracks[mid + 1].timestamp) ? mid : mid + 1;
-      }
-
-      start = mid + 1;
-    }
-  }
-
-  return mid;
-}
 
 function getTrackName(file) {
   return (file in trackNames) ? trackNames[file] : removeFileExtension(file);

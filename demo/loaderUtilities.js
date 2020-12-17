@@ -256,3 +256,45 @@ function getLocalFiles () {
   // TODO get local files
   return dirs;
 }
+
+// - Pass in an array of states that contain timestamps with the current time to
+//   get the state closest to the current time - uses binary search.
+// - Returns index of the state, not the state itself
+// - states must be ordered by currentTime
+export function indexOfClosestTimestamp(states, currentTime) {
+  if (currentTime <= states[0].timestamp) {
+    return 0;
+  }
+
+  if (currentTime >= states[states.length - 1].timestamp) {
+    return states.length - 1;
+  }
+
+  let start = 0;
+  let end = states.length;
+  let mid = 0;
+
+  while (start < end) {
+    mid = Math.floor((start + end) / 2);
+
+    if (states[mid].timestamp === currentTime) {
+      return mid;
+    }
+    else if (currentTime < states[mid].timestamp) {
+      if (mid > 0 && currentTime > states[mid - 1].timestamp) {
+        return Math.abs(currentTime - states[mid].timestamp) < Math.abs(currentTime - states[mid - 1].timestamp) ? mid : mid - 1;
+      }
+
+      end = mid;
+    }
+    else {
+      if (mid < states.length - 1 && currentTime < states[mid + 1].timestamp) {
+        return Math.abs(currentTime - states[mid].timestamp) < Math.abs(currentTime - states[mid + 1].timestamp) ? mid : mid + 1;
+      }
+
+      start = mid + 1;
+    }
+  }
+
+  return mid;
+}
