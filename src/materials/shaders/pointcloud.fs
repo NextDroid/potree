@@ -25,33 +25,40 @@ uniform float uPCIndex;
 uniform float uScreenWidth;
 uniform float uScreenHeight;
 
+uniform bool uFilterInvalidPoints;
+
 varying vec3	vColor;
 varying float	vLogDepth;
 varying vec3	vViewPosition;
 varying float	vRadius;
 varying float 	vPointSize;
 varying vec3 	vPosition;
+varying float 	vIsRecommendedDrop;
 
 
 float specularStrength = 1.0;
 
 void main() {
 
+	if (uFilterInvalidPoints && vIsRecommendedDrop > 0.5) {
+		discard;
+	}
+
 	vec3 color = vColor;
 	float depth = gl_FragCoord.z;
 
-	#if defined(circle_point_shape) || defined(paraboloid_point_shape) 
+	#if defined(circle_point_shape) || defined(paraboloid_point_shape)
 		float u = 2.0 * gl_PointCoord.x - 1.0;
 		float v = 2.0 * gl_PointCoord.y - 1.0;
 	#endif
-	
-	#if defined(circle_point_shape) 
+
+	#if defined(circle_point_shape)
 		float cc = u*u + v*v;
 		if(cc > 1.0){
 			discard;
 		}
 	#endif
-		
+
 	#if defined color_type_point_index
 		gl_FragColor = vec4(color, uPCIndex / 255.0);
 	#else
@@ -68,16 +75,16 @@ void main() {
 		float expDepth = pos.z;
 		depth = (pos.z + 1.0) / 2.0;
 		gl_FragDepthEXT = depth;
-		
+
 		#if defined(color_type_depth)
 			color.r = linearDepth;
 			color.g = expDepth;
 		#endif
-		
+
 		#if defined(use_edl)
 			gl_FragColor.a = log2(linearDepth);
 		#endif
-		
+
 	#else
 		#if defined(use_edl)
 			gl_FragColor.a = vLogDepth;
@@ -92,7 +99,5 @@ void main() {
 		gl_FragColor.a = weight;
 		gl_FragColor.xyz = gl_FragColor.xyz * weight;
 	#endif
-	
+
 }
-
-

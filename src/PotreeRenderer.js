@@ -140,21 +140,22 @@ let attributeLocations = {
 	"numberOfReturns": 5,
 	"pointSourceID": 6,
 	"indices": 7,
-	"normal": 8,
-	"spacing": 9,
-	"gpsTime": 10,
-	"originalRtkPosition": 11,
-	"originalRtkOrientation": 12,
+	"spacing": 8,
+	"gpsTime": 9,
+	"originalRtkPosition": 10,
+	"originalRtkOrientation": 11,
 	// "rtk2vehicleXYZ": 13,
 	// "rtk2vehicleRPY": 14,
 	// "velo2rtkXYZ": 15,
 	// "velo2rtkRPY": 16
-	"dualDistance": 13,
-	"dualReflectivity": 14,
-	"confidence": 15,
-	"latitude":16,
-	"longitude":17,
-	"altitude": 18
+	"dualDistance": 12,
+	"dualReflectivity": 13,
+	"confidence": 14,
+	"isRecommendedDrop": 15,
+	"normal": 16,
+	"latitude":17,
+	"longitude":18,
+	"altitude": 19
 };
 
 class Shader {
@@ -873,6 +874,7 @@ export class Renderer {
 				let uFilterReturnNumberRange = material.uniforms.uFilterReturnNumberRange.value;
 				let uFilterNumberOfReturnsRange = material.uniforms.uFilterNumberOfReturnsRange.value;
 				let uFilterGPSTimeClipRange = material.uniforms.uFilterGPSTimeClipRange.value;
+				let uFilterInvalidPoints = material.uniforms.uFilterInvalidPoints.value;
 				let uVisualizeTimeRange = material.uniforms.uVisualizeTimeRange.value;
 
 				let gpsCliPRangeMin = uFilterGPSTimeClipRange[0] - gpsMin;
@@ -881,6 +883,7 @@ export class Renderer {
 				shader.setUniform2f("uFilterReturnNumberRange", uFilterReturnNumberRange);
 				shader.setUniform2f("uFilterNumberOfReturnsRange", uFilterNumberOfReturnsRange);
 				shader.setUniform2f("uFilterGPSTimeClipRange", [gpsCliPRangeMin, gpsCliPRangeMax]);
+				shader.setUniformBoolean("uFilterInvalidPoints", uFilterInvalidPoints);
 				shader.setUniform1i("uVisualizeTimeRange", uVisualizeTimeRange);
 			}
 

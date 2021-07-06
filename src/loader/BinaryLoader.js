@@ -105,9 +105,11 @@ export class BinaryLoader{
 					let dualDistance = new Uint8Array(DPCs.map(function(DPC) { return unpackDual(DPC).distFlag }));
 					let dualReflectivity = new Uint8Array(DPCs.map(function(DPC) { return unpackDual(DPC).intenFlag }));
 					let confidence = new Uint8Array(DPCs.map(function(DPC) { return unpackConfidence(DPC).confidence }));
+					let isRecommendedDrop = new Uint8Array(DPCs.map(function(DPC) { return unpackConfidence(DPC).isRecommendedDrop }));
 					geometry.addAttribute('dualDistance', new THREE.BufferAttribute(dualDistance, 1));
 					geometry.addAttribute('dualReflectivity', new THREE.BufferAttribute(dualReflectivity, 1));
 					geometry.addAttribute('confidence', new THREE.BufferAttribute(confidence, 1));
+					geometry.addAttribute('isRecommendedDrop', new THREE.BufferAttribute(isRecommendedDrop, 1));
 				}  else if (parseInt(property) === PointAttributeNames.LATITUDE) {
 					let bufferAttribute = new THREE.BufferAttribute(new Float32Array(buffer), 1,false);
 					geometry.addAttribute('latitude', bufferAttribute);

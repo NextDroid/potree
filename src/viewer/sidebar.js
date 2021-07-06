@@ -715,6 +715,7 @@ export class Sidebar{
 
 	initFilters(){
 		this.initClassificationList();
+		this.initConfidenceList();
 		this.initReturnFilters();
 		this.initGPSTimeFilters();
 
@@ -845,6 +846,33 @@ export class Sidebar{
 		// addClassificationItem(8, 'key-point');
 		// addClassificationItem(9, 'water');
 		// addClassificationItem(12, 'overlap');
+	}
+
+	initConfidenceList() {
+		let elConfidenceList = $('#confidenceList');
+
+		let addConfidenceItem = (name) => {
+			let inputID = 'chkConfidence_' + name;
+
+			let element = $(`
+				<li>
+					<label style="whitespace: nowrap">
+						<input id="${inputID}" type="checkbox"/>
+						<span>${name}</span>
+					</label>
+				</li>
+			`);
+
+			let elInput = element.find('input');
+
+			elInput.click(event => {
+				this.viewer.setInvalidPointVisibility(event.target.checked);
+			});
+
+			elConfidenceList.append(element);
+		};
+
+		addConfidenceItem("Invalid");
 	}
 
 	initAccordion(){
