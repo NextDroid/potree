@@ -71,7 +71,8 @@ export class PointCloudMaterial extends THREE.RawShaderMaterial {
 			indices: { type: 'fv', value: [] },
 			dualDistance: { type: 'f', value: [] },
 			dualReflectivity: { type: 'f', value: [] },
-			confidence: { type: 'f', value: [] }
+			confidence: { type: 'f', value: [] },
+			isRecommendedDrop: { type: 'f', value: [] }
 		};
 
 		this.uniforms = {
@@ -146,6 +147,7 @@ export class PointCloudMaterial extends THREE.RawShaderMaterial {
 			uFilterReturnNumberRange:		{ type: "fv", value: [0, 7]},
 			uFilterNumberOfReturnsRange:	{ type: "fv", value: [0, 7]},
 			uFilterGPSTimeClipRange:		{ type: "fv", value: [0, 7]},
+			uFilterInvalidPoints:			{ type: 'b', value: true },
 			uVisualizeTimeRange:			{ type: "b", value: true },
 
 			currentRtkPosition: 			{type: "v3", value: new THREE.Vector3(0,0,0)},

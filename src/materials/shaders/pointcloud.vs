@@ -20,6 +20,7 @@ attribute vec3 originalRtkOrientation;
 attribute float dualDistance;
 attribute float dualReflectivity;
 attribute float confidence;
+attribute float isRecommendedDrop;
 
 uniform vec3 currentRtkPosition;
 uniform vec3 currentRtkOrientation;
@@ -141,6 +142,7 @@ varying float	vLogDepth;
 varying vec3	vViewPosition;
 varying float 	vRadius;
 varying float 	vPointSize;
+varying float	vIsRecommendedDrop;
 
 
 float round(float number){
@@ -983,6 +985,7 @@ void main() {
 
 	// COLOR
 	vColor = getColor(correctedPosition);
+	vIsRecommendedDrop = isRecommendedDrop;
 
 	#if defined hq_depth_pass
 		float originalDepth = gl_Position.w;

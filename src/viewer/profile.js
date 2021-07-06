@@ -87,9 +87,11 @@ class ProfilePointCloudEntry{
 				const dualDistance = new Uint8Array(data.data.dualPlusConfidence.map(function(DPC) { return unpackDual(DPC).distFlag }));
 				const dualReflectivity = new Uint8Array(data.data.dualPlusConfidence.map(function(DPC) { return unpackDual(DPC).intenFlag }));
 				const confidence = new Uint8Array(data.data.dualPlusConfidence.map(function(DPC) { return unpackConfidence(DPC).confidence }));
+				const isRecommendedDrop = new Uint8Array(data.data.dualPlusConfidence.map(function(DPC) { return unpackConfidence(DPC).isRecommendedDrop }));
 				geometry.addAttribute('dualDistance', new THREE.BufferAttribute(dualDistance, 1));
 				geometry.addAttribute('dualReflectivity', new THREE.BufferAttribute(dualReflectivity, 1));
 				geometry.addAttribute('confidence', new THREE.BufferAttribute(confidence, 1));
+				geometry.addAttribute('isRecommendedDrop', new THREE.BufferAttribute(isRecommendedDrop, 1));
 			}
 
 			geometry.drawRange.start = 0;
@@ -182,6 +184,7 @@ class ProfilePointCloudEntry{
 					attributes.dualDistance.array[currentIndex] = unpackDual(data.data.dualPlusConfidence[i]).distFlag;
 					attributes.dualReflectivity.array[currentIndex] = unpackDual(data.data.dualPlusConfidence[i]).intenFlag;
 					attributes.confidence.array[currentIndex] = unpackDual(data.data.dualPlusConfidence[i]).confidence;
+					attributes.isRecommendedDrop.array[currentIndex] = unpackDual(data.data.dualPlusConfidence[i]).isRecommendedDrop;
 				}
 
 				updateRange.count++;

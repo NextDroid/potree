@@ -119,6 +119,7 @@ export class Viewer extends EventDispatcher{
 		this.filterNumberOfReturnsRange = [0, 7];
 		this.filterGPSTimeRange = [0, Infinity];
 		this.filterGPSTimeExtent = [0, 1];
+		this.filterInvalidPoints = true;
 		this.visualizeTimeRange = true;
 
 		this.potreeRenderer = null;
@@ -570,6 +571,10 @@ export class Viewer extends EventDispatcher{
 			this.dispatchEvent({'type': 'classification_visibility_changed', 'viewer': this});
 		}
 	};
+
+	setInvalidPointVisibility (value) {
+		this.filterInvalidPoints = !value;
+	}
 
 	setFilterReturnNumberRange(from, to){
 		this.filterReturnNumberRange = [from, to];
@@ -1400,6 +1405,7 @@ export class Viewer extends EventDispatcher{
 			material.uniforms.uFilterReturnNumberRange.value = this.filterReturnNumberRange;
 			material.uniforms.uFilterNumberOfReturnsRange.value = this.filterNumberOfReturnsRange;
 			material.uniforms.uFilterGPSTimeClipRange.value = this.filterGPSTimeRange;
+			material.uniforms.uFilterInvalidPoints.value = this.filterInvalidPoints;
 			material.uniforms.uVisualizeTimeRange.value = this.visualizeTimeRange;
 		}
 
