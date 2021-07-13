@@ -15,8 +15,8 @@ attribute float pointSourceID;
 attribute vec4 indices;
 attribute float spacing;
 attribute float gpsTime;
-attribute vec3 originalRtkPosition;
-attribute vec3 originalRtkOrientation;
+attribute vec3 insPosition;
+attribute vec3 insOrientation;
 attribute float dualDistance;
 attribute float dualReflectivity;
 attribute float confidence;
@@ -253,8 +253,8 @@ vec4 applyRtk2VehicleExtrinsics(vec4 X) {
 // Deprecated - Used for original vehicle-centric streaming player
 vec4 applyRtk2RtkExtrinsicsOld(vec4 X) {
 	// Construct Rotation Matrix (roll pitch yaw):
-	vec3 dTheta = currentRtkOrientation - originalRtkOrientation;
-	vec3 dX = currentRtkPosition - originalRtkPosition;
+	vec3 dTheta = currentRtkOrientation - insOrientation;
+	vec3 dX = currentRtkPosition - insPosition;
 	dTheta *= -1.0; // TODO why do I need to transform from current to original?
 	dX *= -1.0; // TODO why do I need to translate from current to original?
 
@@ -266,7 +266,7 @@ vec4 applyRtk2RtkExtrinsicsOld(vec4 X) {
 vec4 applyRtk2RtkExtrinsics(vec4 X) {
 
 	// Get Transformation from originalRtk to origin (inverse SE3):
-	mat4 originalRtk2Origin = getSE3Inverse(originalRtkPosition, originalRtkOrientation);
+	mat4 originalRtk2Origin = getSE3Inverse(insPosition, insOrientation);
 	mat4 origin2CurrentRtk = getSE3(currentRtkPosition, currentRtkOrientation);
 
 	// return origin2CurrentRtk*originalRtk2Origin*X; // Transform from original RTK to Origin to current RTK
@@ -957,8 +957,8 @@ void main() {
 	vec4 p_grid = vec4(p, 1.0); 	// Position of point in grid (octree node) frame
 
 	// Construct Transforms relating Potree's Octree Grid (Node) Reference Frame and ISO 8855 Vehicle Frame:
-	mat4 T5_ISO_to_Grid  = getSE3(originalRtkPosition, originalRtkOrientation);	// Should be based on originalRtkPosition and originalRtkOrientation
-	mat4 T5_Grid_to_ISO  = inverse(T5_ISO_to_Grid);								// Should be based on originalRtkPosition and originalRtkOrientation (inverse of T_ISO_to_Grid)
+	mat4 T5_ISO_to_Grid  = getSE3(insPosition, insOrientation);	// Should be based on insPosition and insOrientation
+	mat4 T5_Grid_to_ISO  = inverse(T5_ISO_to_Grid);								// Should be based on insPosition and insOrientation (inverse of T_ISO_to_Grid)
 
 	// Construct Full Calibration Transform Matrix:
 	mat4 T_full;
