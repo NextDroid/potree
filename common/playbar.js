@@ -133,7 +133,10 @@ export function createPlaybar () {
   });
 
   playbarhtml.find("#toggle_lanes_button").click(async function () {
-    const toggleAssessmentUrl = `${hostUrl}toggle-assessment-status?dataset=${encodeURIComponent(dataset)}&bucket=${encodeURIComponent(bucket)}&version=${encodeURIComponent(parseInt(version))}&userToken=${encodeURIComponent(userToken)}`;
+    const toggleAssessmentUrl = `${hostUrl}toggle-assessment-status?dataset=${encodeURIComponent(dataset)}
+    &bucket=${encodeURIComponent(bucket)}
+    &version=${encodeURIComponent(parseInt(version))}
+    &userToken=${encodeURIComponent(userToken)}`;
     const status = await setRestApi(toggleAssessmentUrl);
     document.getElementById("toggle_lanes_button").innerText = (status == 1 ? "Unready \nLanes" : "Ready \nLanes");
   });
