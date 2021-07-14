@@ -872,7 +872,7 @@ export class Sidebar{
 			elConfidenceList.append(element);
 		};
 
-		addConfidenceItem("Invalid");
+		addConfidenceItem("Invalid Returns");
 	}
 
 	initAccordion(){
