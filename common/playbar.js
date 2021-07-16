@@ -1,7 +1,8 @@
 'use strict';
 
-import { bucket, name, getLambda, getAWSCredentials } from "../demo/paramLoader.js";
+import { dataset, version, hostUrl, userToken, bucket, name, getLambda, getAWSCredentials } from "../demo/paramLoader.js";
 import { resetProgressBars, incrementLoadingBarTotal } from "../common/overlay.js";
+import { setRestApi, getFromRestApi } from "../demo/loaderUtilities.js";
 
 const numberOrZero = (string) => {
   const value = Number(string);
@@ -70,6 +71,8 @@ export function createPlaybar () {
     updateTimeWindow();
   }
 
+
+
   // Make sure to call updateTimeWindow with disable false
   playbarhtml.find("#myRange").on('input', () => updateTimeWindow());
 
@@ -127,6 +130,12 @@ export function createPlaybar () {
         }
       }
     }
+  });
+
+  playbarhtml.find("#toggle_lanes_button").click(async function () {
+    const toggleAssessmentUrl = `${hostUrl}toggle-assessment-status?dataset=${encodeURIComponent(dataset)}&bucket=${encodeURIComponent(bucket)}&version=${encodeURIComponent(parseInt(version))}&userToken=${encodeURIComponent(userToken)}`;
+    const status = await setRestApi(toggleAssessmentUrl);
+    document.getElementById("toggle_lanes_button").innerText = (status.rows[0].assessment_status == 1 ? "Unready \nLanes" : "Ready \nLanes");
   });
 
   playbarhtml.find("#download_lanes_button").click(function () {

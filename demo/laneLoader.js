@@ -754,7 +754,7 @@ export async function loadLanesCallback(s3, bucket, name, filename, callback) {
   invalidLanesLayer.name = filename && "Additional Invalid Lanes" || "Invalid Lanes";
   invalidLanesLayer.visible = false;
 
-  const assessmentStatusUrl = `${hostUrl}/get-assessment-status?dataset=${encodeURIComponent(dataset)}&bucket=${encodeURIComponent(bucket)}&version=${encodeURIComponent(parseInt(version))}&userToken=${encodeURIComponent(userToken)}`;
+  const assessmentStatusUrl = `${hostUrl}get-assessment-status?dataset=${encodeURIComponent(dataset)}&bucket=${encodeURIComponent(bucket)}&version=${encodeURIComponent(parseInt(version))}&userToken=${encodeURIComponent(userToken)}`;
   const assessmentStatus = await getFromRestApi(assessmentStatusUrl);
 
   if (assessmentStatus || annotateAvailable) {
